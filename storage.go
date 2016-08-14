@@ -1,6 +1,7 @@
 package main
 
 import (
-    "fmt"
+	"log"
+	"github.com/minio/minio-go"
 )
 
