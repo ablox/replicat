@@ -1,0 +1,13 @@
+{
+	"comment": "",
+	"ignore": "test",
+	"package": [
+		{
+			"checksumSHA1": "DTWZiw8Sy5OUWRHY/PM7ACsBC7o=",
+			"path": "github.com/minio/minio-go",
+			"revision": "0ccd6fa0920954d6d4adfaa79515fe48703d2718",
+			"revisionTime": "2016-08-13T05:27:05Z"
+		}
+	],
+	"rootPath": "github.com/ablox/replicat"
+}
