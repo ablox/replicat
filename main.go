@@ -3,10 +3,12 @@
 package main
 
 import (
-    "fmt"
+	"fmt"
 )
 
 func main() {
-    fmt.Printf("replicat online....")
-    defer fmt.Printf("End of line\n")
+	fmt.Printf("replicat online....")
+
+	fuseMe()
+	defer fmt.Printf("End of line\n")
 }
