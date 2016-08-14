@@ -12,3 +12,5 @@ func main() {
 	fuseMe()
 	defer fmt.Printf("End of line\n")
 }
+
+
