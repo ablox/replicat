@@ -7,6 +7,6 @@ import (
 )
 
 func main() {
-    fmt.Printf("replicat online....")
+    fmt.Printf("replicat online....\n")
     defer fmt.Printf("End of line\n")
 }
