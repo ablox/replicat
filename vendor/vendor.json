@@ -3,6 +3,12 @@
 	"ignore": "test",
 	"package": [
 		{
+			"checksumSHA1": "AP+4+IcVArsZumhjeAHQJ60VL6U=",
+			"path": "bazil.org/fuse",
+			"revision": "371fbbdaa8987b715bdd21d6adc4c9b20155f748",
+			"revisionTime": "2016-08-11T21:22:31Z"
+		},
+		{
 			"checksumSHA1": "DTWZiw8Sy5OUWRHY/PM7ACsBC7o=",
 			"path": "github.com/minio/minio-go",
 			"revision": "0ccd6fa0920954d6d4adfaa79515fe48703d2718",
