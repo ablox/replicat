@@ -9,10 +9,20 @@
 			"revisionTime": "2016-08-11T21:22:31Z"
 		},
 		{
+			"path": "fsnotify",
+			"revision": ""
+		},
+		{
 			"checksumSHA1": "Gp8s2Js69bsjFUcWqYyTTaMoW+U=",
 			"path": "github.com/codegangsta/cli",
 			"revision": "168c95418e66e019fe17b8f4f5c45aa62ff80e23",
 			"revisionTime": "2016-08-01T03:09:57Z"
+		},
+		{
+			"checksumSHA1": "xgjI2W3RGiQwNlxsOW2V9fJ9kaM=",
+			"path": "github.com/fsnotify/fsnotify",
+			"revision": "f12c6236fe7b5cf6bcf30e5935d08cb079d78334",
+			"revisionTime": "2016-08-16T05:15:41Z"
 		},
 		{
 			"checksumSHA1": "DTWZiw8Sy5OUWRHY/PM7ACsBC7o=",
@@ -25,6 +35,12 @@
 			"path": "github.com/urfave/cli",
 			"revision": "168c95418e66e019fe17b8f4f5c45aa62ff80e23",
 			"revisionTime": "2016-08-01T03:09:57Z"
+		},
+		{
+			"checksumSHA1": "8fD/im5Kwvy3JgmxulDTambmE8w=",
+			"path": "golang.org/x/sys/unix",
+			"revision": "a646d33e2ee3172a661fc09bca23bb4889a41bc8",
+			"revisionTime": "2016-07-15T05:43:45Z"
 		}
 	],
 	"rootPath": "github.com/ablox/replicat"
