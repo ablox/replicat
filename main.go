@@ -37,13 +37,11 @@ func main() {
 		}
 	}()
 
-	fmt.Printf("about to call createListOfFolders\n")
 	listOfFolders, err := createListOfFolders("/tmp/foo")
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	fmt.Printf("Done from createListOfFolders: %v\n", listOfFolders)
 	for _, folder := range listOfFolders {
 		err = watcher.Add(folder)
 		if err != nil {
@@ -64,8 +62,6 @@ func createListOfFolders(basePath string) ([]string, error) {
 		paths = append(paths, currentPath)
 		pendingPaths = pendingPaths[1:]
 
-		log.Printf("%3d pending - Processing path: %s", len(pendingPaths), currentPath)
-
 		// Read the directories in the path
 		f, err := os.Open(currentPath)
 		if err != nil {
@@ -83,13 +79,6 @@ func createListOfFolders(basePath string) ([]string, error) {
 		if err != nil {
 			return nil, err
 		}
-
-		fmt.Printf("*************************************************************\n")
-		fmt.Printf("SubDirectory List \n")
-		for _, dir := range pendingPaths {
-			fmt.Printf("%s\n", dir)
-		}
-		fmt.Printf("*************************************************************\n")
 	}
 
 	return paths, nil
