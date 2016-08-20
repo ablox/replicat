@@ -1,2 +1,2 @@
 # replicat
-Replication for the masses
+rsync for the cloud
