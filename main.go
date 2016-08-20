@@ -8,10 +8,46 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"github.com/urfave/cli"
 )
 
+// settings for the server
+type Settings struct {
+    Directory    string
+}
+
+var globalSettings Settings = Settings {
+	Directory: "",
+}
+
 func main() {
+	fmt.Printf("replicat initializing....\n")
+
+	app := cli.NewApp()
+	app.Name = "Replicat"
+	app.Usage = "rsync for the cloud"
+	app.Action = func(c *cli.Context) error {
+		globalSettings.Directory = c.GlobalString("directory")
+
+		if globalSettings.Directory == "" {
+			panic("Directory is required to serve files\n")
+		}
+
+		return nil
+	}
+
+	app.Flags = []cli.Flag{
+		cli.StringFlag{
+			Name: "directory, d",
+			Value: globalSettings.Directory,
+			Usage: "Specify a directory where the files to share are located.",
+		},
+	}
+
+	app.Run(os.Args)
+
 	fmt.Printf("replicat online....\n")
+	fmt.Printf("serving files from: %s\n", globalSettings.Directory)
 
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
@@ -25,19 +61,18 @@ func main() {
 		for {
 			select {
 			case event := <-watcher.Events:
-				if event.Op&fsnotify.Write == fsnotify.Write {
+				if event.Op & fsnotify.Write == fsnotify.Write {
 					log.Println("file updated:", event.Name)
 				} else {
 					log.Println("event:", event)
 				}
-
 			case err := <-watcher.Errors:
 				log.Println("error:", err)
 			}
 		}
 	}()
 
-	listOfFolders, err := createListOfFolders("/tmp/foo")
+	listOfFolders, err := createListOfFolders(globalSettings.Directory)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -48,6 +83,9 @@ func main() {
 			log.Fatal(err)
 		}
 	}
+
+	fmt.Printf("Now listing on: %d folders under: %s\n", len(listOfFolders), globalSettings.Directory)
+
 	<-done
 
 }
