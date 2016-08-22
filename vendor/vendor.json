@@ -31,6 +31,12 @@
 			"revisionTime": "2016-08-13T05:27:05Z"
 		},
 		{
+			"checksumSHA1": "P4KP6ThMtIb6HWQygXLrZtr1WSQ=",
+			"path": "github.com/pubnub/go/messaging",
+			"revision": "30d99c8e5d4a10b270a3d473e3ab5df8da469cf5",
+			"revisionTime": "2016-06-08T01:25:06Z"
+		},
+		{
 			"checksumSHA1": "jm802xmRmtkUSVCED5SiDwIe0Jo=",
 			"path": "github.com/urfave/cli",
 			"revision": "168c95418e66e019fe17b8f4f5c45aa62ff80e23",
