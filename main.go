@@ -86,6 +86,8 @@ func main() {
 
 	fmt.Printf("Now listing on: %d folders under: %s\n", len(listOfFolders), globalSettings.Directory)
 
+	// Let's read the
+
 	<-done
 
 }
