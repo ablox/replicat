@@ -47,6 +47,7 @@ func viewHandler(w http.ResponseWriter, r *http.Request, title string) {
 }
 
 func editHandler(w http.ResponseWriter, r *http.Request, title string) {
+	_ = r
 	p, err := loadPage(title)
 	if err != nil {
 		p = &Page{Title: title}
