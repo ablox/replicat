@@ -82,7 +82,11 @@ func loadPage(title string) (*Page, error) {
 
 func main() {
 	fmt.Println("PubNub SDK for go;", messaging.VersionInfo())
-	pubnub := messaging.NewPubnub("pub-c-fc75596b-c9cf-40c9-844f-f31d7842419c", "sub-c-a76871e8-6692-11e6-879b-0619f8945a4f", "sec-c-ZWNlNDRlZGYtODIyNi00ZjZhLWE5ZGUtM2FlNmYxNDk1NjQy", "", false, "")
+	publishKey := "pub-c-fc75596b-c9cf-40c9-844f-f31d7842419c"
+	subscribeKey := "sub-c-a76871e8-6692-11e6-879b-0619f8945a4f"
+	secretKey := "sec-c-ZWNlNDRlZGYtODIyNi00ZjZhLWE5ZGUtM2FlNmYxNDk1NjQy"
+
+	pubnub := messaging.NewPubnub(publishKey, subscribeKey, secretKey, "", false, "")
 	channel := "Channel-ly2qa34uj"
 
 	connected := make(chan struct{})
