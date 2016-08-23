@@ -128,8 +128,7 @@ func main() {
 
 	app.Run(os.Args)
 
-	fmt.Printf("replicat online....\n")
-	fmt.Printf("serving files from: %s\n", globalSettings.Directory)
+	fmt.Printf("replicat online....\nserving files from: %s\n", globalSettings.Directory)
 
 	publishKey := "pub-c-fc75596b-c9cf-40c9-844f-f31d7842419c"
 	subscribeKey := "sub-c-a76871e8-6692-11e6-879b-0619f8945a4f"
