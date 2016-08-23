@@ -9,7 +9,18 @@ import (
 	"github.com/pubnub/go/messaging"
 	"strings"
 	"encoding/json"
+	"os"
+	"github.com/urfave/cli"
 )
+
+// settings for the server
+type Settings struct {
+    Directory    string
+}
+
+var globalSettings Settings = Settings {
+	Directory: "",
+}
 
 type Page struct {
 	Title string
@@ -80,8 +91,46 @@ func loadPage(title string) (*Page, error) {
 	return &Page{Title: title, Body: body}, nil
 }
 
+func getArgumentValue(c *cli.Context, name string) string {
+	argument := os.Getenv(name)
+	if argument == "" {
+		argument = c.GlobalString(name)
+	}
+
+	return argument
+}
+
 func main() {
 	fmt.Println("PubNub SDK for go;", messaging.VersionInfo())
+
+	app := cli.NewApp()
+	app.Name = "Replicat Broker"
+	app.Usage = "rsync for the cloud"
+	app.Action = func(c *cli.Context) error {
+		globalSettings.Directory = getArgumentValue(c, "directory")
+
+		if globalSettings.Directory == "" {
+			panic("Directory is required to serve files\n")
+		}
+
+		fmt.Printf("Hello, directory is currently set to: %s\n", globalSettings.Directory)
+
+		return nil
+	}
+
+	app.Flags = []cli.Flag{
+		cli.StringFlag{
+			Name: "directory, d",
+			Value: globalSettings.Directory,
+			Usage: "Specify a directory where the files to share are located.",
+		},
+	}
+
+	app.Run(os.Args)
+
+	fmt.Printf("replicat online....\n")
+	fmt.Printf("serving files from: %s\n", globalSettings.Directory)
+
 	publishKey := "pub-c-fc75596b-c9cf-40c9-844f-f31d7842419c"
 	subscribeKey := "sub-c-a76871e8-6692-11e6-879b-0619f8945a4f"
 	secretKey := "sec-c-ZWNlNDRlZGYtODIyNi00ZjZhLWE5ZGUtM2FlNmYxNDk1NjQy"
