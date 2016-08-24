@@ -27,7 +27,7 @@ func main() {
 	app.Name = "Replicat"
 	app.Usage = "rsync for the cloud"
 	app.Action = func(c *cli.Context) error {
-		globalSettings.Directory = getArgumentValue(c, "directory")
+		globalSettings.Directory = c.GlobalString("directory")
 
 		if globalSettings.Directory == "" {
 			panic("directory is required to serve files\n")
@@ -41,6 +41,7 @@ func main() {
 			Name: "directory, d",
 			Value: globalSettings.Directory,
 			Usage: "Specify a directory where the files to share are located.",
+			EnvVar:	"DIRECTORY",
 		},
 	}
 

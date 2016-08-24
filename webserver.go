@@ -14,11 +14,11 @@ import (
 )
 
 // settings for the server
-type Settings struct {
+type Settings2 struct {
     Directory    string
 }
 
-var globalSettings Settings = Settings {
+var globalSettings2 Settings2 = Settings2 {
 	Directory: "",
 }
 
@@ -91,23 +91,14 @@ func loadPage(title string) (*Page, error) {
 	return &Page{Title: title, Body: body}, nil
 }
 
-func getArgumentValue(c *cli.Context, name string) string {
-	argument := os.Getenv(name)
-	if argument == "" {
-		argument = c.GlobalString(name)
-	}
-
-	return argument
-}
-
-func main() {
+func main2() {
 	fmt.Println("PubNub SDK for go;", messaging.VersionInfo())
 
 	app := cli.NewApp()
 	app.Name = "Replicat Broker"
 	app.Usage = "rsync for the cloud"
 	app.Action = func(c *cli.Context) error {
-		globalSettings.Directory = getArgumentValue(c, "directory")
+		globalSettings.Directory = c.GlobalString("directory")
 
 		if globalSettings.Directory == "" {
 			panic("Directory is required to serve files\ndirectory=[dirname] replicat")
