@@ -110,7 +110,7 @@ func main() {
 		globalSettings.Directory = getArgumentValue(c, "directory")
 
 		if globalSettings.Directory == "" {
-			panic("Directory is required to serve files\n")
+			panic("Directory is required to serve files\ndirectory=[dirname] replicat")
 		}
 
 		fmt.Printf("Hello, directory is currently set to: %s\n", globalSettings.Directory)
