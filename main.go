@@ -27,10 +27,10 @@ func main() {
 	app.Name = "Replicat"
 	app.Usage = "rsync for the cloud"
 	app.Action = func(c *cli.Context) error {
-		globalSettings.Directory = c.GlobalString("directory")
+		globalSettings.Directory = getArgumentValue(c, "directory")
 
 		if globalSettings.Directory == "" {
-			panic("Directory is required to serve files\n")
+			panic("directory is required to serve files\n")
 		}
 
 		return nil
