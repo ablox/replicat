@@ -5,18 +5,18 @@ package main
 import (
 	"fmt"
 	"github.com/fsnotify/fsnotify"
+	"github.com/urfave/cli"
 	"log"
 	"os"
 	"path/filepath"
-	"github.com/urfave/cli"
 )
 
 // settings for the server
 type Settings struct {
-    Directory    string
+	Directory string
 }
 
-var globalSettings Settings = Settings {
+var globalSettings Settings = Settings{
 	Directory: "",
 }
 
@@ -38,10 +38,10 @@ func main() {
 
 	app.Flags = []cli.Flag{
 		cli.StringFlag{
-			Name: "directory, d",
-			Value: globalSettings.Directory,
-			Usage: "Specify a directory where the files to share are located.",
-			EnvVar:	"DIRECTORY",
+			Name:   "directory, d",
+			Value:  globalSettings.Directory,
+			Usage:  "Specify a directory where the files to share are located.",
+			EnvVar: "DIRECTORY",
 		},
 	}
 
@@ -62,7 +62,7 @@ func main() {
 		for {
 			select {
 			case event := <-watcher.Events:
-				if event.Op & fsnotify.Write == fsnotify.Write {
+				if event.Op&fsnotify.Write == fsnotify.Write {
 					log.Println("file updated:", event.Name)
 				} else {
 					log.Println("event:", event)
@@ -88,7 +88,6 @@ func main() {
 	fmt.Printf("Now listing on: %d folders under: %s\n", len(listOfFolders), globalSettings.Directory)
 
 	// Let's read the
-
 	<-done
 
 }
@@ -124,4 +123,3 @@ func createListOfFolders(basePath string) ([]string, error) {
 
 	return paths, nil
 }
-
