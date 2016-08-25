@@ -48,7 +48,7 @@ func main() {
 	app.Run(os.Args)
 
 	fmt.Printf("replicat online....\n")
-	fmt.Printf("serving files from: %s\n", globalSettings.Directory)
+	//fmt.Printf("serving files from: %s\n", globalSettings.Directory)
 
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
@@ -73,38 +73,40 @@ func main() {
 		}
 	}()
 
-	listOfFolders, err := createListOfFolders(globalSettings.Directory)
+	listOfFileInfo, err := createListOfFolders(globalSettings.Directory)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	for _, folder := range listOfFolders {
+	for folder, _ := range listOfFileInfo {
 		err = watcher.Add(folder)
+		//fmt.Printf("Adding watch for folder %s\n", folder)
 		if err != nil {
 			log.Fatal(err)
 		}
 	}
 
-	fmt.Printf("Now listing on: %d folders under: %s\n", len(listOfFolders), globalSettings.Directory)
+	fmt.Printf("Now listing on: %d folders under: %s\n", len(listOfFileInfo), globalSettings.Directory)
 
-	fmt.Println("Scanning files")
+	totalFiles := 0
 
-	//listOfFiles := make(map[string][]string)
-	//
-	//sort.Strings(listOfFolders)
-	//for _, folder := range listOfFolders {
-	//	fmt.Printf("%s\n", folder)
-	//
-	//
-	//}
+	for _, fileInfoList := range listOfFileInfo {
+	//for folder, fileInfoList := range listOfFileInfo {
+		//fmt.Printf("PATH: %s\n", folder)
+		totalFiles += len(fileInfoList)
+		//for _, entry := range fileInfoList {
+		//	fmt.Printf("%s\n", entry.Name())
+		//}
+	}
 
+	fmt.Printf("Tracking %d folders with %d files\n", len(listOfFileInfo), totalFiles)
 
 	// Let's read the
 	<-done
 
 }
 
-func createListOfFolders(basePath string) ([]string, error) {
+func createListOfFolders(basePath string) (map[string][]os.FileInfo, error) {
 	paths := make([]string, 0, 100)
 	pendingPaths := make([]string, 0, 100)
 	pendingPaths = append(pendingPaths, basePath)
@@ -128,9 +130,7 @@ func createListOfFolders(basePath string) ([]string, error) {
 				newDirectory := filepath.Join(currentPath, entry.Name())
 				pendingPaths = append(pendingPaths, newDirectory)
 			} else {
-				fmt.Println("Before Adding %s to %v", entry, fileList)
 				fileList = append(fileList, entry)
-				fmt.Println("Done   Adding %s to %v", entry, fileList)
 			}
 		}
 		f.Close()
@@ -138,17 +138,8 @@ func createListOfFolders(basePath string) ([]string, error) {
 			return nil, err
 		}
 
-		fmt.Printf("setting %s files to %v\n", currentPath, fileList)
 		listOfFileInfo[currentPath] = fileList
 	}
 
-	fmt.Println("About to print")
-	for _, folder := range paths {
-		fmt.Printf("PATH: %s\n", folder)
-		for _, entry := range listOfFileInfo[folder] {
-			fmt.Printf("%s\n", entry)
-		}
-	}
-
-	return paths, nil
+	return listOfFileInfo, nil
 }
