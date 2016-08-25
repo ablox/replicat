@@ -42,7 +42,7 @@ func main() {
 			Name:   "directory, d",
 			Value:  globalSettings.Directory,
 			Usage:  "Specify a directory where the files to share are located.",
-			EnvVar: "DIRECTORY, d",
+			EnvVar: "directory, d",
 		},
 	}
 
