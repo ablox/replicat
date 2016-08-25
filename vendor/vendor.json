@@ -9,10 +9,6 @@
 			"revisionTime": "2016-08-11T21:22:31Z"
 		},
 		{
-			"path": "fsnotify",
-			"revision": ""
-		},
-		{
 			"checksumSHA1": "Gp8s2Js69bsjFUcWqYyTTaMoW+U=",
 			"path": "github.com/codegangsta/cli",
 			"revision": "168c95418e66e019fe17b8f4f5c45aa62ff80e23",
@@ -35,6 +31,12 @@
 			"path": "github.com/pubnub/go/messaging",
 			"revision": "30d99c8e5d4a10b270a3d473e3ab5df8da469cf5",
 			"revisionTime": "2016-06-08T01:25:06Z"
+		},
+		{
+			"checksumSHA1": "/abwKdBJAuQjcFK+AXfdmmbTIp8=",
+			"path": "github.com/rjeczalik/notify",
+			"revision": "7e20c15e6693a7d6ad269a94b70ed68bc4a875a7",
+			"revisionTime": "2016-08-20T12:36:22Z"
 		},
 		{
 			"checksumSHA1": "jm802xmRmtkUSVCED5SiDwIe0Jo=",

@@ -4,7 +4,7 @@ package main
 
 import (
 	"fmt"
-	"github.com/fsnotify/fsnotify"
+	"github.com/rjeczalik/notify"
 	"github.com/urfave/cli"
 	"log"
 	"os"
@@ -21,7 +21,7 @@ var globalSettings Settings = Settings{
 }
 
 func main() {
-	fmt.Printf("replicat initializing....\n")
+	fmt.Println("replicat initializing....")
 
 	app := cli.NewApp()
 	app.Name = "Replicat"
@@ -47,63 +47,40 @@ func main() {
 
 	app.Run(os.Args)
 
-	fmt.Printf("replicat online....\n")
-	//fmt.Printf("serving files from: %s\n", globalSettings.Directory)
-
-	watcher, err := fsnotify.NewWatcher()
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer watcher.Close()
-	defer fmt.Printf("End of line\n")
-
-	done := make(chan bool)
-	go func() {
-		for {
-			select {
-			case event := <-watcher.Events:
-				if event.Op&fsnotify.Write == fsnotify.Write {
-					log.Println("file updated:", event.Name)
-				} else {
-					log.Println("event:", event)
-				}
-			case err := <-watcher.Errors:
-				log.Println("error:", err)
-			}
-		}
-	}()
-
 	listOfFileInfo, err := createListOfFolders(globalSettings.Directory)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	for folder, _ := range listOfFileInfo {
-		err = watcher.Add(folder)
-		//fmt.Printf("Adding watch for folder %s\n", folder)
-		if err != nil {
-			log.Fatal(err)
-		}
-	}
+	// Make the channel buffered to ensure no event is dropped. Notify will drop
+	// an event if the receiver is not able to keep up the sending pace.
+	fsEventsChannel := make(chan notify.EventInfo, 1)
 
-	fmt.Printf("Now listing on: %d folders under: %s\n", len(listOfFileInfo), globalSettings.Directory)
+	// Set up a watchpoint listening for events within a directory tree rooted
+	// at the specified folder
+	if err := notify.Watch(globalSettings.Directory + "/...", fsEventsChannel, notify.All); err != nil {
+		log.Fatal(err)
+	}
+	defer notify.Stop(fsEventsChannel)
+
+	fmt.Println("replicat online....")
+	defer fmt.Println("End of line")
+
+	fmt.Printf("Now listening on: %d folders under: %s\n", len(listOfFileInfo), globalSettings.Directory)
 
 	totalFiles := 0
-
 	for _, fileInfoList := range listOfFileInfo {
-	//for folder, fileInfoList := range listOfFileInfo {
-		//fmt.Printf("PATH: %s\n", folder)
 		totalFiles += len(fileInfoList)
-		//for _, entry := range fileInfoList {
-		//	fmt.Printf("%s\n", entry.Name())
-		//}
 	}
 
 	fmt.Printf("Tracking %d folders with %d files\n", len(listOfFileInfo), totalFiles)
 
-	// Let's read the
-	<-done
-
+	func(c chan notify.EventInfo) {
+		for {
+			ei := <-c
+			log.Println("Got event:", ei)
+		}
+	}(fsEventsChannel)
 }
 
 func createListOfFolders(basePath string) (map[string][]os.FileInfo, error) {
