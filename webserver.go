@@ -1,24 +1,24 @@
 package main
 
 import (
-	"net/http"
-	"io/ioutil"
-	"html/template"
-	"regexp"
+	"encoding/json"
 	"fmt"
 	"github.com/pubnub/go/messaging"
-	"strings"
-	"encoding/json"
-	"os"
 	"github.com/urfave/cli"
+	"html/template"
+	"io/ioutil"
+	"net/http"
+	"os"
+	"regexp"
+	"strings"
 )
 
 // settings for the server
 type Settings2 struct {
-    Directory    string
+	Directory string
 }
 
-var globalSettings2 Settings2 = Settings2 {
+var globalSettings2 Settings2 = Settings2{
 	Directory: "",
 }
 
@@ -31,7 +31,7 @@ var templates = template.Must(template.ParseFiles("edit.html", "view.html"))
 var validPath = regexp.MustCompile("^/(edit|save|view)/([a-zA-Z0-9]+)$")
 
 func renderTemplate(w http.ResponseWriter, tmpl string, p *Page) {
-	err := templates.ExecuteTemplate(w, tmpl + ".html", p)
+	err := templates.ExecuteTemplate(w, tmpl+".html", p)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
@@ -51,7 +51,7 @@ func makeHandler(fn func(http.ResponseWriter, *http.Request, string)) http.Handl
 func viewHandler(w http.ResponseWriter, r *http.Request, title string) {
 	p, err := loadPage(title)
 	if err != nil {
-		http.Redirect(w, r, "/edit/" + title, http.StatusNotFound)
+		http.Redirect(w, r, "/edit/"+title, http.StatusNotFound)
 		return
 	}
 	renderTemplate(w, "view", p)
@@ -74,7 +74,7 @@ func saveHandler(w http.ResponseWriter, r *http.Request, title string) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	http.Redirect(w, r, "/view/" + title, http.StatusFound)
+	http.Redirect(w, r, "/view/"+title, http.StatusFound)
 }
 
 func (p *Page) save() error {
@@ -111,7 +111,7 @@ func main2() {
 
 	app.Flags = []cli.Flag{
 		cli.StringFlag{
-			Name: "directory, d",
+			Name:  "directory, d",
 			Value: globalSettings.Directory,
 			Usage: "Specify a directory where the files to share are located.",
 		},
