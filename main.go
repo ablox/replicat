@@ -14,6 +14,7 @@ import (
 // settings for the server
 type Settings struct {
 	Directory string
+
 }
 
 var globalSettings Settings = Settings{
@@ -56,8 +57,7 @@ func main() {
 	// an event if the receiver is not able to keep up the sending pace.
 	fsEventsChannel := make(chan notify.EventInfo, 1)
 
-	// Set up a watchpoint listening for events within a directory tree rooted
-	// at the specified folder
+	// Set up a watchpoint listening for events within a directory tree rooted at the specified folder
 	if err := notify.Watch(globalSettings.Directory + "/...", fsEventsChannel, notify.All); err != nil {
 		log.Fatal(err)
 	}
