@@ -9,6 +9,8 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"sort"
+	"strings"
 )
 
 // settings for the server
@@ -16,6 +18,8 @@ type Settings struct {
 	Directory string
 
 }
+
+type DirTreeMap map[string][]os.FileInfo
 
 var globalSettings Settings = Settings{
 	Directory: "",
@@ -81,13 +85,81 @@ func main() {
 			log.Println("Got event:", ei)
 		}
 	}(fsEventsChannel)
+
+	//for {
+	//	time.Sleep(time.Second * 5)
+	//
+	//
+	//
+	//}
+
+
+
+
 }
 
-func createListOfFolders(basePath string) (map[string][]os.FileInfo, error) {
+func checkForChanges(basePath string, originalState DirTreeMap) {
+	//  (map[string][]string, error) {
+	updatedState, err := createListOfFolders(basePath)
+	if err != nil {
+		panic(err)
+	}
+
+	// Get a list of paths and compare them
+	originalPaths := make([]string, 0, len(originalState))
+	updatedPaths := make([]string, 0, len(updatedState))
+
+	for key := range originalState {
+		originalPaths = append(originalPaths, key)
+	}
+	sort.Strings(originalPaths)
+
+	for key := range updatedState {
+		updatedPaths = append(updatedPaths, key)
+	}
+	sort.Strings(updatedPaths)
+
+	// We now have two sworted lists of strings. Go through the original ones and compare the files
+	var originalPosition, updatedPosition int
+
+	deletedPaths := make([]string, 0, 100)
+	newPaths := make([]string, 0, 100)
+	matchingPaths := make([]string, 0, len(originalPaths))
+
+	for {
+		if originalPosition > len(originalPaths) {
+			// all remaining updated paths are new
+			newPaths = append(newPaths, updatedPaths[updatedPosition:]...)
+		} else if updatedPosition > len(updatedPaths) {
+			// all remaining original paths are new
+			deletedPaths = append(deletedPaths, originalPaths[originalPosition:]...)
+		} else {
+			result := strings.Compare(originalPaths[originalPosition], updatedPaths[updatedPosition])
+			if result == -1 {
+				deletedPaths = append(deletedPaths, originalPaths[originalPosition:]...)
+				originalPosition++
+			} else if result == 1 {
+				newPaths = append(newPaths, updatedPaths[updatedPosition])
+				updatedPosition++
+			} else {
+				matchingPaths = append(matchingPaths, updatedPaths[updatedPosition])
+				updatedPosition++
+				originalPosition++
+			}
+		}
+	}
+
+	fmt.Printf("Path report: new %d, deleted %d, matching %d, original %d, updated %d\n", len(newPaths), len(deletedPaths), len(matchingPaths), len(originalPaths), len(updatedPaths))
+	fmt.Printf("New paths: %v\n", newPaths)
+	fmt.Printf("Deleted paths: %v\n", deletedPaths)
+}
+
+
+func createListOfFolders(basePath string) (DirTreeMap, error) {
 	paths := make([]string, 0, 100)
 	pendingPaths := make([]string, 0, 100)
 	pendingPaths = append(pendingPaths, basePath)
-	listOfFileInfo := make(map[string][]os.FileInfo)
+	listOfFileInfo := make(DirTreeMap)
 
 	for len(pendingPaths) > 0 {
 		currentPath := pendingPaths[0]
@@ -115,6 +187,7 @@ func createListOfFolders(basePath string) (map[string][]os.FileInfo, error) {
 			return nil, err
 		}
 
+		//sort.Strings(fileList)
 		listOfFileInfo[currentPath] = fileList
 	}
 
