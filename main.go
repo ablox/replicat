@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"time"
 )
 
 // settings for the server
@@ -19,7 +20,8 @@ type Settings struct {
 
 }
 
-type DirTreeMap map[string][]os.FileInfo
+type DirTreeMap map[string][]string
+//type DirTreeMap map[string][]os.FileInfo
 
 var globalSettings Settings = Settings{
 	Directory: "",
@@ -79,19 +81,19 @@ func main() {
 
 	fmt.Printf("Tracking %d folders with %d files\n", len(listOfFileInfo), totalFiles)
 
-	func(c chan notify.EventInfo) {
+	go func(c chan notify.EventInfo) {
 		for {
 			ei := <-c
 			log.Println("Got event:", ei)
 		}
 	}(fsEventsChannel)
 
-	//for {
-	//	time.Sleep(time.Second * 5)
-	//
-	//
-	//
-	//}
+	for {
+		fmt.Println("Hello")
+		time.Sleep(time.Second * 5)
+		checkForChanges(globalSettings.Directory, listOfFileInfo)
+		fmt.Println("Hello2")
+	}
 
 
 
@@ -127,12 +129,14 @@ func checkForChanges(basePath string, originalState DirTreeMap) {
 	matchingPaths := make([]string, 0, len(originalPaths))
 
 	for {
-		if originalPosition > len(originalPaths) {
+		if originalPosition >= len(originalPaths) {
 			// all remaining updated paths are new
 			newPaths = append(newPaths, updatedPaths[updatedPosition:]...)
-		} else if updatedPosition > len(updatedPaths) {
+			break
+		} else if updatedPosition >= len(updatedPaths) {
 			// all remaining original paths are new
 			deletedPaths = append(deletedPaths, originalPaths[originalPosition:]...)
+			break
 		} else {
 			result := strings.Compare(originalPaths[originalPosition], updatedPaths[updatedPosition])
 			if result == -1 {
@@ -164,7 +168,8 @@ func createListOfFolders(basePath string) (DirTreeMap, error) {
 	for len(pendingPaths) > 0 {
 		currentPath := pendingPaths[0]
 		paths = append(paths, currentPath)
-		fileList := make([]os.FileInfo, 0, 100)
+		fileList := make([]string, 0, 100)
+		//fileList := make([]os.FileInfo, 0, 100)
 		pendingPaths = pendingPaths[1:]
 
 		// Read the directories in the path
@@ -177,9 +182,10 @@ func createListOfFolders(basePath string) (DirTreeMap, error) {
 			if entry.IsDir() {
 				entry.Mode()
 				newDirectory := filepath.Join(currentPath, entry.Name())
+				//newDirectory := filepath.Join(currentPath, entry)
 				pendingPaths = append(pendingPaths, newDirectory)
 			} else {
-				fileList = append(fileList, entry)
+				fileList = append(fileList, entry.Name())
 			}
 		}
 		f.Close()
@@ -187,7 +193,7 @@ func createListOfFolders(basePath string) (DirTreeMap, error) {
 			return nil, err
 		}
 
-		//sort.Strings(fileList)
+		sort.Strings(fileList)
 		listOfFileInfo[currentPath] = fileList
 	}
 
