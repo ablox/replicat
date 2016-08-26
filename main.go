@@ -89,10 +89,9 @@ func main() {
 	}(fsEventsChannel)
 
 	for {
-		fmt.Println("Hello")
 		time.Sleep(time.Second * 5)
 		checkForChanges(globalSettings.Directory, listOfFileInfo)
-		fmt.Println("Hello2")
+		fmt.Println("******************************************************")
 	}
 
 
