@@ -27,7 +27,9 @@ type Event struct {
 // settings for the server
 type Settings struct {
 	Directory string
-
+	ManagerAddress string
+	ManagerCredentials string
+	ManagerEnabled bool
 }
 
 type DirTreeMap map[string][]string
@@ -35,6 +37,8 @@ type DirTreeMap map[string][]string
 
 var globalSettings Settings = Settings{
 	Directory: "",
+	ManagerAddress: "localhost:8080",
+	ManagerCredentials: "replicat:isthecat",
 }
 
 func main() {
@@ -45,6 +49,8 @@ func main() {
 	app.Usage = "rsync for the cloud"
 	app.Action = func(c *cli.Context) error {
 		globalSettings.Directory = c.GlobalString("directory")
+		globalSettings.ManagerAddress = c.GlobalString("manager")
+		globalSettings.ManagerCredentials = c.GlobalString("manager_credentials")
 
 		if globalSettings.Directory == "" {
 			panic("directory is required to serve files\n")
@@ -59,6 +65,18 @@ func main() {
 			Value:  globalSettings.Directory,
 			Usage:  "Specify a directory where the files to share are located.",
 			EnvVar: "directory, d",
+		},
+		cli.StringFlag{
+			Name:   "manager, m",
+			Value:  globalSettings.ManagerAddress,
+			Usage:  "Specify a host and port for reaching the manager",
+			EnvVar: "manager, m",
+		},
+		cli.StringFlag{
+			Name:   "manager_credentials, mc",
+			Value:  globalSettings.ManagerCredentials,
+			Usage:  "Specify a usernmae:password for login to the manager",
+			EnvVar: "manager_credentials, mc",
 		},
 	}
 
@@ -104,10 +122,6 @@ func main() {
 		checkForChanges(globalSettings.Directory, listOfFileInfo)
 		fmt.Println("******************************************************")
 	}
-
-
-
-
 }
 
 func checkForChanges(basePath string, originalState DirTreeMap) {
@@ -211,13 +225,15 @@ func createListOfFolders(basePath string) (DirTreeMap, error) {
 }
 
 func sendEvent(event *Event) {
-	url := "http://localhost:8080/event/"
+	url := "http://" + globalSettings.ManagerAddress + "/event/"
+	fmt.Printf("Manager location: %s\n", url)
 
 	jsonStr, _ := json.Marshal(event)
 	req, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonStr))
 	req.Header.Set("Content-Type", "application/json")
 
-	data := []byte("replicat:isthecat")
+	data := []byte(globalSettings.ManagerCredentials)
+	fmt.Printf("Manager Credentials: %s\n", data)
 	authHash := base64.StdEncoding.EncodeToString(data)
 	req.Header.Add("Authorization", "Basic " + authHash)
 
