@@ -12,7 +12,17 @@ import (
 	"sort"
 	"strings"
 	"time"
+	"bytes"
+	"io/ioutil"
+	"net/http"
+	"encoding/base64"
+	"encoding/json"
 )
+
+type Event struct {
+	Name    string
+	Message string
+}
 
 // settings for the server
 type Settings struct {
@@ -84,7 +94,8 @@ func main() {
 	go func(c chan notify.EventInfo) {
 		for {
 			ei := <-c
-			log.Println("Got event:", ei)
+			sendEvent(&Event{Name: ei.Event().String(), Message: ei.Path()})
+			log.Println("Got event:" + ei.Event().String() + ", with Path:" + ei.Path())
 		}
 	}(fsEventsChannel)
 
@@ -197,4 +208,28 @@ func createListOfFolders(basePath string) (DirTreeMap, error) {
 	}
 
 	return listOfFileInfo, nil
+}
+
+func sendEvent(event *Event) {
+	url := "http://localhost:8080/event/"
+
+	jsonStr, _ := json.Marshal(event)
+	req, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonStr))
+	req.Header.Set("Content-Type", "application/json")
+
+	data := []byte("replicat:isthecat")
+	authHash := base64.StdEncoding.EncodeToString(data)
+	req.Header.Add("Authorization", "Basic " + authHash)
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		panic(err)
+	}
+	defer resp.Body.Close()
+
+	fmt.Println("response Status:", resp.Status)
+	fmt.Println("response Headers:", resp.Header)
+	body, _ := ioutil.ReadAll(resp.Body)
+	fmt.Println("response Body:", string(body))
 }
