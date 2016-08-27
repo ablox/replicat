@@ -17,11 +17,24 @@ import (
 	"net/http"
 	"encoding/base64"
 	"encoding/json"
+	"github.com/goji/httpauth"
+	"github.com/pubnub/go/messaging"
+	"regexp"
+	"html/template"
 )
 
 type Event struct {
+	Source  string
 	Name    string
 	Message string
+	Time     time.Time
+}
+
+type Events []Event
+
+var events = Events{
+	Event{Source: "local test", Name: "Cluster initialized"},
+	Event{Source: "local test", Name: "Server 10.1.1.1 joined Cluster"},
 }
 
 // settings for the server
@@ -30,6 +43,7 @@ type Settings struct {
 	ManagerAddress string
 	ManagerCredentials string
 	ManagerEnabled bool
+	Address string
 }
 
 type DirTreeMap map[string][]string
@@ -39,6 +53,7 @@ var globalSettings Settings = Settings{
 	Directory: "",
 	ManagerAddress: "localhost:8080",
 	ManagerCredentials: "replicat:isthecat",
+	Address: ":8001",
 }
 
 func main() {
@@ -51,6 +66,7 @@ func main() {
 		globalSettings.Directory = c.GlobalString("directory")
 		globalSettings.ManagerAddress = c.GlobalString("manager")
 		globalSettings.ManagerCredentials = c.GlobalString("manager_credentials")
+		globalSettings.Address = c.GlobalString("address")
 
 		if globalSettings.Directory == "" {
 			panic("directory is required to serve files\n")
@@ -77,6 +93,12 @@ func main() {
 			Value:  globalSettings.ManagerCredentials,
 			Usage:  "Specify a usernmae:password for login to the manager",
 			EnvVar: "manager_credentials, mc",
+		},
+		cli.StringFlag{
+			Name:   "address, a",
+			Value:  globalSettings.Address,
+			Usage:  "Specify a listen address for this node. e.g. '127.0.0.1:8000' or ':8000' for where updates are accepted from",
+			EnvVar: "address, a",
 		},
 	}
 
@@ -116,6 +138,18 @@ func main() {
 			log.Println("Got event:" + ei.Event().String() + ", with Path:" + ei.Path())
 		}
 	}(fsEventsChannel)
+
+	http.HandleFunc("/view/", makeHandler(viewHandler))
+	http.HandleFunc("/edit/", makeHandler(editHandler))
+	http.HandleFunc("/save/", makeHandler(saveHandler))
+
+	http.Handle("/home/", httpauth.SimpleBasicAuth("replicat", "isthecat")(http.HandlerFunc(homeHandler)))
+	http.Handle("/event/", httpauth.SimpleBasicAuth("replicat", "isthecat")(http.HandlerFunc(eventHandler)))
+
+	err = http.ListenAndServe(globalSettings.Address, nil)
+	if err != nil {
+		panic(err)
+	}
 
 	for {
 		time.Sleep(time.Second * 5)
@@ -249,3 +283,176 @@ func sendEvent(event *Event) {
 	body, _ := ioutil.ReadAll(resp.Body)
 	fmt.Println("response Body:", string(body))
 }
+
+
+type Page struct {
+	Title string
+	Body  []byte
+}
+
+var templates = template.Must(template.ParseFiles("home.html", "edit.html", "view.html"))
+var validPath = regexp.MustCompile("^/(edit|save|view|home)/([a-zA-Z0-9]+)$")
+
+func renderTemplate(w http.ResponseWriter, tmpl string, p *Page) {
+	err := templates.ExecuteTemplate(w, tmpl + ".html", p)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+}
+
+func makeHandler(fn func(http.ResponseWriter, *http.Request, string)) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		m := validPath.FindStringSubmatch(r.URL.Path)
+		if m == nil {
+			http.NotFound(w, r)
+			return
+		}
+		fn(w, r, m[2])
+	}
+}
+
+func homeHandler(w http.ResponseWriter, _ *http.Request) {
+	renderTemplate(w, "home", nil)
+}
+
+func eventHandler(w http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+	case "GET":
+		json.NewEncoder(w).Encode(events)
+	case "POST":
+		log.Println("Got POST: ", r.Body)
+		decoder := json.NewDecoder(r.Body)
+		var event Event
+		err := decoder.Decode(&event)
+		event.Source = r.RemoteAddr
+		if err != nil {
+			panic("bad json body")
+		}
+		log.Println(event.Name)
+		events = append([]Event{event}, events...)
+	}
+}
+
+func viewHandler(w http.ResponseWriter, r *http.Request, title string) {
+	p, err := loadPage(title)
+	if err != nil {
+		http.Redirect(w, r, "/edit/" + title, http.StatusNotFound)
+		return
+	}
+	renderTemplate(w, "view", p)
+}
+
+func editHandler(w http.ResponseWriter, r *http.Request, title string) {
+	_ = r
+	p, err := loadPage(title)
+	if err != nil {
+		p = &Page{Title: title}
+	}
+	renderTemplate(w, "edit", p)
+}
+
+func saveHandler(w http.ResponseWriter, r *http.Request, title string) {
+	body := r.FormValue("body")
+	p := &Page{Title: title, Body: []byte(body)}
+	err := p.save()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	http.Redirect(w, r, "/view/" + title, http.StatusFound)
+}
+
+func (p *Page) save() error {
+	filename := p.Title + ".txt"
+	return ioutil.WriteFile(filename, p.Body, 0600)
+}
+
+func loadPage(title string) (*Page, error) {
+	filename := title + ".txt"
+	body, err := ioutil.ReadFile(filename)
+	if err != nil {
+		return nil, err
+	}
+	return &Page{Title: title, Body: body}, nil
+}
+
+func getArgumentValue(c *cli.Context, name string) string {
+	argument := os.Getenv(name)
+	if argument == "" {
+		argument = c.GlobalString(name)
+	}
+
+	return argument
+}
+
+func handlePubNub() {
+	fmt.Println("PubNub SDK for go;", messaging.VersionInfo())
+
+	publishKey := "pub-c-fc75596b-c9cf-40c9-844f-f31d7842419c"
+	subscribeKey := "sub-c-a76871e8-6692-11e6-879b-0619f8945a4f"
+	secretKey := "sec-c-ZWNlNDRlZGYtODIyNi00ZjZhLWE5ZGUtM2FlNmYxNDk1NjQy"
+
+	pubnub := messaging.NewPubnub(publishKey, subscribeKey, secretKey, "", false, "")
+	channel := "Channel-ly2qa34uj"
+
+	connected := make(chan struct{})
+	msgReceived := make(chan struct{})
+
+	successChannel := make(chan []byte)
+	errorChannel := make(chan []byte)
+
+	go pubnub.Subscribe(channel, "", successChannel, false, errorChannel)
+
+	go func() {
+		for {
+			select {
+			case response := <-successChannel:
+				var msg []interface{}
+
+				err := json.Unmarshal(response, &msg)
+				if err != nil {
+					panic(err.Error())
+				}
+
+				switch t := msg[0].(type) {
+				case float64:
+					if strings.Contains(msg[1].(string), "connected") {
+						close(connected)
+					}
+				case []interface{}:
+					fmt.Println(string(response))
+					close(msgReceived)
+				default:
+					panic(fmt.Sprintf("Unknown type: %T", t))
+				}
+			case err := <-errorChannel:
+				fmt.Println(string(err))
+				return
+			case <-messaging.SubscribeTimeout():
+				panic("Subscribe timeout")
+			}
+		}
+	}()
+
+	<-connected
+
+	publishSuccessChannel := make(chan []byte)
+	publishErrorChannel := make(chan []byte)
+
+	go pubnub.Publish(channel, "Hello from PubnNub Go SDK  haha!",
+		publishSuccessChannel, publishErrorChannel)
+
+	go func() {
+		select {
+		case result := <-publishSuccessChannel:
+			fmt.Println(string(result))
+		case err := <-publishErrorChannel:
+			fmt.Printf("Publish error: %s\n", err)
+		case <-messaging.Timeout():
+			fmt.Println("Publish timeout")
+		}
+	}()
+
+	<-msgReceived
+}
+
