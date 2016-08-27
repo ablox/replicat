@@ -258,6 +258,50 @@ func createListOfFolders(basePath string) (DirTreeMap, error) {
 	return listOfFileInfo, nil
 }
 
+type ReplicatServer struct {
+	Name    string
+	Address string
+	PublicKey string
+}
+
+type ServerMap map[string]ReplicatServer
+
+var GlobalServerMap = ServerMap {
+	"NodeA": ReplicatServer{
+		Address: ":8001",
+	},
+	"NodeB": ReplicatServer{
+		Address: ":8002",
+	},
+}
+
+//func sendFolderTree(tree *DirTreeMap) {
+//	url := "http://" + globalSettings.ManagerAddress + "/event/"
+//	fmt.Printf("Manager location: %s\n", url)
+//
+//	jsonStr, _ := json.Marshal(event)
+//	req, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonStr))
+//	req.Header.Set("Content-Type", "application/json")
+//
+//	data := []byte(globalSettings.ManagerCredentials)
+//	fmt.Printf("Manager Credentials: %s\n", data)
+//	authHash := base64.StdEncoding.EncodeToString(data)
+//	req.Header.Add("Authorization", "Basic " + authHash)
+//
+//	client := &http.Client{}
+//	resp, err := client.Do(req)
+//	if err != nil {
+//		panic(err)
+//	}
+//	defer resp.Body.Close()
+//
+//	fmt.Println("response Status:", resp.Status)
+//	fmt.Println("response Headers:", resp.Header)
+//	body, _ := ioutil.ReadAll(resp.Body)
+//	fmt.Println("response Body:", string(body))
+//}
+
+
 func sendEvent(event *Event) {
 	url := "http://" + globalSettings.ManagerAddress + "/event/"
 	fmt.Printf("Manager location: %s\n", url)
