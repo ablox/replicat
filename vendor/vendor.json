@@ -4,48 +4,63 @@
 	"package": [
 		{
 			"checksumSHA1": "AP+4+IcVArsZumhjeAHQJ60VL6U=",
+			"origin": "github.com/ablox/replicat/vendor/bazil.org/fuse",
 			"path": "bazil.org/fuse",
 			"revision": "371fbbdaa8987b715bdd21d6adc4c9b20155f748",
 			"revisionTime": "2016-08-11T21:22:31Z"
 		},
 		{
 			"checksumSHA1": "Gp8s2Js69bsjFUcWqYyTTaMoW+U=",
+			"origin": "github.com/ablox/replicat/vendor/github.com/codegangsta/cli",
 			"path": "github.com/codegangsta/cli",
 			"revision": "168c95418e66e019fe17b8f4f5c45aa62ff80e23",
 			"revisionTime": "2016-08-01T03:09:57Z"
 		},
 		{
 			"checksumSHA1": "xgjI2W3RGiQwNlxsOW2V9fJ9kaM=",
+			"origin": "github.com/ablox/replicat/vendor/github.com/fsnotify/fsnotify",
 			"path": "github.com/fsnotify/fsnotify",
-			"revision": "f12c6236fe7b5cf6bcf30e5935d08cb079d78334",
-			"revisionTime": "2016-08-16T05:15:41Z"
+			"revision": "a8a77c9133d2d6fd8334f3260d06f60e8d80a5fb",
+			"revisionTime": "2016-06-29T01:11:04Z"
 		},
 		{
 			"checksumSHA1": "DTWZiw8Sy5OUWRHY/PM7ACsBC7o=",
+			"origin": "github.com/ablox/replicat/vendor/github.com/minio/minio-go",
 			"path": "github.com/minio/minio-go",
 			"revision": "0ccd6fa0920954d6d4adfaa79515fe48703d2718",
 			"revisionTime": "2016-08-13T05:27:05Z"
 		},
 		{
+			"checksumSHA1": "3802XVIEL/ao6ePBy7rsYCZfmrQ=",
+			"origin": "github.com/ablox/replicat/vendor/github.com/minio/minio-go/pkg/set",
+			"path": "github.com/minio/minio-go/pkg/set",
+			"revision": "0ccd6fa0920954d6d4adfaa79515fe48703d2718",
+			"revisionTime": "2016-08-13T05:27:05Z"
+		},
+		{
 			"checksumSHA1": "P4KP6ThMtIb6HWQygXLrZtr1WSQ=",
+			"origin": "github.com/ablox/replicat/vendor/github.com/pubnub/go/messaging",
 			"path": "github.com/pubnub/go/messaging",
 			"revision": "30d99c8e5d4a10b270a3d473e3ab5df8da469cf5",
 			"revisionTime": "2016-06-08T01:25:06Z"
 		},
 		{
 			"checksumSHA1": "/abwKdBJAuQjcFK+AXfdmmbTIp8=",
+			"origin": "github.com/ablox/replicat/vendor/github.com/rjeczalik/notify",
 			"path": "github.com/rjeczalik/notify",
 			"revision": "7e20c15e6693a7d6ad269a94b70ed68bc4a875a7",
 			"revisionTime": "2016-08-20T12:36:22Z"
 		},
 		{
 			"checksumSHA1": "jm802xmRmtkUSVCED5SiDwIe0Jo=",
+			"origin": "github.com/ablox/replicat/vendor/github.com/urfave/cli",
 			"path": "github.com/urfave/cli",
 			"revision": "168c95418e66e019fe17b8f4f5c45aa62ff80e23",
 			"revisionTime": "2016-08-01T03:09:57Z"
 		},
 		{
 			"checksumSHA1": "8fD/im5Kwvy3JgmxulDTambmE8w=",
+			"origin": "github.com/ablox/replicat/vendor/golang.org/x/sys/unix",
 			"path": "golang.org/x/sys/unix",
 			"revision": "a646d33e2ee3172a661fc09bca23bb4889a41bc8",
 			"revisionTime": "2016-07-15T05:43:45Z"
