@@ -44,6 +44,7 @@ type Settings struct {
 	ManagerCredentials string
 	ManagerEnabled bool
 	Address string
+	Name string
 }
 
 type DirTreeMap map[string][]string
@@ -54,6 +55,7 @@ var globalSettings Settings = Settings{
 	ManagerAddress: "localhost:8080",
 	ManagerCredentials: "replicat:isthecat",
 	Address: ":8001",
+	Name: "",
 }
 
 func main() {
@@ -67,9 +69,14 @@ func main() {
 		globalSettings.ManagerAddress = c.GlobalString("manager")
 		globalSettings.ManagerCredentials = c.GlobalString("manager_credentials")
 		globalSettings.Address = c.GlobalString("address")
+		globalSettings.Name = c.GlobalString("name")
 
 		if globalSettings.Directory == "" {
 			panic("directory is required to serve files\n")
+		}
+
+		if globalSettings.Name == "" {
+			panic("Name is currently a required parameter. Name has to be one of the predefined names (e.g. NodeA, NodeB). This will improve.\n")
 		}
 
 		return nil
@@ -100,6 +107,12 @@ func main() {
 			Usage:  "Specify a listen address for this node. e.g. '127.0.0.1:8000' or ':8000' for where updates are accepted from",
 			EnvVar: "address, a",
 		},
+		cli.StringFlag{
+			Name:   "name, n",
+			Value:  globalSettings.Name,
+			Usage:  "Specify a name for this node. e.g. 'NodeA' or 'NodeB'",
+			EnvVar: "name, n",
+		},
 	}
 
 	app.Run(os.Args)
@@ -119,17 +132,15 @@ func main() {
 	}
 	defer notify.Stop(fsEventsChannel)
 
-	fmt.Println("replicat online....")
+	fmt.Printf("replicat %s online....\n", globalSettings.Name)
 	defer fmt.Println("End of line")
-
-	fmt.Printf("Now listening on: %d folders under: %s\n", len(listOfFileInfo), globalSettings.Directory)
 
 	totalFiles := 0
 	for _, fileInfoList := range listOfFileInfo {
 		totalFiles += len(fileInfoList)
 	}
 
-	fmt.Printf("Tracking %d folders with %d files\n", len(listOfFileInfo), totalFiles)
+	fmt.Printf("Now keeping an eye on %d folders and %d files located under: %s\n", len(listOfFileInfo), totalFiles, globalSettings.Directory)
 
 	go func(c chan notify.EventInfo) {
 		for {
@@ -418,15 +429,6 @@ func loadPage(title string) (*Page, error) {
 		return nil, err
 	}
 	return &Page{Title: title, Body: body}, nil
-}
-
-func getArgumentValue(c *cli.Context, name string) string {
-	argument := os.Getenv(name)
-	if argument == "" {
-		argument = c.GlobalString(name)
-	}
-
-	return argument
 }
 
 func handlePubNub() {
