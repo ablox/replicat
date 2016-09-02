@@ -23,6 +23,25 @@ import (
 	"html/template"
 )
 
+type ReplicatServer struct {
+	Name    		string
+	Address 		string
+	PublicKey 		string
+	LastReceived 	DirTreeMap
+	LastSent 		DirTreeMap
+}
+
+type ServerMap map[string]ReplicatServer
+
+var GlobalServerMap = ServerMap {
+	"NodeA": ReplicatServer{
+		Address: ":8001",
+	},
+	"NodeB": ReplicatServer{
+		Address: ":8002",
+	},
+}
+
 type Event struct {
 	Source  string
 	Name    string
@@ -30,25 +49,26 @@ type Event struct {
 	Time     time.Time
 }
 
-type Events []Event
+var events = make([]Event, 0, 100)
 
-var events = Events{
-	Event{Source: "local test", Name: "Cluster initialized"},
-	Event{Source: "local test", Name: "Server 10.1.1.1 joined Cluster"},
-}
+//var events = []Event{
+//	Event{Source: "local test", Name: "Cluster initialized"},
+//	Event{Source: "local test", Name: "Server 10.1.1.1 joined Cluster"},
+//}
 
 // settings for the server
 type Settings struct {
-	Directory string
-	ManagerAddress string
-	ManagerCredentials string
-	ManagerEnabled bool
-	Address string
-	Name string
+	Directory 				string
+	ManagerAddress 			string
+	ManagerCredentials 		string
+	ManagerEnabled 			bool
+	Address 				string
+	Name 					string
 }
 
 type DirTreeMap map[string][]string
 //type DirTreeMap map[string][]os.FileInfo
+
 
 var globalSettings Settings = Settings{
 	Directory: "",
@@ -156,6 +176,9 @@ func main() {
 
 	http.Handle("/home/", httpauth.SimpleBasicAuth("replicat", "isthecat")(http.HandlerFunc(homeHandler)))
 	http.Handle("/event/", httpauth.SimpleBasicAuth("replicat", "isthecat")(http.HandlerFunc(eventHandler)))
+	http.Handle("/tree/", httpauth.SimpleBasicAuth("replicat", "isthecat")(http.HandlerFunc(folderTreeHandler)))
+
+	fmt.Printf("About to listen on: %s\n", globalSettings.Address)
 
 	err = http.ListenAndServe(globalSettings.Address, nil)
 	if err != nil {
@@ -269,48 +292,65 @@ func createListOfFolders(basePath string) (DirTreeMap, error) {
 	return listOfFileInfo, nil
 }
 
-type ReplicatServer struct {
-	Name    string
-	Address string
-	PublicKey string
+/*
+Send the folder tree from this node to another node for comparison
+ */
+func sendFolderTree(tree *DirTreeMap) {
+	// package up the tree
+	jsonStr, err := json.Marshal(tree)
+	if err != nil {
+		panic(err)
+	}
+	buffer := bytes.NewBuffer(jsonStr)
+	client := &http.Client{}
+
+	data := []byte(globalSettings.ManagerCredentials)
+	fmt.Printf("Manager Credentials: %s\n", data)
+	authHash := base64.StdEncoding.EncodeToString(data)
+
+	for _, server := range GlobalServerMap {
+		url := "http://" + server.Address + "/tree/"
+		fmt.Printf("Posting folder tree to: %s\n", url)
+
+		req, err := http.NewRequest("POST", url, buffer)
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("Authorization", "Basic " + authHash)
+
+		resp, err := client.Do(req)
+		if err != nil {
+			panic(err)
+		}
+
+		fmt.Println("response Status:", resp.Status)
+		fmt.Println("response Headers:", resp.Header)
+		body, _ := ioutil.ReadAll(resp.Body)
+		fmt.Println("response Body:", string(body))
+		resp.Body.Close()
+	}
 }
 
-type ServerMap map[string]ReplicatServer
+func folderTreeHandler(w http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+	case "GET":
+		listOfFileInfo, err := createListOfFolders(globalSettings.Directory)
+		if err != nil {
+			log.Fatal(err)
+		}
+		json.NewEncoder(w).Encode(listOfFileInfo)
+		fmt.Printf("Sending tree of size %d back to client\n", len(listOfFileInfo))
+	case "POST":
+		log.Println("Got POST: ", r.Body)
+		decoder := json.NewDecoder(r.Body)
 
-var GlobalServerMap = ServerMap {
-	"NodeA": ReplicatServer{
-		Address: ":8001",
-	},
-	"NodeB": ReplicatServer{
-		Address: ":8002",
-	},
+		var tree DirTreeMap
+		err := decoder.Decode(&tree)
+		if err != nil {
+			panic("bad json body")
+		}
+
+		fmt.Printf("Received a tree map from: %s\n%s", r.RemoteAddr, tree)
+	}
 }
-
-//func sendFolderTree(tree *DirTreeMap) {
-//	url := "http://" + globalSettings.ManagerAddress + "/event/"
-//	fmt.Printf("Manager location: %s\n", url)
-//
-//	jsonStr, _ := json.Marshal(event)
-//	req, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonStr))
-//	req.Header.Set("Content-Type", "application/json")
-//
-//	data := []byte(globalSettings.ManagerCredentials)
-//	fmt.Printf("Manager Credentials: %s\n", data)
-//	authHash := base64.StdEncoding.EncodeToString(data)
-//	req.Header.Add("Authorization", "Basic " + authHash)
-//
-//	client := &http.Client{}
-//	resp, err := client.Do(req)
-//	if err != nil {
-//		panic(err)
-//	}
-//	defer resp.Body.Close()
-//
-//	fmt.Println("response Status:", resp.Status)
-//	fmt.Println("response Headers:", resp.Header)
-//	body, _ := ioutil.ReadAll(resp.Body)
-//	fmt.Println("response Body:", string(body))
-//}
 
 
 func sendEvent(event *Event) {
