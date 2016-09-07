@@ -78,6 +78,88 @@ var globalSettings Settings = Settings{
 	Name: "",
 }
 
+func checkForChanges(basePath string, originalState DirTreeMap) (changed bool, updatedState DirTreeMap, newPaths, deletedPaths, matchingPaths []string)  {
+	//  (map[string][]string, error) {
+	updatedState, err := createListOfFolders(basePath)
+	if err != nil {
+		panic(err)
+	}
+
+	// Get a list of paths and compare them
+	originalPaths := make([]string, 0, len(originalState))
+	updatedPaths := make([]string, 0, len(updatedState))
+
+	//todo this should already be sorted. This is very repetitive.
+	for key := range originalState {
+		originalPaths = append(originalPaths, key)
+	}
+	sort.Strings(originalPaths)
+
+	for key := range updatedState {
+		updatedPaths = append(updatedPaths, key)
+	}
+	sort.Strings(updatedPaths)
+	//todo we should leverage the updated paths to obliviate the need to resort.
+
+	// We now have two sorted lists of strings. Go through the original ones and compare the files
+	var originalPosition, updatedPosition int
+
+	deletedPaths = make([]string, 0, 100)
+	newPaths = make([]string, 0, 100)
+	matchingPaths = make([]string, 0, len(originalPaths))
+
+	//pp := func(name string, stringList []string) {
+	//	fmt.Println("***************************")
+	//	fmt.Println(name)
+	//	fmt.Println("***************************")
+	//	for index, value := range stringList {
+	//		fmt.Printf("[%3d]: %s\n", index, value)
+	//	}
+	//	fmt.Println("***************************")
+	//}
+	//pp("original paths", originalPaths)
+	//pp("updated Paths", updatedPaths)
+
+	for {
+		//fmt.Printf("Original Position %3d    Updated Position %3d\n", originalPosition, updatedPosition)
+		if originalPosition >= len(originalPaths) {
+			// all remaining updated paths are new
+			newPaths = append(newPaths, updatedPaths[updatedPosition:]...)
+			//fmt.Println("Adding remaining paths")
+			break
+		} else if updatedPosition >= len(updatedPaths) {
+			// all remaining original paths are new
+			//fmt.Println("Deleting remaining paths")
+			deletedPaths = append(deletedPaths, originalPaths[originalPosition:]...)
+			break
+		} else {
+			//fmt.Println("comparing paths")
+			result := strings.Compare(originalPaths[originalPosition], updatedPaths[updatedPosition])
+			if result == -1 {
+				deletedPaths = append(deletedPaths, originalPaths[originalPosition])
+				originalPosition++
+			} else if result == 1 {
+				newPaths = append(newPaths, updatedPaths[updatedPosition])
+				updatedPosition++
+			} else {
+				matchingPaths = append(matchingPaths, updatedPaths[updatedPosition])
+				updatedPosition++
+				originalPosition++
+			}
+		}
+	}
+
+	//fmt.Printf("Path report: new %d, deleted %d, matching %d, original %d, updated %d\n", len(newPaths), len(deletedPaths), len(matchingPaths), len(originalPaths), len(updatedPaths))
+	//fmt.Printf("New paths: %v\n", newPaths)
+	//fmt.Printf("Deleted paths: %v\n", deletedPaths)
+
+	if len(newPaths) > 0 || len(deletedPaths) > 0 {
+		changed = true
+	}
+
+	return changed, updatedState, newPaths, deletedPaths, matchingPaths
+}
+
 func main() {
 	fmt.Println("replicat initializing....")
 
@@ -190,83 +272,19 @@ func main() {
 
 	for {
 		time.Sleep(time.Second * 5)
-		checkForChanges(globalSettings.Directory, listOfFileInfo)
-		fmt.Println("******************************************************")
-	}
-}
-
-func checkForChanges(basePath string, originalState DirTreeMap) {
-	//  (map[string][]string, error) {
-	updatedState, err := createListOfFolders(basePath)
-	if err != nil {
-		panic(err)
-	}
-
-	// Get a list of paths and compare them
-	originalPaths := make([]string, 0, len(originalState))
-	updatedPaths := make([]string, 0, len(updatedState))
-
-	for key := range originalState {
-		originalPaths = append(originalPaths, key)
-	}
-	sort.Strings(originalPaths)
-
-	for key := range updatedState {
-		updatedPaths = append(updatedPaths, key)
-	}
-	sort.Strings(updatedPaths)
-
-	// We now have two sworted lists of strings. Go through the original ones and compare the files
-	var originalPosition, updatedPosition int
-
-	deletedPaths := make([]string, 0, 100)
-	newPaths := make([]string, 0, 100)
-	matchingPaths := make([]string, 0, len(originalPaths))
-
-	//pp := func(name string, stringList []string) {
-	//	fmt.Println("***************************")
-	//	fmt.Println(name)
-	//	fmt.Println("***************************")
-	//	for index, value := range stringList {
-	//		fmt.Printf("[%3d]: %s\n", index, value)
-	//	}
-	//	fmt.Println("***************************")
-	//}
-	//pp("original paths", originalPaths)
-	//pp("updated Paths", updatedPaths)
-
-	for {
-		//fmt.Printf("Original Position %3d    Updated Position %3d\n", originalPosition, updatedPosition)
-		if originalPosition >= len(originalPaths) {
-			// all remaining updated paths are new
-			newPaths = append(newPaths, updatedPaths[updatedPosition:]...)
-			//fmt.Println("Adding remaining paths")
-			break
-		} else if updatedPosition >= len(updatedPaths) {
-			// all remaining original paths are new
-			//fmt.Println("Deleting remaining paths")
-			deletedPaths = append(deletedPaths, originalPaths[originalPosition:]...)
-			break
+		changed, updatedState, newPaths, deletedPaths, matchingPaths := checkForChanges(globalSettings.Directory, listOfFileInfo)
+		if changed {
+			fmt.Println("\nWe have changes, ship it (also updating saved state now that the changes were tracked)")
+			fmt.Printf("@Path report: new %d, deleted %d, matching %d, original %d, updated %d\n", len(newPaths), len(deletedPaths), len(matchingPaths), len(listOfFileInfo), len(updatedState))
+			fmt.Printf("@New paths: %v\n", newPaths)
+			fmt.Printf("@Deleted paths: %v\n", deletedPaths)
+			fmt.Println("******************************************************")
+			listOfFileInfo = updatedState
 		} else {
-			//fmt.Println("comparing paths")
-			result := strings.Compare(originalPaths[originalPosition], updatedPaths[updatedPosition])
-			if result == -1 {
-				deletedPaths = append(deletedPaths, originalPaths[originalPosition])
-				originalPosition++
-			} else if result == 1 {
-				newPaths = append(newPaths, updatedPaths[updatedPosition])
-				updatedPosition++
-			} else {
-				matchingPaths = append(matchingPaths, updatedPaths[updatedPosition])
-				updatedPosition++
-				originalPosition++
-			}
+			fmt.Print(".")
 		}
-	}
 
-	fmt.Printf("Path report: new %d, deleted %d, matching %d, original %d, updated %d\n", len(newPaths), len(deletedPaths), len(matchingPaths), len(originalPaths), len(updatedPaths))
-	fmt.Printf("New paths: %v\n", newPaths)
-	fmt.Printf("Deleted paths: %v\n", deletedPaths)
+	}
 }
 
 
