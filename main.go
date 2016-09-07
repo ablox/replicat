@@ -180,10 +180,13 @@ func main() {
 
 	fmt.Printf("About to listen on: %s\n", globalSettings.Address)
 
-	err = http.ListenAndServe(globalSettings.Address, nil)
-	if err != nil {
-		panic(err)
-	}
+	go func() {
+		err = http.ListenAndServe(globalSettings.Address, nil)
+		if err != nil {
+			panic(err)
+		}
+
+	}()
 
 	for {
 		time.Sleep(time.Second * 5)
@@ -220,19 +223,35 @@ func checkForChanges(basePath string, originalState DirTreeMap) {
 	newPaths := make([]string, 0, 100)
 	matchingPaths := make([]string, 0, len(originalPaths))
 
+	//pp := func(name string, stringList []string) {
+	//	fmt.Println("***************************")
+	//	fmt.Println(name)
+	//	fmt.Println("***************************")
+	//	for index, value := range stringList {
+	//		fmt.Printf("[%3d]: %s\n", index, value)
+	//	}
+	//	fmt.Println("***************************")
+	//}
+	//pp("original paths", originalPaths)
+	//pp("updated Paths", updatedPaths)
+
 	for {
+		//fmt.Printf("Original Position %3d    Updated Position %3d\n", originalPosition, updatedPosition)
 		if originalPosition >= len(originalPaths) {
 			// all remaining updated paths are new
 			newPaths = append(newPaths, updatedPaths[updatedPosition:]...)
+			//fmt.Println("Adding remaining paths")
 			break
 		} else if updatedPosition >= len(updatedPaths) {
 			// all remaining original paths are new
+			//fmt.Println("Deleting remaining paths")
 			deletedPaths = append(deletedPaths, originalPaths[originalPosition:]...)
 			break
 		} else {
+			//fmt.Println("comparing paths")
 			result := strings.Compare(originalPaths[originalPosition], updatedPaths[updatedPosition])
 			if result == -1 {
-				deletedPaths = append(deletedPaths, originalPaths[originalPosition:]...)
+				deletedPaths = append(deletedPaths, originalPaths[originalPosition])
 				originalPosition++
 			} else if result == 1 {
 				newPaths = append(newPaths, updatedPaths[updatedPosition])
