@@ -133,17 +133,23 @@ func checkForChanges(basePath string, originalState DirTreeMap) (changed bool, u
 			deletedPaths = append(deletedPaths, originalPaths[originalPosition:]...)
 			break
 		} else {
-			//fmt.Println("comparing paths")
-			result := strings.Compare(originalPaths[originalPosition], updatedPaths[updatedPosition])
-			if result == -1 {
-				deletedPaths = append(deletedPaths, originalPaths[originalPosition])
+			oldPath := originalPaths[originalPosition]
+			updPath := updatedPaths[updatedPosition]
+			//fmt.Printf("comparing paths: '%s' and '%s'\n", oldPath, updPath)
+
+			// Start with nothing changed. Base case
+			if oldPath == updPath {
+				//fmt.Println("match")
+				matchingPaths = append(matchingPaths, updatedPaths[updatedPosition])
+				updatedPosition++
 				originalPosition++
-			} else if result == 1 {
+			} else if oldPath > updPath {
+				//fmt.Println("adding new path")
 				newPaths = append(newPaths, updatedPaths[updatedPosition])
 				updatedPosition++
 			} else {
-				matchingPaths = append(matchingPaths, updatedPaths[updatedPosition])
-				updatedPosition++
+				//fmt.Println("Deleting old path")
+				deletedPaths = append(deletedPaths, originalPaths[originalPosition])
 				originalPosition++
 			}
 		}
