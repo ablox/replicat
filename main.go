@@ -324,7 +324,6 @@ func sendFolderTree(tree *DirTreeMap) {
 	client := &http.Client{}
 
 	data := []byte(globalSettings.ManagerCredentials)
-	fmt.Printf("Manager Credentials: %s\n", data)
 	authHash := base64.StdEncoding.EncodeToString(data)
 
 	for _, server := range GlobalServerMap {
