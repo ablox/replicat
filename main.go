@@ -332,6 +332,12 @@ func createListOfFolders(basePath string) (DirTreeMap, error) {
 		listOfFileInfo[currentPath] = fileList
 	}
 
+	//fmt.Printf("Export:\n")
+	//for dir, _ := range listOfFileInfo {
+	//	fmt.Printf("%s\n", dir)
+	//}
+	//fmt.Printf("Export done:\n")
+
 	return listOfFileInfo, nil
 }
 
