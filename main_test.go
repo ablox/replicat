@@ -3,10 +3,10 @@
 package main
 
 import (
-	"testing"
-	"os"
 	"fmt"
 	"io/ioutil"
+	"os"
+	"testing"
 )
 
 func TestDirectoryScan(t *testing.T) {
@@ -20,10 +20,10 @@ func TestDirectoryScan(t *testing.T) {
 	// Create 5 folders
 	numberOfSubFolders := 5
 	newFolders := make([]string, 0, numberOfSubFolders)
-	for i:=0; i < numberOfSubFolders; i++ {
+	for i := 0; i < numberOfSubFolders; i++ {
 		path := fmt.Sprintf("%s/a%d", tmpFolder, i)
 		newFolders = append(newFolders, path)
-		err = os.Mkdir(path, os.ModeDir + os.ModePerm)
+		err = os.Mkdir(path, os.ModeDir+os.ModePerm)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -37,7 +37,7 @@ func TestDirectoryScan(t *testing.T) {
 	}
 
 	changed, updatedState, newPaths, deletedPaths, matchingPaths := checkForChanges(tmpFolder, dirState)
-	if changed || (len(newPaths) + len(deletedPaths) + len(matchingPaths) != totalFolders) {
+	if changed || (len(newPaths)+len(deletedPaths)+len(matchingPaths) != totalFolders) {
 		t.Fatal("comparision of current state with current state did not result in empty....ouch\n")
 		t.Fail()
 	}
