@@ -265,7 +265,7 @@ func main() {
 			ei := <-c
 
 			// sendEvent to manager (if it's available)
-			sendEvent(&Event{Name: ei.Event().String(), Message: ei.Path()}, globalSettings.ManagerAddress, globalSettings.ManagerCredentials)
+			//sendEvent(&Event{Name: ei.Event().String(), Message: ei.Path()}, globalSettings.ManagerAddress, globalSettings.ManagerCredentials)
 
 			// sendEvent to peers (if any)
 			for _, address := range strings.Split(globalSettings.Peers, ",") {
@@ -306,6 +306,7 @@ func main() {
 			listOfFileInfo = updatedState
 
 			// Post the changes to the other side.
+			sendFolderTree(listOfFileInfo)
 
 		} else {
 			fmt.Print(".")
@@ -314,14 +315,15 @@ func main() {
 }
 
 func createListOfFolders(basePath string) (DirTreeMap, error) {
-	paths := make([]string, 0, 100)
+	//paths := make([]string, 0, 100)
 	pendingPaths := make([]string, 0, 100)
 	pendingPaths = append(pendingPaths, basePath)
 	listOfFileInfo := make(DirTreeMap)
 
 	for len(pendingPaths) > 0 {
 		currentPath := pendingPaths[0]
-		paths = append(paths, currentPath)
+		// Strip off of the base path before adding it to the list of folders
+		//paths = append(paths, currentPath[len(globalSettings.Directory)+1:])
 		fileList := make([]string, 0, 100)
 		//fileList := make([]os.FileInfo, 0, 100)
 		pendingPaths = pendingPaths[1:]
@@ -363,7 +365,18 @@ func createListOfFolders(basePath string) (DirTreeMap, error) {
 /*
 Send the folder tree from this node to another node for comparison
 */
-func sendFolderTree(tree *DirTreeMap) {
+func sendFolderTree(initialTree DirTreeMap) {
+	var tree = make(DirTreeMap)
+	prefixLength := len(globalSettings.Directory) + 1
+	for key, value := range initialTree {
+		if key == globalSettings.Directory {
+			continue
+		}
+		fmt.Printf("key is: '%s', length is: %d\n", key, prefixLength)
+		key = key[prefixLength:]
+		tree[key] = value
+	}
+
 	// package up the tree
 	jsonStr, err := json.Marshal(tree)
 	if err != nil {
@@ -375,7 +388,13 @@ func sendFolderTree(tree *DirTreeMap) {
 	data := []byte(globalSettings.ManagerCredentials)
 	authHash := base64.StdEncoding.EncodeToString(data)
 
-	for _, server := range GlobalServerMap {
+	for name, server := range GlobalServerMap {
+		if name == globalSettings.Name {
+			fmt.Printf("skipping %s\n", name)
+			continue
+		}
+		fmt.Printf("sending tree update to: %s\n", name)
+
 		url := "http://" + server.Address + "/tree/"
 		fmt.Printf("Posting folder tree to: %s\n", url)
 
@@ -385,7 +404,9 @@ func sendFolderTree(tree *DirTreeMap) {
 
 		resp, err := client.Do(req)
 		if err != nil {
-			panic(err)
+			fmt.Printf("we encountered an error!\n%s\n", err)
+			//panic(err)
+			continue
 		}
 
 		fmt.Println("response Status:", resp.Status)
@@ -409,13 +430,67 @@ func folderTreeHandler(w http.ResponseWriter, r *http.Request) {
 		log.Println("Got POST: ", r.Body)
 		decoder := json.NewDecoder(r.Body)
 
-		var tree DirTreeMap
-		err := decoder.Decode(&tree)
+		var remoteTreePreTranslate DirTreeMap
+		err := decoder.Decode(&remoteTreePreTranslate)
 		if err != nil {
 			panic("bad json body")
 		}
 
-		fmt.Printf("Received a tree map from: %s\n%s", r.RemoteAddr, tree)
+		var remoteTree = make(DirTreeMap)
+		for key, value := range remoteTreePreTranslate {
+			fmt.Printf("key is: '%s'\n", key)
+			key = fmt.Sprintf("%s/%s", globalSettings.Directory, key)
+			remoteTree[key] = value
+		}
+
+		fmt.Printf("Received a tree map from: %s\n%s\n", r.RemoteAddr, remoteTree)
+
+		// let's compare to the current one we have.
+		_, _, newPaths, deletedPaths, _ := checkForChanges(globalSettings.Directory, remoteTree)
+
+		// update the paths to be consistent. Remember, everything is backwards since this is comparing the other side to us instead of two successive states
+		// deletion will show up as a new path.
+
+		// add folders that were created
+		fmt.Printf("about to check for new folders: %s\n", deletedPaths)
+		if len(deletedPaths) > 0 {
+			fmt.Println("Paths were added on the other side. Create them here")
+			for _, newPathName := range deletedPaths {
+				fmt.Printf("pathname is: %s\n", newPathName)
+				//if newPathName == "" {
+				//	continue
+				//}
+				//newFullPath := fmt.Sprintf("%s/%s", globalSettings.Directory, newPathName)
+				//fmt.Printf("new full path is: %s\n", newFullPath)
+				err = os.Mkdir(newPathName, os.ModeDir+os.ModePerm)
+				//todo figure out how to catch a path exists error.
+				//if err != nil && err != os.ErrExist {
+				//	panic(err)
+				//}
+			}
+		}
+
+		fmt.Printf("about to check for deletions: %s\n", newPaths)
+		// check for folders that were deleted
+		if len(newPaths) > 0 {
+			fmt.Println("Paths were deleted on the other side. Delete them here")
+			// Reverse sort the paths so the most specific is first. This allows us to get away without a recursive delete
+			sort.Sort(sort.Reverse(sort.StringSlice(newPaths)))
+			for _, pathName := range newPaths {
+				if pathName == "" || globalSettings.Directory == "" || pathName == globalSettings.Directory {
+					panic("Path information is not right. Do not delete")
+				}
+
+				err = os.Remove(pathName)
+				if err != nil {
+					panic(err)
+				}
+			}
+		}
+
+
+
+
 	}
 }
 
