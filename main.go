@@ -265,7 +265,7 @@ func main() {
 			ei := <-c
 
 			// sendEvent to manager (if it's available)
-			//sendEvent(&Event{Name: ei.Event().String(), Message: ei.Path()}, globalSettings.ManagerAddress, globalSettings.ManagerCredentials)
+			sendEvent(&Event{Name: ei.Event().String(), Message: ei.Path()}, globalSettings.ManagerAddress, globalSettings.ManagerCredentials)
 
 			// sendEvent to peers (if any)
 			for _, address := range strings.Split(globalSettings.Peers, ",") {
@@ -478,6 +478,7 @@ func folderTreeHandler(w http.ResponseWriter, r *http.Request) {
 			sort.Sort(sort.Reverse(sort.StringSlice(newPaths)))
 			for _, pathName := range newPaths {
 				if pathName == "" || globalSettings.Directory == "" || pathName == globalSettings.Directory {
+					fmt.Sprintf("Trying to delete invalid path: %s\n", pathName)
 					panic("Path information is not right. Do not delete")
 				}
 
