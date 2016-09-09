@@ -243,6 +243,8 @@ func main() {
 	fmt.Printf("replicat %s online....\n", globalSettings.Name)
 	defer fmt.Println("End of line")
 
+	globalSettings.Address = GlobalServerMap[globalSettings.Name].Address
+
 	totalFiles := 0
 	for _, fileInfoList := range listOfFileInfo {
 		totalFiles += len(fileInfoList)
