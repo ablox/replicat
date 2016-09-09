@@ -64,6 +64,7 @@ type Settings struct {
 	ManagerEnabled     bool
 	Address            string
 	Name               string
+	Peers              string
 }
 
 type DirTreeMap map[string][]string
@@ -178,6 +179,7 @@ func main() {
 		globalSettings.ManagerCredentials = c.GlobalString("manager_credentials")
 		globalSettings.Address = c.GlobalString("address")
 		globalSettings.Name = c.GlobalString("name")
+		globalSettings.Peers = c.GlobalString("peers")
 
 		if globalSettings.Directory == "" {
 			panic("directory is required to serve files\n")
@@ -221,6 +223,12 @@ func main() {
 			Usage:  "Specify a name for this node. e.g. 'NodeA' or 'NodeB'",
 			EnvVar: "name, n",
 		},
+		cli.StringFlag{
+			Name:   "peers, p",
+			Value:  globalSettings.Peers,
+			Usage:  "Specify peers for this node. e.g. 1.2.3.4:8001,2.2.2.2",
+			EnvVar: "peers, p",
+		},
 	}
 
 	app.Run(os.Args)
@@ -255,7 +263,16 @@ func main() {
 	go func(c chan notify.EventInfo) {
 		for {
 			ei := <-c
-			sendEvent(&Event{Name: ei.Event().String(), Message: ei.Path()})
+
+			// sendEvent to manager (if it's available)
+			sendEvent(&Event{Name: ei.Event().String(), Message: ei.Path()}, globalSettings.ManagerAddress, globalSettings.ManagerCredentials)
+
+			// sendEvent to peers (if any)
+			for _, address := range strings.Split(globalSettings.Peers, ",") {
+				sendEvent(&Event{Name: ei.Event().String(), Message: ei.Path()}, address, globalSettings.ManagerCredentials)
+
+			}
+
 			log.Println("Got event:" + ei.Event().String() + ", with Path:" + ei.Path())
 		}
 	}(fsEventsChannel)
@@ -402,15 +419,17 @@ func folderTreeHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func sendEvent(event *Event) {
-	url := "http://" + globalSettings.ManagerAddress + "/event/"
+func sendEvent(event *Event, address string, credentials string) {
+	//url := "http://" + globalSettings.ManagerAddress + "/event/"
+	url := "http://" + address + "/event/"
 	fmt.Printf("Manager location: %s\n", url)
 
 	jsonStr, _ := json.Marshal(event)
 	req, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonStr))
 	req.Header.Set("Content-Type", "application/json")
 
-	data := []byte(globalSettings.ManagerCredentials)
+	//data := []byte(globalSettings.ManagerCredentials)
+	data := []byte(credentials)
 	fmt.Printf("Manager Credentials: %s\n", data)
 	authHash := base64.StdEncoding.EncodeToString(data)
 	req.Header.Add("Authorization", "Basic "+authHash)
