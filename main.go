@@ -3,37 +3,37 @@
 package main
 
 import (
+	"bytes"
+	"encoding/base64"
+	"encoding/json"
 	"fmt"
+	"github.com/goji/httpauth"
+	"github.com/pubnub/go/messaging"
 	"github.com/rjeczalik/notify"
 	"github.com/urfave/cli"
+	"html/template"
+	"io/ioutil"
 	"log"
+	"net/http"
 	"os"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strings"
 	"time"
-	"bytes"
-	"io/ioutil"
-	"net/http"
-	"encoding/base64"
-	"encoding/json"
-	"github.com/goji/httpauth"
-	"github.com/pubnub/go/messaging"
-	"regexp"
-	"html/template"
 )
 
 type ReplicatServer struct {
-	Name    		string
-	Address 		string
-	PublicKey 		string
-	LastReceived 	DirTreeMap
-	LastSent 		DirTreeMap
+	Name         string
+	Address      string
+	PublicKey    string
+	LastReceived DirTreeMap
+	LastSent     DirTreeMap
 }
 
 type ServerMap map[string]ReplicatServer
 
-var GlobalServerMap = ServerMap {
+var GlobalServerMap = ServerMap{
 	"NodeA": ReplicatServer{
 		Address: ":8001",
 	},
@@ -46,7 +46,7 @@ type Event struct {
 	Source  string
 	Name    string
 	Message string
-	Time     time.Time
+	Time    time.Time
 }
 
 var events = make([]Event, 0, 100)
@@ -58,27 +58,27 @@ var events = make([]Event, 0, 100)
 
 // settings for the server
 type Settings struct {
-	Directory 				string
-	ManagerAddress 			string
-	ManagerCredentials 		string
-	ManagerEnabled 			bool
-	Address 				string
-	Name 					string
+	Directory          string
+	ManagerAddress     string
+	ManagerCredentials string
+	ManagerEnabled     bool
+	Address            string
+	Name               string
 }
 
 type DirTreeMap map[string][]string
+
 //type DirTreeMap map[string][]os.FileInfo
 
-
 var globalSettings Settings = Settings{
-	Directory: "",
-	ManagerAddress: "localhost:8080",
+	Directory:          "",
+	ManagerAddress:     "localhost:8080",
 	ManagerCredentials: "replicat:isthecat",
-	Address: ":8001",
-	Name: "",
+	Address:            ":8001",
+	Name:               "",
 }
 
-func checkForChanges(basePath string, originalState DirTreeMap) (changed bool, updatedState DirTreeMap, newPaths, deletedPaths, matchingPaths []string)  {
+func checkForChanges(basePath string, originalState DirTreeMap) (changed bool, updatedState DirTreeMap, newPaths, deletedPaths, matchingPaths []string) {
 	//  (map[string][]string, error) {
 	updatedState, err := createListOfFolders(basePath)
 	if err != nil {
@@ -235,7 +235,7 @@ func main() {
 	fsEventsChannel := make(chan notify.EventInfo, 1)
 
 	// Set up a watchpoint listening for events within a directory tree rooted at the specified folder
-	if err := notify.Watch(globalSettings.Directory + "/...", fsEventsChannel, notify.All); err != nil {
+	if err := notify.Watch(globalSettings.Directory+"/...", fsEventsChannel, notify.All); err != nil {
 		log.Fatal(err)
 	}
 	defer notify.Stop(fsEventsChannel)
@@ -273,7 +273,6 @@ func main() {
 		if err != nil {
 			panic(err)
 		}
-
 	}()
 
 	for {
@@ -289,10 +288,8 @@ func main() {
 		} else {
 			fmt.Print(".")
 		}
-
 	}
 }
-
 
 func createListOfFolders(basePath string) (DirTreeMap, error) {
 	paths := make([]string, 0, 100)
@@ -343,7 +340,7 @@ func createListOfFolders(basePath string) (DirTreeMap, error) {
 
 /*
 Send the folder tree from this node to another node for comparison
- */
+*/
 func sendFolderTree(tree *DirTreeMap) {
 	// package up the tree
 	jsonStr, err := json.Marshal(tree)
@@ -362,7 +359,7 @@ func sendFolderTree(tree *DirTreeMap) {
 
 		req, err := http.NewRequest("POST", url, buffer)
 		req.Header.Set("Content-Type", "application/json")
-		req.Header.Set("Authorization", "Basic " + authHash)
+		req.Header.Set("Authorization", "Basic "+authHash)
 
 		resp, err := client.Do(req)
 		if err != nil {
@@ -400,7 +397,6 @@ func folderTreeHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-
 func sendEvent(event *Event) {
 	url := "http://" + globalSettings.ManagerAddress + "/event/"
 	fmt.Printf("Manager location: %s\n", url)
@@ -412,7 +408,7 @@ func sendEvent(event *Event) {
 	data := []byte(globalSettings.ManagerCredentials)
 	fmt.Printf("Manager Credentials: %s\n", data)
 	authHash := base64.StdEncoding.EncodeToString(data)
-	req.Header.Add("Authorization", "Basic " + authHash)
+	req.Header.Add("Authorization", "Basic "+authHash)
 
 	client := &http.Client{}
 	resp, err := client.Do(req)
@@ -427,7 +423,6 @@ func sendEvent(event *Event) {
 	fmt.Println("response Body:", string(body))
 }
 
-
 type Page struct {
 	Title string
 	Body  []byte
@@ -437,7 +432,7 @@ var templates = template.Must(template.ParseFiles("home.html", "edit.html", "vie
 var validPath = regexp.MustCompile("^/(edit|save|view|home)/([a-zA-Z0-9]+)$")
 
 func renderTemplate(w http.ResponseWriter, tmpl string, p *Page) {
-	err := templates.ExecuteTemplate(w, tmpl + ".html", p)
+	err := templates.ExecuteTemplate(w, tmpl+".html", p)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
@@ -479,7 +474,7 @@ func eventHandler(w http.ResponseWriter, r *http.Request) {
 func viewHandler(w http.ResponseWriter, r *http.Request, title string) {
 	p, err := loadPage(title)
 	if err != nil {
-		http.Redirect(w, r, "/edit/" + title, http.StatusNotFound)
+		http.Redirect(w, r, "/edit/"+title, http.StatusNotFound)
 		return
 	}
 	renderTemplate(w, "view", p)
@@ -502,7 +497,7 @@ func saveHandler(w http.ResponseWriter, r *http.Request, title string) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	http.Redirect(w, r, "/view/" + title, http.StatusFound)
+	http.Redirect(w, r, "/view/"+title, http.StatusFound)
 }
 
 func (p *Page) save() error {
@@ -589,4 +584,3 @@ func handlePubNub() {
 
 	<-msgReceived
 }
-
