@@ -49,7 +49,7 @@ func TestDirectoryScan(t *testing.T) {
 	// add longer paths
 	subDirs := []string{"a", "b", "c"}
 	baseDir := tmpFolder + "/a0"
-	addSubDirs(t, baseDir, subDirs)
+	addNestedSubDirs(t, baseDir, subDirs)
 	totalFolders += len(subDirs)
 
 	changed, updatedState, newPaths, deletedPaths, matchingPaths = checkForChanges(tmpFolder, dirState)
@@ -67,7 +67,7 @@ func TestDirectoryScan(t *testing.T) {
 
 	subDirs = []string{"1", "2", "3", "4", "5"}
 	baseDir = tmpFolder + "/a1"
-	addSubDirs(t, baseDir, subDirs)
+	addNestedSubDirs(t, baseDir, subDirs)
 	totalFolders += len(subDirs)
 
 	changed, updatedState, newPaths, deletedPaths, matchingPaths = checkForChanges(tmpFolder, dirState)
@@ -85,13 +85,7 @@ func TestDirectoryScan(t *testing.T) {
 	totalFolders = 1
 	defer os.RemoveAll(tmpFolder)
 	subDirs = []string{"a", "b", "c", "d", "e", "ab", "abc", "abd"}
-	for i:= range subDirs {
-		path := fmt.Sprintf("%s/%s", tmpFolder, subDirs[i])
-		err := os.Mkdir(path, os.ModeDir + os.ModePerm)
-		if err != nil {
-			t.Fatal(err)
-		}
-	}
+	addFlatSubDirs(t, tmpFolder, subDirs)
 	totalFolders += len(subDirs)
 	dirState, err = createListOfFolders(tmpFolder)
 
@@ -135,13 +129,7 @@ func TestDirectoryScan(t *testing.T) {
 	totalFolders -= len(deletedPaths)
 	dirState, err = createListOfFolders(tmpFolder)
 	subDirs = []string{"a", "abd"}
-	for i:= range subDirs {
-		path := fmt.Sprintf("%s/%s", tmpFolder, subDirs[i])
-		err := os.Mkdir(path, os.ModeDir + os.ModePerm)
-		if err != nil {
-			t.Fatal(err)
-		}
-	}
+	addFlatSubDirs(t, tmpFolder, subDirs)
 	totalFolders += len(subDirs)
 	changed, updatedState, newPaths, deletedPaths, matchingPaths = checkForChanges(tmpFolder, dirState)
 	if !changed || (len(newPaths) + len(deletedPaths) + len(matchingPaths) != totalFolders) {
@@ -164,7 +152,7 @@ func assertEqualsTwoDirTreeMap(t *testing.T, first, second DirTreeMap) {
 	//todo continue to do the rest of the tests
 }
 
-func addSubDirs(t *testing.T, baseDir string, subDirs []string) {
+func addNestedSubDirs(t *testing.T, baseDir string, subDirs []string) {
 	path := baseDir
 	for i:= range subDirs {
 		path += fmt.Sprintf("/%s", subDirs[i])
@@ -174,4 +162,15 @@ func addSubDirs(t *testing.T, baseDir string, subDirs []string) {
 			t.Fatal(err)
 		}
 	}
+}
+
+func addFlatSubDirs(t *testing.T, baseDir string, subDirs []string) {
+	for i:= range subDirs {
+		path := fmt.Sprintf("%s/%s", baseDir, subDirs[i])
+		err := os.Mkdir(path, os.ModeDir + os.ModePerm)
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+
 }
