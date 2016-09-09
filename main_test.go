@@ -46,6 +46,13 @@ func TestDirectoryScan(t *testing.T) {
 
 	//changed, updatedState, newPaths, deletedPaths, matchingPaths := checkForChanges(globalSettings.Directory, emptyState)
 
+	// todo make some changes and verify that it is working correctly.
+	// add paths
+	// a, b, c, d, e, ab,abc,abd
+	// delete ab and make sure it is the only one deleted
+	// delete the start and end ones
+	// recreate them
+
 	_ = emptyState
 }
 
