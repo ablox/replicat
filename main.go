@@ -47,6 +47,7 @@ type Event struct {
 	OriginalName string
 	Message string
 	Time    time.Time
+	IsDirectory bool
 }
 
 var events = make([]Event, 0, 100)
@@ -266,8 +267,43 @@ func main() {
 
 			// todo add ignore file
 			// sendEvent to manager (if it's available)
-			path := string(ei.Path()[len(globalSettings.Directory)])
-			event := Event{Name: ei.Event().String(), Message: path}
+			fullPath := string(ei.Path())
+			directoryLength := len(globalSettings.Directory)
+
+			path := fullPath
+			if globalSettings.Directory == fullPath[:directoryLength] {
+				// update the path to not have this prefix
+				path = fullPath[directoryLength + 1:]
+			}
+
+			fullPrefix := "/private" + globalSettings.Directory
+			if fullPrefix == fullPath[:len(fullPrefix)] {
+				path = fullPath[len(fullPrefix) + 1:]
+			}
+
+			//fmt.Printf("Call to isdir resulted in %v\n", ei.IsDir())
+
+			//// Check if it is a directory based on our directory tree first. Then check the file system
+			var isDirectory bool
+			//_, exists := listOfFileInfo[fullPath]
+			//// todo update internal mapping based on this event
+			//// todo make this more robust
+			//if exists == true {
+			//	isDirectory = true
+			//} else {
+			//}
+			// Get the file info. Useful if we need to restrict our actions to directories
+			info, err := os.Stat(fullPath)
+			if err == nil {
+				isDirectory = info.IsDir()
+			} else {
+				_, exists := listOfFileInfo[fullPath]
+				if exists == true {
+					isDirectory = true
+				}
+			}
+
+			event := Event{Name: ei.Event().String(), Message: path, IsDirectory: isDirectory}
 			fmt.Printf("event raw data: %v with path: %v\n", ei.Event(), path)
 
 			// todo copy the source folder on a rename to the event
@@ -301,7 +337,7 @@ func main() {
 
 	dotCount := 0
 	for {
-		time.Sleep(time.Second * 5)
+		time.Sleep(time.Second * 30)
 		changed, updatedState, newPaths, deletedPaths, matchingPaths := checkForChanges(globalSettings.Directory, listOfFileInfo)
 		if changed {
 			fmt.Println("\nWe have changes, ship it (also updating saved state now that the changes were tracked)")
@@ -576,6 +612,29 @@ func eventHandler(w http.ResponseWriter, r *http.Request) {
 
 		log.Println(event.Name + ", path: " + event.Message)
 		log.Printf("Event info: %v\n", event)
+
+		//// Only do stuff for directories at the moment.
+		//if event.IsDirectory == false {
+		//	fmt.Println("The event is not for a directory, skipping")
+		//	return
+		//}
+
+		pathName := globalSettings.Directory + "/" + event.Message
+
+		switch event.Name {
+		case "notify.Create":
+			os.Mkdir(pathName, os.ModeDir+os.ModePerm)
+			// todo figure out how to catch a path exists error
+			fmt.Printf("create event found. Should be creating: %s\n", pathName)
+		case "notify.Remove":
+			os.Remove(pathName)
+			fmt.Printf("remove attempted on: %s\n", pathName)
+		case "notify.Rename":
+			os.Remove(pathName)
+			fmt.Printf("rename attempted on: %s\n", pathName)
+		default:
+			fmt.Printf("Unknown event found, doing nothing. Event: %s\n", event.Name)
+		}
 
 		events = append([]Event{event}, events...)
 	}
