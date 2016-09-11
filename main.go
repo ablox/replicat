@@ -260,7 +260,11 @@ func main() {
 	}
 
 	fmt.Printf("Now keeping an eye on %d folders and %d files located under: %s\n", len(listOfFileInfo), totalFiles, globalSettings.Directory)
-
+	// todo switch all directory manipulation to us os neutral constants and tools
+	// todo figure out the new folder name for a rename
+	// todo update filesystem data structures when events are triggered
+	// todo lock the filesystem data structures as necessary
+	// todo handle a flood of events (copy a tree of folders)
 	go func(c chan notify.EventInfo) {
 		for {
 			ei := <-c
