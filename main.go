@@ -566,7 +566,7 @@ func eventHandler(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			panic("bad json body")
 		}
-		log.Println(event.Name)
+		log.Println(event.Name + ", path: " + event.Message)
 		events = append([]Event{event}, events...)
 	}
 }
