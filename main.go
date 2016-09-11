@@ -8,7 +8,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/goji/httpauth"
-	"github.com/pubnub/go/messaging"
 	"github.com/rjeczalik/notify"
 	"github.com/urfave/cli"
 	"html/template"
@@ -281,7 +280,7 @@ func main() {
 	http.HandleFunc("/edit/", makeHandler(editHandler))
 	http.HandleFunc("/save/", makeHandler(saveHandler))
 
-	http.Handle("/home/", httpauth.SimpleBasicAuth("replicat", "isthecat")(http.HandlerFunc(homeHandler)))
+	//http.Handle("/home/", httpauth.SimpleBasicAuth("replicat", "isthecat")(http.HandlerFunc(homeHandler)))
 	http.Handle("/event/", httpauth.SimpleBasicAuth("replicat", "isthecat")(http.HandlerFunc(eventHandler)))
 	http.Handle("/tree/", httpauth.SimpleBasicAuth("replicat", "isthecat")(http.HandlerFunc(folderTreeHandler)))
 
@@ -294,6 +293,7 @@ func main() {
 		}
 	}()
 
+	dotCount := 0
 	for {
 		time.Sleep(time.Second * 5)
 		changed, updatedState, newPaths, deletedPaths, matchingPaths := checkForChanges(globalSettings.Directory, listOfFileInfo)
@@ -310,6 +310,10 @@ func main() {
 
 		} else {
 			fmt.Print(".")
+			dotCount++
+			if dotCount % 100 == 0 {
+				fmt.Println("")
+			}
 		}
 	}
 }
@@ -451,6 +455,26 @@ func folderTreeHandler(w http.ResponseWriter, r *http.Request) {
 		// update the paths to be consistent. Remember, everything is backwards since this is comparing the other side to us instead of two successive states
 		// deletion will show up as a new path.
 
+		fmt.Printf("about to check for deletions: %s\n", newPaths)
+
+		// delete folders that were deleted. We delete first, then add to make sure that the old ones will not be in the way
+		if len(newPaths) > 0 {
+			fmt.Println("Paths were deleted on the other side. Delete them here")
+			// Reverse sort the paths so the most specific is first. This allows us to get away without a recursive delete
+			sort.Sort(sort.Reverse(sort.StringSlice(newPaths)))
+			for _, pathName := range newPaths {
+				if pathName == "" || globalSettings.Directory == "" || pathName == globalSettings.Directory {
+					fmt.Sprintf("Trying to delete invalid path: %s\n", pathName)
+					panic("Path information is not right. Do not delete")
+				}
+
+				err = os.Remove(pathName)
+				if err != nil {
+					panic(err)
+				}
+			}
+		}
+
 		// add folders that were created
 		fmt.Printf("about to check for new folders: %s\n", deletedPaths)
 		if len(deletedPaths) > 0 {
@@ -470,33 +494,10 @@ func folderTreeHandler(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 
-		fmt.Printf("about to check for deletions: %s\n", newPaths)
-		// check for folders that were deleted
-		if len(newPaths) > 0 {
-			fmt.Println("Paths were deleted on the other side. Delete them here")
-			// Reverse sort the paths so the most specific is first. This allows us to get away without a recursive delete
-			sort.Sort(sort.Reverse(sort.StringSlice(newPaths)))
-			for _, pathName := range newPaths {
-				if pathName == "" || globalSettings.Directory == "" || pathName == globalSettings.Directory {
-					fmt.Sprintf("Trying to delete invalid path: %s\n", pathName)
-					panic("Path information is not right. Do not delete")
-				}
-
-				err = os.Remove(pathName)
-				if err != nil {
-					panic(err)
-				}
-			}
-		}
-
-
-
-
 	}
 }
 
 func sendEvent(event *Event, address string, credentials string) {
-	//url := "http://" + globalSettings.ManagerAddress + "/event/"
 	url := "http://" + address + "/event/"
 	fmt.Printf("Manager location: %s\n", url)
 
@@ -504,9 +505,7 @@ func sendEvent(event *Event, address string, credentials string) {
 	req, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonStr))
 	req.Header.Set("Content-Type", "application/json")
 
-	//data := []byte(globalSettings.ManagerCredentials)
 	data := []byte(credentials)
-	fmt.Printf("Manager Credentials: %s\n", data)
 	authHash := base64.StdEncoding.EncodeToString(data)
 	req.Header.Add("Authorization", "Basic "+authHash)
 
@@ -550,9 +549,9 @@ func makeHandler(fn func(http.ResponseWriter, *http.Request, string)) http.Handl
 	}
 }
 
-func homeHandler(w http.ResponseWriter, _ *http.Request) {
-	renderTemplate(w, "home", nil)
-}
+//func homeHandler(w http.ResponseWriter, _ *http.Request) {
+//	renderTemplate(w, "home", nil)
+//}
 
 func eventHandler(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
@@ -615,73 +614,3 @@ func loadPage(title string) (*Page, error) {
 	return &Page{Title: title, Body: body}, nil
 }
 
-func handlePubNub() {
-	fmt.Println("PubNub SDK for go;", messaging.VersionInfo())
-
-	publishKey := "pub-c-fc75596b-c9cf-40c9-844f-f31d7842419c"
-	subscribeKey := "sub-c-a76871e8-6692-11e6-879b-0619f8945a4f"
-	secretKey := "sec-c-ZWNlNDRlZGYtODIyNi00ZjZhLWE5ZGUtM2FlNmYxNDk1NjQy"
-
-	pubnub := messaging.NewPubnub(publishKey, subscribeKey, secretKey, "", false, "")
-	channel := "Channel-ly2qa34uj"
-
-	connected := make(chan struct{})
-	msgReceived := make(chan struct{})
-
-	successChannel := make(chan []byte)
-	errorChannel := make(chan []byte)
-
-	go pubnub.Subscribe(channel, "", successChannel, false, errorChannel)
-
-	go func() {
-		for {
-			select {
-			case response := <-successChannel:
-				var msg []interface{}
-
-				err := json.Unmarshal(response, &msg)
-				if err != nil {
-					panic(err.Error())
-				}
-
-				switch t := msg[0].(type) {
-				case float64:
-					if strings.Contains(msg[1].(string), "connected") {
-						close(connected)
-					}
-				case []interface{}:
-					fmt.Println(string(response))
-					close(msgReceived)
-				default:
-					panic(fmt.Sprintf("Unknown type: %T", t))
-				}
-			case err := <-errorChannel:
-				fmt.Println(string(err))
-				return
-			case <-messaging.SubscribeTimeout():
-				panic("Subscribe timeout")
-			}
-		}
-	}()
-
-	<-connected
-
-	publishSuccessChannel := make(chan []byte)
-	publishErrorChannel := make(chan []byte)
-
-	go pubnub.Publish(channel, "Hello from PubnNub Go SDK  haha!",
-		publishSuccessChannel, publishErrorChannel)
-
-	go func() {
-		select {
-		case result := <-publishSuccessChannel:
-			fmt.Println(string(result))
-		case err := <-publishErrorChannel:
-			fmt.Printf("Publish error: %s\n", err)
-		case <-messaging.Timeout():
-			fmt.Println("Publish timeout")
-		}
-	}()
-
-	<-msgReceived
-}
