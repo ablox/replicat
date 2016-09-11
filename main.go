@@ -44,6 +44,7 @@ var GlobalServerMap = ServerMap{
 type Event struct {
 	Source  string
 	Name    string
+	OriginalName string
 	Message string
 	Time    time.Time
 }
@@ -263,13 +264,18 @@ func main() {
 		for {
 			ei := <-c
 
+			// todo add ignore file
 			// sendEvent to manager (if it's available)
-			sendEvent(&Event{Name: ei.Event().String(), Message: ei.Path()}, globalSettings.ManagerAddress, globalSettings.ManagerCredentials)
+			path := string(ei.Path()[len(globalSettings.Directory)])
+			event := Event{Name: ei.Event().String(), Message: path}
+			fmt.Printf("event raw data: %v with path: %v\n", ei.Event(), path)
+
+			// todo copy the source folder on a rename to the event
+			sendEvent(&event, globalSettings.ManagerAddress, globalSettings.ManagerCredentials)
 
 			// sendEvent to peers (if any)
 			for _, address := range strings.Split(globalSettings.Peers, ",") {
-				sendEvent(&Event{Name: ei.Event().String(), Message: ei.Path()}, address, globalSettings.ManagerCredentials)
-
+				sendEvent(&event, address, globalSettings.ManagerCredentials)
 			}
 
 			log.Println("Got event:" + ei.Event().String() + ", with Path:" + ei.Path())
@@ -463,9 +469,12 @@ func folderTreeHandler(w http.ResponseWriter, r *http.Request) {
 			// Reverse sort the paths so the most specific is first. This allows us to get away without a recursive delete
 			sort.Sort(sort.Reverse(sort.StringSlice(newPaths)))
 			for _, pathName := range newPaths {
-				if pathName == "" || globalSettings.Directory == "" || pathName == globalSettings.Directory {
+				if pathName == "" || globalSettings.Directory == "" {
 					fmt.Sprintf("Trying to delete invalid path: %s\n", pathName)
 					panic("Path information is not right. Do not delete")
+				} else if pathName == globalSettings.Directory {
+					fmt.Printf("We had a request to delete the base path. Skipping: %s\n", pathName)
+					continue
 				}
 
 				err = os.Remove(pathName)
@@ -500,6 +509,9 @@ func folderTreeHandler(w http.ResponseWriter, r *http.Request) {
 func sendEvent(event *Event, address string, credentials string) {
 	url := "http://" + address + "/event/"
 	fmt.Printf("Manager location: %s\n", url)
+
+	// Set the event source (server name)
+	event.Source = globalSettings.Name
 
 	jsonStr, _ := json.Marshal(event)
 	req, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonStr))
@@ -562,11 +574,14 @@ func eventHandler(w http.ResponseWriter, r *http.Request) {
 		decoder := json.NewDecoder(r.Body)
 		var event Event
 		err := decoder.Decode(&event)
-		event.Source = r.RemoteAddr
+		//event.Source = r.RemoteAddr
 		if err != nil {
 			panic("bad json body")
 		}
+
 		log.Println(event.Name + ", path: " + event.Message)
+		log.Printf("Event info: %v\n", event)
+
 		events = append([]Event{event}, events...)
 	}
 }
