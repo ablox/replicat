@@ -561,10 +561,6 @@ func makeHandler(fn func(http.ResponseWriter, *http.Request, string)) http.Handl
 	}
 }
 
-//func homeHandler(w http.ResponseWriter, _ *http.Request) {
-//	renderTemplate(w, "home", nil)
-//}
-
 func eventHandler(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case "GET":
@@ -574,7 +570,6 @@ func eventHandler(w http.ResponseWriter, r *http.Request) {
 		decoder := json.NewDecoder(r.Body)
 		var event Event
 		err := decoder.Decode(&event)
-		//event.Source = r.RemoteAddr
 		if err != nil {
 			panic("bad json body")
 		}
