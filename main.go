@@ -42,12 +42,12 @@ var GlobalServerMap = ServerMap{
 }
 
 type Event struct {
-	Source  string
-	Name    string
+	Source       string
+	Name         string
 	OriginalName string
-	Message string
-	Time    time.Time
-	IsDirectory bool
+	Message      string
+	Time         time.Time
+	IsDirectory  bool
 }
 
 var events = make([]Event, 0, 100)
@@ -278,12 +278,12 @@ func main() {
 			path := fullPath
 			if globalSettings.Directory == fullPath[:directoryLength] {
 				// update the path to not have this prefix
-				path = fullPath[directoryLength + 1:]
+				path = fullPath[directoryLength+1:]
 			}
 
 			fullPrefix := "/private" + globalSettings.Directory
 			if fullPrefix == fullPath[:len(fullPrefix)] {
-				path = fullPath[len(fullPrefix) + 1:]
+				path = fullPath[len(fullPrefix)+1:]
 			}
 
 			//fmt.Printf("Call to isdir resulted in %v\n", ei.IsDir())
@@ -358,7 +358,7 @@ func main() {
 		} else {
 			fmt.Print(".")
 			dotCount++
-			if dotCount % 100 == 0 {
+			if dotCount%100 == 0 {
 				fmt.Println("")
 			}
 		}
@@ -687,4 +687,3 @@ func loadPage(title string) (*Page, error) {
 	}
 	return &Page{Title: title, Body: body}, nil
 }
-
