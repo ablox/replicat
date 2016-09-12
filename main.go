@@ -244,7 +244,8 @@ func main() {
 	fsEventsChannel := make(chan notify.EventInfo, 1)
 
 	// Set up a watch point listening for events within a directory tree rooted at the specified folder
-	if err := notify.Watch(globalSettings.Directory+"/...", fsEventsChannel, notify.All); err != nil {
+	err = notify.Watch(globalSettings.Directory+"/...", fsEventsChannel, notify.All)
+	if err != nil {
 		log.Fatal(err)
 	}
 	defer notify.Stop(fsEventsChannel)
