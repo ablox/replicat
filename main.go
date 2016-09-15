@@ -22,6 +22,23 @@ import (
 	"time"
 )
 
+// todo change the batch analysis method to take two sets of DirTreeMap to compare against. No longer require the current state to be one of the two. This will flip around the polarity of the results when syncing between two servers and allow for comparison between batches
+// todo add channels in for individual events and batch sync
+// todo change the receiving side for batch sync to leverage the context of the last batch to detect differences
+// todo leverage handshake mechanism for the channels to pass data to other replicat servers
+// todo add thread safety to the key data structures. Lock everything briefly
+// todo change the web server to not block on receiving data. Put it into a channel and move on. (or change to multithreaded web server) or both
+// todo Support path new and delete including recursive. Don't worry about rename. Handle rename as two separate events.
+// todo add detection if a given location is a folder or file. Leverage the DirTreeMap or file system functions
+// todo add file support soon.
+// todo sync on startup
+// todo do not delete data based on initial sync. You need to have context.
+// todo ask the members of the cluster for data on startup. Respond to requests for initial data with reciprocal requests or keep poling
+// todo add signatures to batches of data for reference. Maybe hash the datastructure in JSON?
+// todo make the folder structures path agnostic and path separator agnostic. Switch to a normalized form of paths
+// todo make the base folder be canonical so that it matches the folders passed back by the file monitors
+
+
 type ReplicatServer struct {
 	Name         string
 	Address      string
