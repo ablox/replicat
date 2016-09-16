@@ -36,7 +36,7 @@ func TestDirectoryScan(t *testing.T) {
 		t.Fail()
 	}
 
-	changed, updatedState, newPaths, deletedPaths, matchingPaths := checkForChanges(tmpFolder, dirState)
+	changed, updatedState, newPaths, deletedPaths, matchingPaths := checkForChanges(tmpFolder, dirState, nil)
 	if changed || (len(newPaths)+len(deletedPaths)+len(matchingPaths) != totalFolders) {
 		t.Fatal("comparision of current state with current state did not result in empty....ouch\n")
 		t.Fail()
@@ -52,7 +52,7 @@ func TestDirectoryScan(t *testing.T) {
 	addNestedSubDirs(t, baseDir, subDirs)
 	totalFolders += len(subDirs)
 
-	changed, updatedState, newPaths, deletedPaths, matchingPaths = checkForChanges(tmpFolder, dirState)
+	changed, updatedState, newPaths, deletedPaths, matchingPaths = checkForChanges(tmpFolder, dirState, nil)
 	if !changed || (len(newPaths)+len(deletedPaths)+len(matchingPaths) != totalFolders) {
 		t.Fatal("comparision of current state with current state did not result in empty....ouch\n")
 		t.Fail()
@@ -70,7 +70,7 @@ func TestDirectoryScan(t *testing.T) {
 	addNestedSubDirs(t, baseDir, subDirs)
 	totalFolders += len(subDirs)
 
-	changed, updatedState, newPaths, deletedPaths, matchingPaths = checkForChanges(tmpFolder, dirState)
+	changed, updatedState, newPaths, deletedPaths, matchingPaths = checkForChanges(tmpFolder, dirState, nil)
 	if !changed || (len(newPaths)+len(deletedPaths)+len(matchingPaths) != totalFolders) {
 		t.Fatal("comparision of changed state with current state does not add up....ouch\n")
 		t.Fail()
@@ -89,7 +89,7 @@ func TestDirectoryScan(t *testing.T) {
 	totalFolders += len(subDirs)
 	dirState, err = createListOfFolders(tmpFolder)
 
-	changed, updatedState, newPaths, deletedPaths, matchingPaths = checkForChanges(tmpFolder, dirState)
+	changed, updatedState, newPaths, deletedPaths, matchingPaths = checkForChanges(tmpFolder, dirState, nil)
 	if changed || (len(newPaths)+len(deletedPaths)+len(matchingPaths) != totalFolders) {
 		t.Fatal("comparision of current state with current state did not result in empty....ouch\n")
 		t.Fail()
@@ -98,7 +98,7 @@ func TestDirectoryScan(t *testing.T) {
 	// delete ab and make sure it is the only one deleted
 	deletePath := tmpFolder + "/ab"
 	os.Remove(deletePath)
-	changed, updatedState, newPaths, deletedPaths, matchingPaths = checkForChanges(tmpFolder, dirState)
+	changed, updatedState, newPaths, deletedPaths, matchingPaths = checkForChanges(tmpFolder, dirState, nil)
 	if !changed || (len(newPaths)+len(deletedPaths)+len(matchingPaths) != totalFolders) {
 		t.Fatal("comparision of changed state with current state does not add up....ouch\n")
 		t.Fail()
@@ -115,7 +115,7 @@ func TestDirectoryScan(t *testing.T) {
 	os.Remove(deletePath)
 	deletePath = tmpFolder + "/abd"
 	os.Remove(deletePath)
-	changed, updatedState, newPaths, deletedPaths, matchingPaths = checkForChanges(tmpFolder, dirState)
+	changed, updatedState, newPaths, deletedPaths, matchingPaths = checkForChanges(tmpFolder, dirState, nil)
 	if !changed || (len(newPaths)+len(deletedPaths)+len(matchingPaths) != totalFolders) {
 		t.Fatal("comparision of changed state with current state does not add up....ouch\n")
 		t.Fail()
@@ -131,7 +131,7 @@ func TestDirectoryScan(t *testing.T) {
 	subDirs = []string{"a", "abd"}
 	addFlatSubDirs(t, tmpFolder, subDirs)
 	totalFolders += len(subDirs)
-	changed, updatedState, newPaths, deletedPaths, matchingPaths = checkForChanges(tmpFolder, dirState)
+	changed, updatedState, newPaths, deletedPaths, matchingPaths = checkForChanges(tmpFolder, dirState, nil)
 	if !changed || (len(newPaths)+len(deletedPaths)+len(matchingPaths) != totalFolders) {
 		t.Fatal("comparision of changed state with current state does not add up....ouch\n")
 		t.Fail()
