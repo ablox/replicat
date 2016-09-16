@@ -10,6 +10,20 @@ import (
 
 type DirTreeMap map[string][]string
 
+// create a clone of the treemap
+func (orig DirTreeMap) clone() (clone DirTreeMap) {
+	clone = make(DirTreeMap)
+	for k, v := range orig {
+		cloneV := make([]string, len(v))
+		for i, str := range v {
+			cloneV[i] = str
+		}
+		clone[k] = cloneV
+	}
+
+	return
+}
+
 //type DirTreeMap map[string][]os.FileInfo
 
 /*
@@ -24,7 +38,7 @@ func checkForChanges(basePath string, originalState, newState DirTreeMap) (chang
 			panic(err)
 		}
 	} else {
-		updatedState = newState
+		updatedState = newState.clone()
 	}
 
 	// Get a list of paths and compare them
