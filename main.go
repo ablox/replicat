@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"github.com/goji/httpauth"
 	"github.com/rjeczalik/notify"
-	"html/template"
 	"io/ioutil"
 	"log"
 	"math/rand"
@@ -575,9 +574,4 @@ func eventHandler(w http.ResponseWriter, r *http.Request) {
 
 		events = append([]Event{event}, events...)
 	}
-}
-
-func (p *Page) save() error {
-	filename := p.Title + ".txt"
-	return ioutil.WriteFile(filename, p.Body, 0600)
 }
