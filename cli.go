@@ -5,6 +5,25 @@ import (
 	"os"
 )
 
+// settings for the server
+type Settings struct {
+	Directory          string
+	ManagerAddress     string
+	ManagerCredentials string
+	ManagerEnabled     bool
+	Address            string
+	Name               string
+	BootstrapAddress   string
+}
+
+var globalSettings Settings = Settings{
+	Directory:          "",
+	ManagerAddress:     "localhost:8080",
+	ManagerCredentials: "replicat:isthecat",
+	Address:            ":8001",
+	Name:               "",
+}
+
 func SetupCli() {
 
 	app := cli.NewApp()
