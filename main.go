@@ -78,11 +78,19 @@ var globalSettings Settings = Settings{
 	Name:               "",
 }
 
-func checkForChanges(basePath string, originalState DirTreeMap) (changed bool, updatedState DirTreeMap, newPaths, deletedPaths, matchingPaths []string) {
-	//  (map[string][]string, error) {
-	updatedState, err := createListOfFolders(basePath)
-	if err != nil {
-		panic(err)
+/*
+Check for changes between two DirTreeMaps. If the second map is Nil, it will rescan the folders to update to the state of the filesystem.
+If it is not nil, it will not be updated. The updated state will be either the state of the filesystem or the value passed in for newState
+ */
+func checkForChanges(basePath string, originalState, newState DirTreeMap) (changed bool, updatedState DirTreeMap, newPaths, deletedPaths, matchingPaths []string) {
+	var err error
+	if newState == nil {
+		updatedState, err = createListOfFolders(basePath)
+		if err != nil {
+			panic(err)
+		}
+	} else {
+		updatedState = newState
 	}
 
 	// Get a list of paths and compare them
@@ -288,7 +296,7 @@ func main() {
 	for {
 		// Randomize the sync time to decrease oscillation
 		time.Sleep(time.Second * sleepSeconds)
-		changed, updatedState, newPaths, deletedPaths, matchingPaths := checkForChanges(globalSettings.Directory, listOfFileInfo)
+		changed, updatedState, newPaths, deletedPaths, matchingPaths := checkForChanges(globalSettings.Directory, listOfFileInfo, nil)
 		if changed {
 			fmt.Println("\nWe have changes, ship it (also updating saved state now that the changes were tracked)")
 			fmt.Printf("@Path report: new %d, deleted %d, matching %d, original %d, updated %d\n", len(newPaths), len(deletedPaths), len(matchingPaths), len(listOfFileInfo), len(updatedState))
@@ -442,7 +450,7 @@ func folderTreeHandler(w http.ResponseWriter, r *http.Request) {
 		fmt.Printf("Received a tree map from: %s\n%s\n", r.RemoteAddr, remoteTree)
 
 		// let's compare to the current one we have.
-		_, _, newPaths, deletedPaths, _ := checkForChanges(globalSettings.Directory, remoteTree)
+		_, _, newPaths, deletedPaths, _ := checkForChanges(globalSettings.Directory, remoteTree, nil)
 
 		// update the paths to be consistent. Remember, everything is backwards since this is comparing the other side to us instead of two successive states
 		// deletion will show up as a new path.
