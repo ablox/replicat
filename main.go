@@ -81,7 +81,7 @@ var globalSettings Settings = Settings{
 /*
 Check for changes between two DirTreeMaps. If the second map is Nil, it will rescan the folders to update to the state of the filesystem.
 If it is not nil, it will not be updated. The updated state will be either the state of the filesystem or the value passed in for newState
- */
+*/
 func checkForChanges(basePath string, originalState, newState DirTreeMap) (changed bool, updatedState DirTreeMap, newPaths, deletedPaths, matchingPaths []string) {
 	var err error
 	if newState == nil {
@@ -201,7 +201,7 @@ func main() {
 	fsEventsChannel := make(chan notify.EventInfo, 1)
 
 	// Set up a watch point listening for events within a directory tree rooted at the specified folder
-	err = notify.Watch(globalSettings.Directory + "/...", fsEventsChannel, notify.All)
+	err = notify.Watch(globalSettings.Directory+"/...", fsEventsChannel, notify.All)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -235,7 +235,7 @@ func main() {
 			path := fullPath
 			if len(fullPath) >= directoryLength && globalSettings.Directory == fullPath[:directoryLength] {
 				// update the path to not have this prefix
-				path = fullPath[directoryLength + 1:]
+				path = fullPath[directoryLength+1:]
 			}
 
 			//fmt.Printf("Call to isdir resulted in %v\n", ei.IsDir())
@@ -311,7 +311,7 @@ func main() {
 		} else {
 			fmt.Print(".")
 			dotCount++
-			if dotCount % 100 == 0 {
+			if dotCount%100 == 0 {
 				fmt.Println("")
 			}
 		}
@@ -404,7 +404,7 @@ func sendFolderTree(initialTree DirTreeMap) {
 
 		req, err := http.NewRequest("POST", url, buffer)
 		req.Header.Set("Content-Type", "application/json")
-		req.Header.Set("Authorization", "Basic " + authHash)
+		req.Header.Set("Authorization", "Basic "+authHash)
 
 		resp, err := client.Do(req)
 		if err != nil {
@@ -489,7 +489,7 @@ func folderTreeHandler(w http.ResponseWriter, r *http.Request) {
 				//}
 				//newFullPath := fmt.Sprintf("%s/%s", globalSettings.Directory, newPathName)
 				//fmt.Printf("new full path is: %s\n", newFullPath)
-				err = os.Mkdir(newPathName, os.ModeDir + os.ModePerm)
+				err = os.Mkdir(newPathName, os.ModeDir+os.ModePerm)
 				//todo figure out how to catch a path exists error.
 				//if err != nil && err != os.ErrExist {
 				//	panic(err)
@@ -513,7 +513,7 @@ func sendEvent(event *Event, address string, credentials string) {
 
 	data := []byte(credentials)
 	authHash := base64.StdEncoding.EncodeToString(data)
-	req.Header.Add("Authorization", "Basic " + authHash)
+	req.Header.Add("Authorization", "Basic "+authHash)
 
 	client := &http.Client{}
 	resp, err := client.Do(req)
@@ -560,7 +560,7 @@ func eventHandler(w http.ResponseWriter, r *http.Request) {
 
 		switch event.Name {
 		case "notify.Create":
-			os.Mkdir(pathName, os.ModeDir + os.ModePerm)
+			os.Mkdir(pathName, os.ModeDir+os.ModePerm)
 			// todo figure out how to catch a path exists error
 			fmt.Printf("create event found. Should be creating: %s\n", pathName)
 		case "notify.Remove":
@@ -581,4 +581,3 @@ func (p *Page) save() error {
 	filename := p.Title + ".txt"
 	return ioutil.WriteFile(filename, p.Body, 0600)
 }
-
