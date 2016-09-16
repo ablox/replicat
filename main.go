@@ -16,7 +16,6 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"regexp"
 	"sort"
 	"time"
 )
@@ -67,7 +66,7 @@ type Settings struct {
 	ManagerEnabled     bool
 	Address            string
 	Name               string
-	Peers              string
+	BootstrapAddress   string
 }
 
 type DirTreeMap map[string][]string
@@ -182,6 +181,7 @@ func main() {
 		globalSettings.ManagerCredentials = c.GlobalString("manager_credentials")
 		globalSettings.Address = c.GlobalString("address")
 		globalSettings.Name = c.GlobalString("name")
+		globalSettings.BootstrapAddress = c.GlobalString("bootstrap_address")
 
 		if globalSettings.Directory == "" {
 			panic("directory is required to serve files\n")
@@ -224,6 +224,12 @@ func main() {
 			Value:  globalSettings.Name,
 			Usage:  "Specify a name for this node. e.g. 'NodeA' or 'NodeB'",
 			EnvVar: "name, n",
+		},
+		cli.StringFlag{
+			Name:   "bootstrap_address, ba",
+			Value:  globalSettings.BootstrapAddress,
+			Usage:  "Specify a bootstrap address. e.g. '10.10.10.10:12345'",
+			EnvVar: "bootstrap_address, ba",
 		},
 	}
 
@@ -326,10 +332,6 @@ func main() {
 			log.Println("Got event:" + ei.Event().String() + ", with Path:" + ei.Path())
 		}
 	}(fsEventsChannel)
-
-	http.HandleFunc("/view/", makeHandler(viewHandler))
-	http.HandleFunc("/edit/", makeHandler(editHandler))
-	http.HandleFunc("/save/", makeHandler(saveHandler))
 
 	http.Handle("/event/", httpauth.SimpleBasicAuth("replicat", "isthecat")(http.HandlerFunc(eventHandler)))
 	http.Handle("/tree/", httpauth.SimpleBasicAuth("replicat", "isthecat")(http.HandlerFunc(folderTreeHandler)))
@@ -585,25 +587,6 @@ type Page struct {
 }
 
 var templates = template.Must(template.ParseFiles("home.html", "edit.html", "view.html"))
-var validPath = regexp.MustCompile("^/(edit|save|view|home)/([a-zA-Z0-9]+)$")
-
-func renderTemplate(w http.ResponseWriter, tmpl string, p *Page) {
-	err := templates.ExecuteTemplate(w, tmpl+".html", p)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-	}
-}
-
-func makeHandler(fn func(http.ResponseWriter, *http.Request, string)) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		m := validPath.FindStringSubmatch(r.URL.Path)
-		if m == nil {
-			http.NotFound(w, r)
-			return
-		}
-		fn(w, r, m[2])
-	}
-}
 
 func eventHandler(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
@@ -648,45 +631,8 @@ func eventHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func viewHandler(w http.ResponseWriter, r *http.Request, title string) {
-	p, err := loadPage(title)
-	if err != nil {
-		http.Redirect(w, r, "/edit/"+title, http.StatusNotFound)
-		return
-	}
-	renderTemplate(w, "view", p)
-}
-
-func editHandler(w http.ResponseWriter, r *http.Request, title string) {
-	_ = r
-	p, err := loadPage(title)
-	if err != nil {
-		p = &Page{Title: title}
-	}
-	renderTemplate(w, "edit", p)
-}
-
-func saveHandler(w http.ResponseWriter, r *http.Request, title string) {
-	body := r.FormValue("body")
-	p := &Page{Title: title, Body: []byte(body)}
-	err := p.save()
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	http.Redirect(w, r, "/view/"+title, http.StatusFound)
-}
-
 func (p *Page) save() error {
 	filename := p.Title + ".txt"
 	return ioutil.WriteFile(filename, p.Body, 0600)
 }
 
-func loadPage(title string) (*Page, error) {
-	filename := title + ".txt"
-	body, err := ioutil.ReadFile(filename)
-	if err != nil {
-		return nil, err
-	}
-	return &Page{Title: title, Body: body}, nil
-}
