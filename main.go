@@ -19,6 +19,7 @@ import (
 	"regexp"
 	"sort"
 	"time"
+	"math/rand"
 )
 
 
@@ -172,6 +173,7 @@ func checkForChanges(basePath string, originalState DirTreeMap) (changed bool, u
 
 func main() {
 	fmt.Println("replicat initializing....")
+	rand.Seed(time.Now().Unix())
 
 	app := cli.NewApp()
 	app.Name = "Replicat"
@@ -334,7 +336,7 @@ func main() {
 	http.Handle("/event/", httpauth.SimpleBasicAuth("replicat", "isthecat")(http.HandlerFunc(eventHandler)))
 	http.Handle("/tree/", httpauth.SimpleBasicAuth("replicat", "isthecat")(http.HandlerFunc(folderTreeHandler)))
 
-	fmt.Printf("About to listen on: %s\n", globalSettings.Address)
+	fmt.Printf("listening on: %s\n", globalSettings.Address)
 
 	go func() {
 		err = http.ListenAndServe(globalSettings.Address, nil)
@@ -344,8 +346,11 @@ func main() {
 	}()
 
 	dotCount := 0
+	sleepSeconds := time.Duration(25 + rand.Intn(10))
+	fmt.Printf("Full Sync time set to: %d seconds\n", sleepSeconds)
 	for {
-		time.Sleep(time.Second * 30)
+		// Randomize the sync time to decrease oscillation
+		time.Sleep(time.Second * sleepSeconds)
 		changed, updatedState, newPaths, deletedPaths, matchingPaths := checkForChanges(globalSettings.Directory, listOfFileInfo)
 		if changed {
 			fmt.Println("\nWe have changes, ship it (also updating saved state now that the changes were tracked)")
