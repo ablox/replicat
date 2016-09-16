@@ -66,7 +66,7 @@ func main() {
 		globalSettings.Directory = symPath
 	}
 
-	listOfFileInfo, err := createListOfFolders(globalSettings.Directory)
+	listOfFileInfo, err := createListOfFolders()
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -244,7 +244,7 @@ func sendFolderTree(initialTree DirTreeMap) {
 func folderTreeHandler(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case "GET":
-		listOfFileInfo, err := createListOfFolders(globalSettings.Directory)
+		listOfFileInfo, err := createListOfFolders()
 		if err != nil {
 			log.Fatal(err)
 		}

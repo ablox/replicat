@@ -32,8 +32,9 @@ If it is not nil, it will not be updated. The updated state will be either the s
 */
 func checkForChanges(basePath string, originalState, newState DirTreeMap) (changed bool, updatedState DirTreeMap, newPaths, deletedPaths, matchingPaths []string) {
 	var err error
+
 	if newState == nil {
-		updatedState, err = createListOfFolders(basePath)
+		updatedState, err = createListOfFolders()
 		if err != nil {
 			panic(err)
 		}
@@ -121,10 +122,10 @@ func checkForChanges(basePath string, originalState, newState DirTreeMap) (chang
 
 	return changed, updatedState, newPaths, deletedPaths, matchingPaths
 }
-func createListOfFolders(basePath string) (DirTreeMap, error) {
-	//paths := make([]string, 0, 100)
+
+func createListOfFolders() (DirTreeMap, error) {
 	pendingPaths := make([]string, 0, 100)
-	pendingPaths = append(pendingPaths, basePath)
+	pendingPaths = append(pendingPaths, globalSettings.Directory)
 	listOfFileInfo := make(DirTreeMap)
 
 	for len(pendingPaths) > 0 {
