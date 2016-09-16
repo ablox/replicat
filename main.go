@@ -51,7 +51,7 @@ var events = make([]Event, 0, 100)
 
 func main() {
 	fmt.Println("replicat initializing....")
-	rand.Seed(time.Now().Unix())
+	rand.Seed(int64(time.Now().Nanosecond()))
 
 	SetupCli()
 
