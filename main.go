@@ -13,17 +13,14 @@ import (
 	"html/template"
 	"io/ioutil"
 	"log"
+	"math/rand"
 	"net/http"
 	"os"
 	"path/filepath"
 	"regexp"
 	"sort"
 	"time"
-	"math/rand"
 )
-
-
-
 
 type ReplicatServer struct {
 	Name         string
@@ -319,8 +316,8 @@ func main() {
 
 			// sendEvent to peers (if any)
 			for name, server := range GlobalServerMap {
-				if (name != globalSettings.Name) {
-					fmt.Printf("sending to peer %s\n", name);
+				if name != globalSettings.Name {
+					fmt.Printf("sending to peer %s\n", name)
 					sendEvent(&event, server.Address, globalSettings.ManagerCredentials)
 				}
 			}
