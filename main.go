@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"github.com/goji/httpauth"
 	"github.com/rjeczalik/notify"
-	"github.com/urfave/cli"
 	"html/template"
 	"io/ioutil"
 	"log"
@@ -171,68 +170,7 @@ func main() {
 	fmt.Println("replicat initializing....")
 	rand.Seed(time.Now().Unix())
 
-	app := cli.NewApp()
-	app.Name = "Replicat"
-	app.Usage = "rsync for the cloud"
-	app.Action = func(c *cli.Context) error {
-		globalSettings.Directory = c.GlobalString("directory")
-		globalSettings.ManagerAddress = c.GlobalString("manager")
-		globalSettings.ManagerCredentials = c.GlobalString("manager_credentials")
-		globalSettings.Address = c.GlobalString("address")
-		globalSettings.Name = c.GlobalString("name")
-		globalSettings.BootstrapAddress = c.GlobalString("bootstrap_address")
-
-		if globalSettings.Directory == "" {
-			panic("directory is required to serve files\n")
-		}
-
-		if globalSettings.Name == "" {
-			panic("Name is currently a required parameter. Name has to be one of the predefined names (e.g. NodeA, NodeB). This will improve.\n")
-		}
-
-		return nil
-	}
-
-	app.Flags = []cli.Flag{
-		cli.StringFlag{
-			Name:   "directory, d",
-			Value:  globalSettings.Directory,
-			Usage:  "Specify a directory where the files to share are located.",
-			EnvVar: "directory, d",
-		},
-		cli.StringFlag{
-			Name:   "manager, m",
-			Value:  globalSettings.ManagerAddress,
-			Usage:  "Specify a host and port for reaching the manager",
-			EnvVar: "manager, m",
-		},
-		cli.StringFlag{
-			Name:   "manager_credentials, mc",
-			Value:  globalSettings.ManagerCredentials,
-			Usage:  "Specify a usernmae:password for login to the manager",
-			EnvVar: "manager_credentials, mc",
-		},
-		cli.StringFlag{
-			Name:   "address, a",
-			Value:  globalSettings.Address,
-			Usage:  "Specify a listen address for this node. e.g. '127.0.0.1:8000' or ':8000' for where updates are accepted from",
-			EnvVar: "address, a",
-		},
-		cli.StringFlag{
-			Name:   "name, n",
-			Value:  globalSettings.Name,
-			Usage:  "Specify a name for this node. e.g. 'NodeA' or 'NodeB'",
-			EnvVar: "name, n",
-		},
-		cli.StringFlag{
-			Name:   "bootstrap_address, ba",
-			Value:  globalSettings.BootstrapAddress,
-			Usage:  "Specify a bootstrap address. e.g. '10.10.10.10:12345'",
-			EnvVar: "bootstrap_address, ba",
-		},
-	}
-
-	app.Run(os.Args)
+	SetupCli()
 
 	// Update the path that traffic is served from to be the filsystem canonical path. This will allow the event folders that come in to match what we have.
 	symPath, err := filepath.EvalSymlinks(globalSettings.Directory)
@@ -255,7 +193,7 @@ func main() {
 	fsEventsChannel := make(chan notify.EventInfo, 1)
 
 	// Set up a watch point listening for events within a directory tree rooted at the specified folder
-	err = notify.Watch(globalSettings.Directory+"/...", fsEventsChannel, notify.All)
+	err = notify.Watch(globalSettings.Directory + "/...", fsEventsChannel, notify.All)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -289,7 +227,7 @@ func main() {
 			path := fullPath
 			if len(fullPath) >= directoryLength && globalSettings.Directory == fullPath[:directoryLength] {
 				// update the path to not have this prefix
-				path = fullPath[directoryLength+1:]
+				path = fullPath[directoryLength + 1:]
 			}
 
 			//fmt.Printf("Call to isdir resulted in %v\n", ei.IsDir())
@@ -365,7 +303,7 @@ func main() {
 		} else {
 			fmt.Print(".")
 			dotCount++
-			if dotCount%100 == 0 {
+			if dotCount % 100 == 0 {
 				fmt.Println("")
 			}
 		}
@@ -458,7 +396,7 @@ func sendFolderTree(initialTree DirTreeMap) {
 
 		req, err := http.NewRequest("POST", url, buffer)
 		req.Header.Set("Content-Type", "application/json")
-		req.Header.Set("Authorization", "Basic "+authHash)
+		req.Header.Set("Authorization", "Basic " + authHash)
 
 		resp, err := client.Do(req)
 		if err != nil {
@@ -543,7 +481,7 @@ func folderTreeHandler(w http.ResponseWriter, r *http.Request) {
 				//}
 				//newFullPath := fmt.Sprintf("%s/%s", globalSettings.Directory, newPathName)
 				//fmt.Printf("new full path is: %s\n", newFullPath)
-				err = os.Mkdir(newPathName, os.ModeDir+os.ModePerm)
+				err = os.Mkdir(newPathName, os.ModeDir + os.ModePerm)
 				//todo figure out how to catch a path exists error.
 				//if err != nil && err != os.ErrExist {
 				//	panic(err)
@@ -567,7 +505,7 @@ func sendEvent(event *Event, address string, credentials string) {
 
 	data := []byte(credentials)
 	authHash := base64.StdEncoding.EncodeToString(data)
-	req.Header.Add("Authorization", "Basic "+authHash)
+	req.Header.Add("Authorization", "Basic " + authHash)
 
 	client := &http.Client{}
 	resp, err := client.Do(req)
@@ -616,7 +554,7 @@ func eventHandler(w http.ResponseWriter, r *http.Request) {
 
 		switch event.Name {
 		case "notify.Create":
-			os.Mkdir(pathName, os.ModeDir+os.ModePerm)
+			os.Mkdir(pathName, os.ModeDir + os.ModePerm)
 			// todo figure out how to catch a path exists error
 			fmt.Printf("create event found. Should be creating: %s\n", pathName)
 		case "notify.Remove":
