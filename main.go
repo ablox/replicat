@@ -21,6 +21,9 @@ import (
 	"time"
 )
 
+
+
+
 type ReplicatServer struct {
 	Name         string
 	Address      string
@@ -226,6 +229,17 @@ func main() {
 
 	app.Run(os.Args)
 
+	// Update the path that traffic is served from to be the filsystem canonical path. This will allow the event folders that come in to match what we have.
+	symPath, err := filepath.EvalSymlinks(globalSettings.Directory)
+	if err != nil {
+		panic(err)
+	}
+
+	if symPath != globalSettings.Directory {
+		fmt.Printf("Updating serving directory to: %s\n", symPath)
+		globalSettings.Directory = symPath
+	}
+
 	listOfFileInfo, err := createListOfFolders(globalSettings.Directory)
 	if err != nil {
 		log.Fatal(err)
@@ -268,14 +282,9 @@ func main() {
 			directoryLength := len(globalSettings.Directory)
 
 			path := fullPath
-			if globalSettings.Directory == fullPath[:directoryLength] {
+			if len(fullPath) >= directoryLength && globalSettings.Directory == fullPath[:directoryLength] {
 				// update the path to not have this prefix
 				path = fullPath[directoryLength+1:]
-			}
-
-			fullPrefix := "/private" + globalSettings.Directory
-			if fullPrefix == fullPath[:len(fullPrefix)] {
-				path = fullPath[len(fullPrefix)+1:]
 			}
 
 			//fmt.Printf("Call to isdir resulted in %v\n", ei.IsDir())
@@ -322,7 +331,6 @@ func main() {
 	http.HandleFunc("/edit/", makeHandler(editHandler))
 	http.HandleFunc("/save/", makeHandler(saveHandler))
 
-	//http.Handle("/home/", httpauth.SimpleBasicAuth("replicat", "isthecat")(http.HandlerFunc(homeHandler)))
 	http.Handle("/event/", httpauth.SimpleBasicAuth("replicat", "isthecat")(http.HandlerFunc(eventHandler)))
 	http.Handle("/tree/", httpauth.SimpleBasicAuth("replicat", "isthecat")(http.HandlerFunc(folderTreeHandler)))
 
