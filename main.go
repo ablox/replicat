@@ -18,7 +18,6 @@ import (
 	"path/filepath"
 	"regexp"
 	"sort"
-	"strings"
 	"time"
 )
 
@@ -180,7 +179,6 @@ func main() {
 		globalSettings.ManagerCredentials = c.GlobalString("manager_credentials")
 		globalSettings.Address = c.GlobalString("address")
 		globalSettings.Name = c.GlobalString("name")
-		globalSettings.Peers = c.GlobalString("peers")
 
 		if globalSettings.Directory == "" {
 			panic("directory is required to serve files\n")
@@ -223,12 +221,6 @@ func main() {
 			Value:  globalSettings.Name,
 			Usage:  "Specify a name for this node. e.g. 'NodeA' or 'NodeB'",
 			EnvVar: "name, n",
-		},
-		cli.StringFlag{
-			Name:   "peers, p",
-			Value:  globalSettings.Peers,
-			Usage:  "Specify peers for this node. e.g. 1.2.3.4:8001,2.2.2.2",
-			EnvVar: "peers, p",
 		},
 	}
 
@@ -315,8 +307,11 @@ func main() {
 			sendEvent(&event, globalSettings.ManagerAddress, globalSettings.ManagerCredentials)
 
 			// sendEvent to peers (if any)
-			for _, address := range strings.Split(globalSettings.Peers, ",") {
-				sendEvent(&event, address, globalSettings.ManagerCredentials)
+			for name, server := range GlobalServerMap {
+				if (name != globalSettings.Name) {
+					fmt.Printf("sending to peer %s\n", name);
+					sendEvent(&event, server.Address, globalSettings.ManagerCredentials)
+				}
 			}
 
 			log.Println("Got event:" + ei.Event().String() + ", with Path:" + ei.Path())
