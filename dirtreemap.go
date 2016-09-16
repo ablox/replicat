@@ -27,10 +27,10 @@ func (orig DirTreeMap) clone() (clone DirTreeMap) {
 //type DirTreeMap map[string][]os.FileInfo
 
 /*
-Check for changes between two DirTreeMaps. If the second map is Nil, it will rescan the folders to update to the state of the filesystem.
+Check for changes between two DirTreeMaps. If the newState map is Nil, it will rescan the folders to update to the state of the filesystem.
 If it is not nil, it will not be updated. The updated state will be either the state of the filesystem or the value passed in for newState
 */
-func checkForChanges(basePath string, originalState, newState DirTreeMap) (changed bool, updatedState DirTreeMap, newPaths, deletedPaths, matchingPaths []string) {
+func checkForChanges(originalState, newState DirTreeMap) (changed bool, updatedState DirTreeMap, newPaths, deletedPaths, matchingPaths []string) {
 	var err error
 
 	if newState == nil {
