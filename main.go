@@ -534,8 +534,6 @@ type Page struct {
 	Body  []byte
 }
 
-var templates = template.Must(template.ParseFiles("home.html", "edit.html", "view.html"))
-
 func eventHandler(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case "GET":
