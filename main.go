@@ -93,11 +93,6 @@ func main() {
 	}
 
 	fmt.Printf("Now keeping an eye on %d folders and %d files located under: %s\n", len(listOfFileInfo), totalFiles, globalSettings.Directory)
-	// todo switch all directory manipulation to us os neutral constants and tools
-	// todo figure out the new folder name for a rename
-	// todo update filesystem data structures when events are triggered
-	// todo lock the filesystem data structures as necessary
-	// todo handle a flood of events (copy a tree of folders)
 	go func(c chan notify.EventInfo) {
 		for {
 			ei := <-c
@@ -118,8 +113,6 @@ func main() {
 			//// Check if it is a directory based on our directory tree first. Then check the file system
 			var isDirectory bool
 			//_, exists := listOfFileInfo[fullPath]
-			//// todo update internal mapping based on this event
-			//// todo make this more robust
 			//if exists == true {
 			//	isDirectory = true
 			//} else {
@@ -258,7 +251,7 @@ func folderTreeHandler(w http.ResponseWriter, r *http.Request) {
 		json.NewEncoder(w).Encode(listOfFileInfo)
 		fmt.Printf("Sending tree of size %d back to client\n", len(listOfFileInfo))
 	case "POST":
-		log.Println("Got POST: ", r.Body)
+		//log.Println("Got POST: ", r.Body)
 		decoder := json.NewDecoder(r.Body)
 
 		var remoteTreePreTranslate DirTreeMap
@@ -269,7 +262,7 @@ func folderTreeHandler(w http.ResponseWriter, r *http.Request) {
 
 		var remoteTree = make(DirTreeMap)
 		for key, value := range remoteTreePreTranslate {
-			fmt.Printf("key is: '%s'\n", key)
+			//fmt.Printf("key is: '%s'\n", key)
 			key = fmt.Sprintf("%s/%s", globalSettings.Directory, key)
 			remoteTree[key] = value
 		}
