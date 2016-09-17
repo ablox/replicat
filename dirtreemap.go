@@ -144,9 +144,7 @@ func createListOfFolders() (DirTreeMap, error) {
 		dirEntries, err := f.Readdir(-1)
 		for _, entry := range dirEntries {
 			if entry.IsDir() {
-				entry.Mode()
 				newDirectory := filepath.Join(currentPath, entry.Name())
-				//newDirectory := filepath.Join(currentPath, entry)
 				pendingPaths = append(pendingPaths, newDirectory)
 			} else {
 				fileList = append(fileList, entry.Name())
@@ -158,7 +156,12 @@ func createListOfFolders() (DirTreeMap, error) {
 		}
 
 		sort.Strings(fileList)
-		listOfFileInfo[currentPath] = fileList
+
+		// Strip the base path off of the current path
+
+		relativePath := currentPath[len(globalSettings.Directory):]
+		//fmt.Printf("stripping path from:\n%s\nto:\n%s\n", currentPath, relativePath)
+		listOfFileInfo[relativePath] = fileList
 	}
 
 	//fmt.Printf("Export:\n")
