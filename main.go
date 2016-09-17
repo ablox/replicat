@@ -266,7 +266,7 @@ Send the folder tree from this node to another node for comparison
 */
 func sendFolderTree(initialTree DirTreeMap) {
 	var tree = make(DirTreeMap)
-	prefixLength := len(globalSettings.Directory) + 1
+	prefixLength := 1 // the slash prefix
 	for key, value := range initialTree {
 		if key == globalSettings.Directory {
 			continue
@@ -287,14 +287,14 @@ func sendFolderTree(initialTree DirTreeMap) {
 	data := []byte(globalSettings.ManagerCredentials)
 	authHash := base64.StdEncoding.EncodeToString(data)
 
-	for name, server := range GlobalServerMap {
-		if name == globalSettings.Name {
-			fmt.Printf("skipping %s\n", name)
+	for k, v := range nodes {
+		if k != globalSettings.Name {
+			fmt.Printf("skipping %s\n", k)
 			continue
 		}
-		fmt.Printf("sending tree update to: %s\n", name)
+		fmt.Printf("sending tree update to: %s\n", k)
 
-		url := "http://" + server.Address + "/tree/"
+		url := "http://" + v.Addr + "/tree/"
 		fmt.Printf("Posting folder tree to: %s\n", url)
 
 		req, err := http.NewRequest("POST", url, buffer)
