@@ -17,6 +17,8 @@ import (
 	"path/filepath"
 	"sort"
 	"time"
+	"net"
+	"strconv"
 )
 
 type ReplicatServer struct {
@@ -26,6 +28,15 @@ type ReplicatServer struct {
 	LastReceived DirTreeMap
 	LastSent     DirTreeMap
 }
+
+type Node struct {
+	Cluster string
+	Name    string
+	Addr    string
+}
+
+var nodes = make(map[string]Node)
+
 
 type ServerMap map[string]ReplicatServer
 
@@ -85,7 +96,7 @@ func main() {
 	fmt.Printf("replicat %s online....\n", globalSettings.Name)
 	defer fmt.Println("End of line")
 
-	globalSettings.Address = GlobalServerMap[globalSettings.Name].Address
+	//globalSettings.Address = GlobalServerMap[globalSettings.Name].Address
 
 	totalFiles := 0
 	for _, fileInfoList := range listOfFileInfo {
@@ -135,10 +146,16 @@ func main() {
 			sendEvent(&event, globalSettings.ManagerAddress, globalSettings.ManagerCredentials)
 
 			// sendEvent to peers (if any)
-			for name, server := range GlobalServerMap {
-				if name != globalSettings.Name {
-					fmt.Printf("sending to peer %s\n", name)
-					sendEvent(&event, server.Address, globalSettings.ManagerCredentials)
+			//for name, server := range GlobalServerMap {
+			//	if name != globalSettings.Name {
+			//		fmt.Printf("sending to peer %s\n", name)
+			//		sendEvent(&event, server.Address, globalSettings.ManagerCredentials)
+			//	}
+			//}
+			for k, v := range nodes {
+				if k != globalSettings.Name {
+					fmt.Printf("sending to peer %s at %s\n", k, v.Addr)
+					sendEvent(&event, v.Addr, globalSettings.ManagerCredentials)
 				}
 			}
 
@@ -148,14 +165,36 @@ func main() {
 
 	http.Handle("/event/", httpauth.SimpleBasicAuth("replicat", "isthecat")(http.HandlerFunc(eventHandler)))
 	http.Handle("/tree/", httpauth.SimpleBasicAuth("replicat", "isthecat")(http.HandlerFunc(folderTreeHandler)))
+	http.Handle("/config/", httpauth.SimpleBasicAuth("replicat", "isthecat")(http.HandlerFunc(configHandler)))
 
-	fmt.Printf("listening on: %s\n", globalSettings.Address)
+	//fmt.Printf("listening on: %s\n", globalSettings.Address)
 
 	go func() {
-		err = http.ListenAndServe(globalSettings.Address, nil)
+		lsnr, err := net.Listen("tcp4", ":0")
+		if err != nil {
+			fmt.Println("Error listening:", err)
+			os.Exit(1)
+		}
+		fmt.Println("Listening on:", lsnr.Addr().String())
+
+		go sendConfigToServer(lsnr.Addr())
+
+		//defer resp.Body.Close()
+		//if err != nil {
+		//	log.Println(err)
+		//} else {
+		//
+		//	fmt.Println("response Status:", resp.Status)
+		//	fmt.Println("response Headers:", resp.Header)
+		//	body, _ := ioutil.ReadAll(resp.Body)
+		//	fmt.Println("response Body:", string(body))
+		//}
+		//
+		err = http.Serve(lsnr, nil)
 		if err != nil {
 			panic(err)
 		}
+
 	}()
 
 	dotCount := 0
@@ -182,6 +221,42 @@ func main() {
 			if dotCount%100 == 0 {
 				fmt.Println("")
 			}
+		}
+	}
+}
+
+func sendConfigToServer(addr net.Addr) {
+	url := "http://" + globalSettings.BootstrapAddress + "/config/"
+	fmt.Printf("Manager location: %s\n", url)
+
+	jsonStr, _ := json.Marshal(Node{Name: globalSettings.Name, Addr: "127.0.0.1:" + strconv.Itoa(addr.(*net.TCPAddr).Port)})
+	fmt.Printf("jsonStr: %s\n", jsonStr)
+
+	req, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonStr))
+	req.Header.Set("Content-Type", "application/json")
+
+	data := []byte(globalSettings.ManagerCredentials)
+	authHash := base64.StdEncoding.EncodeToString(data)
+	req.Header.Add("Authorization", "Basic "+authHash)
+
+	client := &http.Client{}
+	_, err = client.Do(req)
+	if err != nil {
+		panic(err)
+	}
+}
+
+func configHandler(w http.ResponseWriter, r *http.Request) {
+	fmt.Printf("configHandler")
+
+	switch r.Method {
+	case "POST" :
+		decoder := json.NewDecoder(r.Body)
+		err := decoder.Decode(&nodes)
+		fmt.Printf("nodes: %s", nodes)
+
+		if err != nil {
+			fmt.Println(err)
 		}
 	}
 }
@@ -322,7 +397,7 @@ func folderTreeHandler(w http.ResponseWriter, r *http.Request) {
 
 func sendEvent(event *Event, address string, credentials string) {
 	url := "http://" + address + "/event/"
-	fmt.Printf("Manager location: %s\n", url)
+	fmt.Printf("target url: %s\n", url)
 
 	// Set the event source (server name)
 	event.Source = globalSettings.Name
