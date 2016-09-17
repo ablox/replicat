@@ -22,6 +22,7 @@ var globalSettings Settings = Settings{
 	ManagerCredentials: "replicat:isthecat",
 	Address:            ":8001",
 	Name:               "",
+	BootstrapAddress:   ":8080",
 }
 
 func SetupCli() {
