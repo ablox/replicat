@@ -33,6 +33,7 @@ func TestDirectoryScan(t *testing.T) {
 
 	totalFolders := numberOfSubFolders + 1
 	dirState, err := createListOfFolders()
+	verifyClonedDirTree(t, dirState)
 	if len(dirState) != totalFolders {
 		t.Fatalf("Unexpected Number of items in state. Expected %d, found %d\n", totalFolders, len(dirState))
 		t.Fail()
@@ -45,6 +46,7 @@ func TestDirectoryScan(t *testing.T) {
 	}
 
 	assertEqualsTwoDirTreeMap(t, dirState, updatedState)
+	verifyClonedDirTree(t, updatedState)
 
 	// add longer paths
 	subDirs := []string{"a", "b", "c"}
@@ -60,9 +62,11 @@ func TestDirectoryScan(t *testing.T) {
 	if len(newPaths) != len(subDirs) {
 		t.Fatal(fmt.Sprintf("wrong number of new paths. expected %d, got %d....ouch\n", len(subDirs), len(newPaths)))
 	}
+	verifyClonedDirTree(t, updatedState)
 
 	// get caught up and add more!
 	dirState, err = createListOfFolders()
+	verifyClonedDirTree(t, dirState)
 
 	subDirs = []string{"1", "2", "3", "4", "5"}
 	baseDir = tmpFolder + "/a1"
@@ -76,6 +80,7 @@ func TestDirectoryScan(t *testing.T) {
 	if len(newPaths) != len(subDirs) {
 		t.Fatal(fmt.Sprintf("wrong number of new paths. expected %d, got %d....ouch\n", len(subDirs), len(newPaths)))
 	}
+	verifyClonedDirTree(t, updatedState)
 
 	// add a, b, c, d, e, ab, abc, abd
 	tmpFolder, err = ioutil.TempDir("", "blank")
@@ -86,11 +91,13 @@ func TestDirectoryScan(t *testing.T) {
 	addFlatSubDirs(t, tmpFolder, subDirs)
 	totalFolders += len(subDirs)
 	dirState, err = createListOfFolders()
+	verifyClonedDirTree(t, dirState)
 
 	changed, updatedState, newPaths, deletedPaths, matchingPaths = checkForChanges(dirState, nil)
 	if changed || (len(newPaths)+len(deletedPaths)+len(matchingPaths) != totalFolders) {
 		t.Fatal(fmt.Sprintf("comparision of current state with current state did not result in empty....ouch\nChanged %v\nnewPaths: %v\ndeletedPaths: %v\nmatchingPaths: %v\nlen of matchingPaths: %d, totalFolders: %d\n", changed, newPaths, deletedPaths, matchingPaths, len(matchingPaths), totalFolders))
 	}
+	verifyClonedDirTree(t, updatedState)
 
 	// delete ab and make sure it is the only one deleted
 	deletePath := tmpFolder + "/ab"
@@ -102,10 +109,12 @@ func TestDirectoryScan(t *testing.T) {
 	if len(deletedPaths) != 1 {
 		t.Fatal(fmt.Sprintf("wrong number of deleted paths. expected 1, got %d....ouch\n", len(deletedPaths)))
 	}
+	verifyClonedDirTree(t, updatedState)
 
 	// get caught up and delete the start and end ones
 	totalFolders -= len(deletedPaths)
 	dirState, err = createListOfFolders()
+	verifyClonedDirTree(t, dirState)
 	deletePath = tmpFolder + "/a"
 	os.Remove(deletePath)
 	deletePath = tmpFolder + "/abd"
@@ -117,10 +126,13 @@ func TestDirectoryScan(t *testing.T) {
 	if len(deletedPaths) != 2 {
 		t.Fatal(fmt.Sprintf("wrong number of deleted paths. expected 2, got %d....ouch\n", len(deletedPaths)))
 	}
+	verifyClonedDirTree(t, updatedState)
 
 	// get caught up and recreate them all
 	totalFolders -= len(deletedPaths)
 	dirState, err = createListOfFolders()
+	verifyClonedDirTree(t, dirState)
+
 	subDirs = []string{"a", "abd"}
 	addFlatSubDirs(t, tmpFolder, subDirs)
 	totalFolders += len(subDirs)
@@ -131,17 +143,22 @@ func TestDirectoryScan(t *testing.T) {
 	if len(newPaths) != 2 {
 		t.Fatal(fmt.Sprintf("wrong number of new paths. expected 2, got %d....ouch\n", len(deletedPaths)))
 	}
+	verifyClonedDirTree(t, updatedState)
 
 	_ = emptyState
 }
 
-func assertEqualsTwoDirTreeMap(t *testing.T, first, second DirTreeMap) {
-	if len(first) != len(second) {
-		t.Fatal("inconsistent tree lengths")
-	}
+func verifyClonedDirTree(t *testing.T, orig DirTreeMap) {
+	dirState2 := orig.clone()
 
+	if reflect.DeepEqual(orig, dirState2) == false {
+		t.Fatal(fmt.Sprintf("cloned directory tree did not match original (orig, cloned)\n%v\n%v\n", orig, dirState2))
+	}
+}
+
+func assertEqualsTwoDirTreeMap(t *testing.T, first, second DirTreeMap) {
 	if reflect.DeepEqual(first, second) == false {
-		t.Fatal("DirTreeMaps are not equal\n")
+		t.Fatal(fmt.Sprintf("two directory tree did not match (first, second)\n%v\n%v\n", first, second))
 	}
 }
 
