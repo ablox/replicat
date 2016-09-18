@@ -33,6 +33,7 @@ If it is not nil, it will not be updated. The updated state will be either the s
 func checkForChanges(originalState, newState DirTreeMap) (changed bool, updatedState DirTreeMap, newPaths, deletedPaths, matchingPaths []string) {
 	var err error
 
+	// if no updated state is provided, resurvey the drive. If there is updated state, use it
 	if newState == nil {
 		updatedState, err = createListOfFolders()
 		if err != nil {
@@ -56,7 +57,7 @@ func checkForChanges(originalState, newState DirTreeMap) (changed bool, updatedS
 		updatedPaths = append(updatedPaths, key)
 	}
 	sort.Strings(updatedPaths)
-	//todo we should leverage the updated paths to obliviate the need to resort.
+	//todo we should leverage the updated paths to remove the need to resort.
 
 	// We now have two sorted lists of strings. Go through the original ones and compare the files
 	var originalPosition, updatedPosition int
