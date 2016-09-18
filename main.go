@@ -12,12 +12,10 @@ import (
 	"io/ioutil"
 	"log"
 	"math/rand"
-	"net"
 	"net/http"
 	"os"
 	"path/filepath"
 	"sort"
-	"strconv"
 	"time"
 )
 
@@ -149,35 +147,7 @@ func main() {
 	http.Handle("/tree/", httpauth.SimpleBasicAuth("replicat", "isthecat")(http.HandlerFunc(folderTreeHandler)))
 	http.Handle("/config/", httpauth.SimpleBasicAuth("replicat", "isthecat")(http.HandlerFunc(configHandler)))
 
-	//fmt.Printf("listening on: %s\n", globalSettings.Address)
-
-	go func() {
-		lsnr, err := net.Listen("tcp4", ":0")
-		if err != nil {
-			fmt.Println("Error listening:", err)
-			os.Exit(1)
-		}
-		fmt.Println("Listening on:", lsnr.Addr().String())
-
-		go sendConfigToServer(lsnr.Addr())
-
-		//defer resp.Body.Close()
-		//if err != nil {
-		//	log.Println(err)
-		//} else {
-		//
-		//	fmt.Println("response Status:", resp.Status)
-		//	fmt.Println("response Headers:", resp.Header)
-		//	body, _ := ioutil.ReadAll(resp.Body)
-		//	fmt.Println("response Body:", string(body))
-		//}
-		//
-		err = http.Serve(lsnr, nil)
-		if err != nil {
-			panic(err)
-		}
-
-	}()
+	go bootstrapAndServe()
 
 	dotCount := 0
 	sleepSeconds := time.Duration(25 + rand.Intn(10))
@@ -203,40 +173,6 @@ func main() {
 			if dotCount%100 == 0 {
 				fmt.Println("")
 			}
-		}
-	}
-}
-
-func sendConfigToServer(addr net.Addr) {
-	url := "http://" + globalSettings.BootstrapAddress + "/config/"
-	fmt.Printf("Manager location: %s\n", url)
-
-	jsonStr, _ := json.Marshal(ReplicatServer{Name: globalSettings.Name, Address: "127.0.0.1:" + strconv.Itoa(addr.(*net.TCPAddr).Port)})
-	fmt.Printf("jsonStr: %s\n", jsonStr)
-
-	req, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonStr))
-	req.Header.Set("Content-Type", "application/json")
-
-	data := []byte(globalSettings.ManagerCredentials)
-	authHash := base64.StdEncoding.EncodeToString(data)
-	req.Header.Add("Authorization", "Basic "+authHash)
-
-	client := &http.Client{}
-	_, err = client.Do(req)
-	if err != nil {
-		panic(err)
-	}
-}
-
-func configHandler(w http.ResponseWriter, r *http.Request) {
-	switch r.Method {
-	case "POST":
-		decoder := json.NewDecoder(r.Body)
-		err := decoder.Decode(&serverMap)
-		fmt.Printf("configHander nodes: %s", serverMap)
-
-		if err != nil {
-			fmt.Println(err)
 		}
 	}
 }
