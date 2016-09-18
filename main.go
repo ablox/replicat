@@ -12,42 +12,24 @@ import (
 	"io/ioutil"
 	"log"
 	"math/rand"
+	"net"
 	"net/http"
 	"os"
 	"path/filepath"
 	"sort"
-	"time"
-	"net"
 	"strconv"
+	"time"
 )
 
 type ReplicatServer struct {
+	Cluster      string
 	Name         string
 	Address      string
-	PublicKey    string
 	LastReceived DirTreeMap
 	LastSent     DirTreeMap
 }
 
-type Node struct {
-	Cluster string
-	Name    string
-	Addr    string
-}
-
-var nodes = make(map[string]Node)
-
-
-type ServerMap map[string]ReplicatServer
-
-var GlobalServerMap = ServerMap{
-	"NodeA": ReplicatServer{
-		Address: ":8001",
-	},
-	"NodeB": ReplicatServer{
-		Address: ":8002",
-	},
-}
+var serverMap = make(map[string]ReplicatServer)
 
 type Event struct {
 	Source       string
@@ -152,10 +134,10 @@ func main() {
 			//		sendEvent(&event, server.Address, globalSettings.ManagerCredentials)
 			//	}
 			//}
-			for k, v := range nodes {
+			for k, v := range serverMap {
 				if k != globalSettings.Name {
-					fmt.Printf("sending to peer %s at %s\n", k, v.Addr)
-					sendEvent(&event, v.Addr, globalSettings.ManagerCredentials)
+					fmt.Printf("sending to peer %s at %s\n", k, v.Address)
+					sendEvent(&event, v.Address, globalSettings.ManagerCredentials)
 				}
 			}
 
@@ -229,7 +211,7 @@ func sendConfigToServer(addr net.Addr) {
 	url := "http://" + globalSettings.BootstrapAddress + "/config/"
 	fmt.Printf("Manager location: %s\n", url)
 
-	jsonStr, _ := json.Marshal(Node{Name: globalSettings.Name, Addr: "127.0.0.1:" + strconv.Itoa(addr.(*net.TCPAddr).Port)})
+	jsonStr, _ := json.Marshal(ReplicatServer{Name: globalSettings.Name, Address: "127.0.0.1:" + strconv.Itoa(addr.(*net.TCPAddr).Port)})
 	fmt.Printf("jsonStr: %s\n", jsonStr)
 
 	req, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonStr))
@@ -247,13 +229,11 @@ func sendConfigToServer(addr net.Addr) {
 }
 
 func configHandler(w http.ResponseWriter, r *http.Request) {
-	fmt.Printf("configHandler")
-
 	switch r.Method {
-	case "POST" :
+	case "POST":
 		decoder := json.NewDecoder(r.Body)
-		err := decoder.Decode(&nodes)
-		fmt.Printf("nodes: %s", nodes)
+		err := decoder.Decode(&serverMap)
+		fmt.Printf("configHander nodes: %s", serverMap)
 
 		if err != nil {
 			fmt.Println(err)
@@ -287,14 +267,15 @@ func sendFolderTree(initialTree DirTreeMap) {
 	data := []byte(globalSettings.ManagerCredentials)
 	authHash := base64.StdEncoding.EncodeToString(data)
 
-	for k, v := range nodes {
+	for k, v := range serverMap {
+		//todo is this backwards?
 		if k != globalSettings.Name {
 			fmt.Printf("skipping %s\n", k)
 			continue
 		}
 		fmt.Printf("sending tree update to: %s\n", k)
 
-		url := "http://" + v.Addr + "/tree/"
+		url := "http://" + v.Address + "/tree/"
 		fmt.Printf("Posting folder tree to: %s\n", url)
 
 		req, err := http.NewRequest("POST", url, buffer)
