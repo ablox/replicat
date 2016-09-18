@@ -1,14 +1,14 @@
 package main
 
 import (
-	"net"
-	"fmt"
-	"encoding/json"
-	"strconv"
 	"bytes"
 	"encoding/base64"
-	"os"
+	"encoding/json"
+	"fmt"
+	"net"
 	"net/http"
+	"os"
+	"strconv"
 )
 
 func bootstrapAndServe() {

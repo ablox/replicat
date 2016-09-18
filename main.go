@@ -184,7 +184,7 @@ func sendFolderTree(initialTree DirTreeMap) {
 	var tree = make(DirTreeMap)
 	prefixLength := 1 // the slash prefix
 	for key, value := range initialTree {
-		if key == globalSettings.Directory {
+		if key == "" {
 			continue
 		}
 		fmt.Printf("key is: '%s', length is: %d\n", key, prefixLength)
