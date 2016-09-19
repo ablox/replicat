@@ -44,20 +44,23 @@ func checkForChanges(originalState, newState DirTreeMap) (changed bool, updatedS
 	}
 
 	// Get a list of paths and compare them
-	originalPaths := make([]string, 0, len(originalState))
-	updatedPaths := make([]string, 0, len(updatedState))
+	originalPaths := make([]string, len(originalState))
+	updatedPaths := make([]string, len(updatedState))
 
 	//todo this should already be sorted. This is very repetitive.
+	index := 0
 	for key := range originalState {
-		originalPaths = append(originalPaths, key)
+		originalPaths[index] = key
+		index++
 	}
 	sort.Strings(originalPaths)
 
+	index = 0
 	for key := range updatedState {
-		updatedPaths = append(updatedPaths, key)
+		updatedPaths[index] = key
+		index++
 	}
 	sort.Strings(updatedPaths)
-	//todo we should leverage the updated paths to remove the need to resort.
 
 	// We now have two sorted lists of strings. Go through the original ones and compare the files
 	var originalPosition, updatedPosition int
@@ -159,8 +162,12 @@ func createListOfFolders() (DirTreeMap, error) {
 		sort.Strings(fileList)
 
 		// Strip the base path off of the current path
-
+		// make sure all of the paths are still '/' prefixed
 		relativePath := currentPath[len(globalSettings.Directory):]
+		if relativePath == "" {
+			relativePath = "/"
+		}
+
 		//fmt.Printf("stripping path from:\n%s\nto:\n%s\n", currentPath, relativePath)
 		listOfFileInfo[relativePath] = fileList
 	}

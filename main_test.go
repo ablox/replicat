@@ -36,13 +36,11 @@ func TestDirectoryScan(t *testing.T) {
 	verifyClonedDirTree(t, dirState)
 	if len(dirState) != totalFolders {
 		t.Fatalf("Unexpected Number of items in state. Expected %d, found %d\n", totalFolders, len(dirState))
-		t.Fail()
 	}
 
 	changed, updatedState, newPaths, deletedPaths, matchingPaths := checkForChanges(dirState, nil)
 	if changed || (len(newPaths)+len(deletedPaths)+len(matchingPaths) != totalFolders) {
-		t.Fatal("comparision of current state with current state did not result in empty....ouch\n")
-		t.Fail()
+		t.Fatal(fmt.Sprintf("Comparison of folder trees failed. changed %v, len (new, deleted, matching, total) (%d, %d, %d, %d)\n%v\n%v\n%v", changed, len(newPaths), len(deletedPaths), len(matchingPaths), totalFolders, newPaths, deletedPaths, matchingPaths))
 	}
 
 	assertEqualsTwoDirTreeMap(t, dirState, updatedState)

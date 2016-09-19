@@ -204,15 +204,13 @@ func sendFolderTree(initialTree DirTreeMap) {
 	authHash := base64.StdEncoding.EncodeToString(data)
 
 	for k, v := range serverMap {
-		//todo is this backwards?
-		if k != globalSettings.Name {
-			fmt.Printf("skipping %s\n", k)
+		// don't send an update to ourselves
+		if k == globalSettings.Name {
 			continue
 		}
-		fmt.Printf("sending tree update to: %s\n", k)
 
 		url := "http://" + v.Address + "/tree/"
-		fmt.Printf("Posting folder tree to: %s\n", url)
+		fmt.Printf("Posting folder tree to node: %s at URL: %s\n", k, url)
 
 		req, err := http.NewRequest("POST", url, buffer)
 		req.Header.Set("Content-Type", "application/json")
@@ -225,10 +223,11 @@ func sendFolderTree(initialTree DirTreeMap) {
 			continue
 		}
 
-		fmt.Println("response Status:", resp.Status)
-		fmt.Println("response Headers:", resp.Header)
-		body, _ := ioutil.ReadAll(resp.Body)
-		fmt.Println("response Body:", string(body))
+		//fmt.Println("response Status:", resp.Status)
+		//fmt.Println("response Headers:", resp.Header)
+		_, _ = ioutil.ReadAll(resp.Body)
+		//body, _ := ioutil.ReadAll(resp.Body)
+		//fmt.Println("response Body:", string(body))
 		resp.Body.Close()
 	}
 }
@@ -259,6 +258,7 @@ func folderTreeHandler(w http.ResponseWriter, r *http.Request) {
 			remoteTree[key] = value
 		}
 
+		// todo get the node name in here
 		fmt.Printf("Received a tree map from: %s\n%s\n", r.RemoteAddr, remoteTree)
 
 		// let's compare to the current one we have.
@@ -275,7 +275,7 @@ func folderTreeHandler(w http.ResponseWriter, r *http.Request) {
 			// Reverse sort the paths so the most specific is first. This allows us to get away without a recursive delete
 			sort.Sort(sort.Reverse(sort.StringSlice(newPaths)))
 			for _, pathName := range newPaths {
-				if pathName == "" || globalSettings.Directory == "" {
+				if globalSettings.Directory == "" {
 					fmt.Sprintf("Trying to delete invalid path: %s\n", pathName)
 					panic("Path information is not right. Do not delete")
 				} else if pathName == globalSettings.Directory {
@@ -283,8 +283,9 @@ func folderTreeHandler(w http.ResponseWriter, r *http.Request) {
 					continue
 				}
 
+				// stop on any error except for not exist. We are trying to delete it anyway (or rather, it should have been deleted already)
 				err = os.Remove(pathName)
-				if err != nil {
+				if err != nil && !os.IsNotExist(err) {
 					panic(err)
 				}
 			}
