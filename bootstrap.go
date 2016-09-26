@@ -19,13 +19,12 @@ func bootstrapAndServe() {
 	}
 	fmt.Println("Listening on:", lsnr.Addr().String())
 
-	go sendConfigToServer(lsnr.Addr())
-
 	err = http.Serve(lsnr, nil)
 	if err != nil {
 		panic(err)
 	}
 
+	go sendConfigToServer(lsnr.Addr())
 }
 
 func sendConfigToServer(addr net.Addr) {

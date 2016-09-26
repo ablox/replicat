@@ -146,10 +146,10 @@ func filesystemMonitorLoop(c chan notify.EventInfo, listOfFileInfo *DirTreeMap) 
 		}
 
 		event := Event{Name: ei.Event().String(), Message: path}
+		log.Printf("Event captured name: %s location: %s", event.Name, event.Message)
 
 		//todo was working on this code. Should have unit tests for the monitor filesystem. It looks like rename has two unrelated events. Is this right? How do we tell it is a rename and not a remove?
 		// It looks like there is some sort of reversal of paths now. where adds are being removed from the other side.
-
 		processFilesystemEvent(event, path, fullPath, listOfFileInfo)
 	}
 }
@@ -170,7 +170,7 @@ func processFilesystemEvent(event Event, path, fullPath string, listOfFileInfo *
 		}
 	}
 
-	fmt.Printf("event raw data: %v with path: %v IsDirectory %v iNode: %s\n", event.Name, path, isDirectory, iNode)
+	fmt.Printf("event raw data: %v with path: %v IsDirectory %v iNode: %d\n", event.Name, path, isDirectory, iNode)
 
 	if isDirectory {
 		handleFilesystemEvent(event, path)
