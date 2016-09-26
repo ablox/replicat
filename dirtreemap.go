@@ -10,7 +10,7 @@ import (
 
 type DirTreeMap map[string][]string
 
-// create a clone of the treemap
+// create a clone of the DirTreeMap
 func (orig DirTreeMap) clone() (clone DirTreeMap) {
 	clone = make(DirTreeMap)
 	for k, v := range orig {
