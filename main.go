@@ -18,6 +18,7 @@ import (
 	"sort"
 	"time"
 	"syscall"
+	"sync"
 )
 
 type ReplicatServer struct {
@@ -26,6 +27,7 @@ type ReplicatServer struct {
 	Address      string
 	LastReceived DirTreeMap
 	LastSent     DirTreeMap
+	lock		 sync.Mutex
 }
 
 var serverMap = make(map[string]ReplicatServer)
@@ -49,7 +51,17 @@ func main() {
 	// Update the path that traffic is served from to be the filsystem canonical path. This will allow the event folders that come in to match what we have.
 	symPath, err := filepath.EvalSymlinks(globalSettings.Directory)
 	if err != nil {
-		panic(err)
+		var err2, err3 error
+		// We have an error. If the directory does not exist, then try to create it. Fail if we cannot creat it with the original error
+		if os.IsNotExist(err) {
+			err2 = os.Mkdir(globalSettings.Directory, os.ModeDir + os.ModePerm)
+			symPath, err3 = filepath.EvalSymlinks(globalSettings.Directory)
+			if err2 != nil || err3 != nil {
+				panic(fmt.Sprintf("err: %v\nerr2: %v\nerr3: %v\n", err, err2, err3))
+			}
+		} else {
+			panic(err)
+		}
 	}
 
 	if symPath != globalSettings.Directory {
@@ -109,7 +121,6 @@ func main() {
 
 			// Post the changes to the other side.
 			sendFolderTree(listOfFileInfo)
-
 		} else {
 			fmt.Print(".")
 			dotCount++
@@ -134,48 +145,84 @@ func filesystemMonitorLoop(c chan notify.EventInfo, listOfFileInfo *DirTreeMap) 
 			path = fullPath[directoryLength+1:]
 		}
 
+		event := Event{Name: ei.Event().String(), Message: path}
+
 		//todo was working on this code. Should have unit tests for the monitor filesystem. It looks like rename has two unrelated events. Is this right? How do we tell it is a rename and not a remove?
 		// It looks like there is some sort of reversal of paths now. where adds are being removed from the other side.
 
-		// Check to see if this was a path we knew about
-		_, isDirectory := (*listOfFileInfo)[path]
-		var iNode uint64
-		// if we have not found it yet, check to see if it can be stated
-		info, err := os.Stat(fullPath)
-		if err == nil {
-			isDirectory = info.IsDir()
-			sysInterface := info.Sys()
-			fmt.Printf("sysInterface: %v\n", sysInterface)
-			if sysInterface != nil {
-				//foo := syscall.Stat_t(sysInterface)
-				foo := sysInterface.(*syscall.Stat_t)
-				iNode = foo.Ino
+		processFilesystemEvent(event, path, fullPath, listOfFileInfo)
+	}
+}
+
+func processFilesystemEvent(event Event, path, fullPath string, listOfFileInfo *DirTreeMap) {
+	// Check to see if this was a path we knew about
+	_, isDirectory := (*listOfFileInfo)[path]
+	var iNode uint64
+	// if we have not found it yet, check to see if it can be stated
+	info, err := os.Stat(fullPath)
+	if err == nil {
+		isDirectory = info.IsDir()
+		sysInterface := info.Sys()
+		fmt.Printf("sysInterface: %v\n", sysInterface)
+		if sysInterface != nil {
+			foo := sysInterface.(*syscall.Stat_t)
+			iNode = foo.Ino
+		}
+	}
+
+	fmt.Printf("event raw data: %v with path: %v IsDirectory %v iNode: %s\n", event.Name, path, isDirectory, iNode)
+
+	if isDirectory {
+		handleFilesystemEvent(event, path)
+	}
+
+}
+
+func handleFilesystemEvent(event Event, pathName string) {
+	var err error
+	// todo  Update the global directories
+	switch event.Name {
+	case "notify.Create":
+		// make sure there is an entry in the DirTreeMap for this folder. Since and empty list will always be returned, we can use that
+
+		err = os.Mkdir(pathName, os.ModeDir+os.ModePerm)
+		if err != nil && !os.IsExist(err) {
+			panic(fmt.Sprintf("Error creating folder %s: %v\n", pathName, err))
+		}
+		fmt.Printf("notify.Create: %s\n", pathName)
+	case "notify.Remove":
+		err = os.Remove(pathName)
+		if err != nil && !os.IsNotExist(err) {
+			panic(fmt.Sprintf("Error deleting folder %s: %v\n", pathName, err))
+		}
+		fmt.Printf("notify.Remove: %s\n", pathName)
+	// todo fix this to handle the two rename events to be one event
+	//case "notify.Rename":
+	//	err = os.Remove(pathName)
+	//	if err != nil && !os.IsNotExist(err) {
+	//		panic(fmt.Sprintf("Error deleting folder that was renamed %s: %v\n", pathName, err))
+	//	}
+	//	fmt.Printf("notify.Rename: %s\n", pathName)
+	default:
+	}
+
+	// todo - remove this if condition, it is temporary for debugging.
+	if globalSettings.Name == "NodeA" {
+		// sendEvent to manager
+		sendEvent(&event, globalSettings.ManagerAddress, globalSettings.ManagerCredentials)
+
+		// SendEvent to all peers
+		for k, v := range serverMap {
+			if k != globalSettings.Name {
+				fmt.Printf("sending to peer %s at %s\n", k, v.Address)
+				sendEvent(&event, v.Address, globalSettings.ManagerCredentials)
 			}
 		}
-		//if isDirectory == false {
-		//	info, err := os.Stat(fullPath)
-		//	if err == nil {
-		//		isDirectory = info.IsDir()
-		//	}
-		//
-		//	// try and get the inode number
-		//
-		//	//inode = info.Sys().Ino
-		//}
-
-		event := Event{Name: ei.Event().String(), Message: path}
-		fmt.Printf("event raw data: %v with path: %v IsDirectory %v iNode: %s\n", ei.Event(), path, isDirectory, iNode)
-
-		if isDirectory {
-			// sendEvent to manager
-			sendEvent(&event, globalSettings.ManagerAddress, globalSettings.ManagerCredentials)
-
-			// SendEvent to all peers
-			for k, v := range serverMap {
-				if k != globalSettings.Name {
-					fmt.Printf("sending to peer %s at %s\n", k, v.Address)
-					sendEvent(&event, v.Address, globalSettings.ManagerCredentials)
-				}
+	} else {
+		for k, v := range serverMap {
+			if k != globalSettings.Name {
+				fmt.Printf("NOT - sending to peer %s at %s\n", k, v.Address)
+				sendEvent(&event, v.Address, globalSettings.ManagerCredentials)
 			}
 		}
 	}
@@ -311,16 +358,11 @@ func folderTreeHandler(w http.ResponseWriter, r *http.Request) {
 			fmt.Println("Paths were added on the other side. Create them here")
 			for _, newPathName := range deletedPaths {
 				fmt.Printf("pathname is: %s\n", newPathName)
-				//if newPathName == "" {
-				//	continue
-				//}
-				//newFullPath := fmt.Sprintf("%s/%s", globalSettings.Directory, newPathName)
-				//fmt.Printf("new full path is: %s\n", newFullPath)
 				err = os.Mkdir(newPathName, os.ModeDir+os.ModePerm)
 				//todo figure out how to catch a path exists error.
-				//if err != nil && err != os.ErrExist {
-				//	panic(err)
-				//}
+				if err != nil && !os.IsExist(err) {
+					panic(err)
+				}
 			}
 		}
 
@@ -346,14 +388,15 @@ func sendEvent(event *Event, address string, credentials string) {
 	resp, err := client.Do(req)
 	if err != nil {
 		log.Println(err)
-	} else {
-		defer resp.Body.Close()
-
-		fmt.Println("response Status:", resp.Status)
-		fmt.Println("response Headers:", resp.Header)
-		body, _ := ioutil.ReadAll(resp.Body)
-		fmt.Println("response Body:", string(body))
+		return
 	}
+
+	defer resp.Body.Close()
+
+	fmt.Println("response Status:", resp.Status)
+	fmt.Println("response Headers:", resp.Header)
+	body, _ := ioutil.ReadAll(resp.Body)
+	fmt.Println("response Body:", string(body))
 }
 
 func eventHandler(w http.ResponseWriter, r *http.Request) {
@@ -387,6 +430,7 @@ func eventHandler(w http.ResponseWriter, r *http.Request) {
 				panic(fmt.Sprintf("Error deleting folder %s: %v\n", pathName, err))
 			}
 			fmt.Printf("notify.Remove: %s\n", pathName)
+		// todo fix this to handle the two rename events to be one event
 		//case "notify.Rename":
 		//	err = os.Remove(pathName)
 		//	if err != nil && !os.IsNotExist(err) {
