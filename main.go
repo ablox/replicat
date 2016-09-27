@@ -18,19 +18,7 @@ import (
 	"sort"
 	"time"
 	"syscall"
-	"sync"
 )
-
-type ReplicatServer struct {
-	Cluster      string
-	Name         string
-	Address      string
-	LastReceived DirTreeMap
-	LastSent     DirTreeMap
-	lock		 sync.Mutex
-}
-
-var serverMap = make(map[string]ReplicatServer)
 
 type Event struct {
 	Source       string
@@ -73,6 +61,9 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	server := serverMap[globalSettings.Name]
+	server.CurrentState = listOfFileInfo
 
 	// Make the channel buffered to ensure no event is dropped. Notify will drop
 	// an event if the receiver is not able to keep up the sending pace.
@@ -179,23 +170,35 @@ func processFilesystemEvent(event Event, path, fullPath string, listOfFileInfo *
 }
 
 func handleFilesystemEvent(event Event, pathName string) {
-	var err error
 	// todo  Update the global directories
+
+	log.Printf("handleFilsystemEvent name: %s pathName: %s serverMap: %v\n", event.Name, pathName, serverMap)
+
+	currentServer := serverMap[globalSettings.Name]
+	currentServer.Lock.Lock()
+	defer currentServer.Lock.Unlock()
+
 	switch event.Name {
 	case "notify.Create":
-		// make sure there is an entry in the DirTreeMap for this folder. Since and empty list will always be returned, we can use that
+		original_value, exists := currentServer.CurrentState[pathName]
 
-		err = os.Mkdir(pathName, os.ModeDir+os.ModePerm)
-		if err != nil && !os.IsExist(err) {
-			panic(fmt.Sprintf("Error creating folder %s: %v\n", pathName, err))
-		}
-		fmt.Printf("notify.Create: %s\n", pathName)
+		fmt.Printf("notify.Create: Existing value for %s: %v (%v)\n", pathName, original_value, exists)
+		// make sure there is an entry in the DirTreeMap for this folder. Since and empty list will always be returned, we can use that
+		currentServer.CurrentState[pathName] = currentServer.CurrentState[pathName]
+
+		updated_value, exists := currentServer.CurrentState[pathName]
+		fmt.Printf("notify.Create: Updated  value for %s: %v (%s)\n", pathName, updated_value, exists)
+
 	case "notify.Remove":
-		err = os.Remove(pathName)
-		if err != nil && !os.IsNotExist(err) {
-			panic(fmt.Sprintf("Error deleting folder %s: %v\n", pathName, err))
-		}
-		fmt.Printf("notify.Remove: %s\n", pathName)
+		original_value, exists := currentServer.CurrentState[pathName]
+
+		fmt.Printf("notify.Remove: Existing value for %s: %v (%v)\n", pathName, original_value, exists)
+		// make sure there is an entry in the DirTreeMap for this folder. Since and empty list will always be returned, we can use that
+		delete(currentServer.CurrentState, pathName)
+
+		updated_value, exists := currentServer.CurrentState[pathName]
+		fmt.Printf("notify.Remove: Updated  value for %s: %v (%s)\n", pathName, updated_value, exists)
+
 	// todo fix this to handle the two rename events to be one event
 	//case "notify.Rename":
 	//	err = os.Remove(pathName)
@@ -208,18 +211,22 @@ func handleFilesystemEvent(event Event, pathName string) {
 
 	// todo - remove this if condition, it is temporary for debugging.
 	if globalSettings.Name == "NodeA" {
+		log.Println("We are NodeA send to our peers")
 		// sendEvent to manager
 		sendEvent(&event, globalSettings.ManagerAddress, globalSettings.ManagerCredentials)
 
 		// SendEvent to all peers
 		for k, v := range serverMap {
+			fmt.Printf("Considering sending to: %s\n", k)
 			if k != globalSettings.Name {
 				fmt.Printf("sending to peer %s at %s\n", k, v.Address)
 				sendEvent(&event, v.Address, globalSettings.ManagerCredentials)
 			}
 		}
 	} else {
+		log.Println("We are not NodeA tell nobody what happened")
 		for k, v := range serverMap {
+			fmt.Printf("Considering: %s\n", k)
 			if k != globalSettings.Name {
 				fmt.Printf("NOT - sending to peer %s at %s\n", k, v.Address)
 				sendEvent(&event, v.Address, globalSettings.ManagerCredentials)
@@ -304,7 +311,6 @@ func folderTreeHandler(w http.ResponseWriter, r *http.Request) {
 
 		var remoteTree = make(DirTreeMap)
 		for key, value := range remoteTreePreTranslate {
-			//fmt.Printf("key is: '%s'\n", key)
 			key = fmt.Sprintf("%s/%s", globalSettings.Directory, key)
 			remoteTree[key] = value
 		}
