@@ -425,9 +425,11 @@ func eventHandler(w http.ResponseWriter, r *http.Request) {
 
 		pathName := globalSettings.Directory + "/" + event.Message
 
+		//todo remember these events and skip the logging on the other side. Possibly use nodeID?
+
 		switch event.Name {
 		case "notify.Create":
-			err = os.Mkdir(pathName, os.ModeDir+os.ModePerm)
+			err = os.MkdirAll(pathName, os.ModeDir+os.ModePerm)
 			if err != nil && !os.IsExist(err) {
 				panic(fmt.Sprintf("Error creating folder %s: %v\n", pathName, err))
 			}
