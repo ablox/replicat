@@ -16,16 +16,16 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
-	"time"
 	"syscall"
+	"time"
 )
 
 type Event struct {
-	Source       string
-	Name         string
-	Message      string
-	Time         time.Time
-	IsDirectory  bool
+	Source      string
+	Name        string
+	Message     string
+	Time        time.Time
+	IsDirectory bool
 }
 
 var events = make([]Event, 0, 100)
@@ -42,7 +42,7 @@ func main() {
 		var err2, err3 error
 		// We have an error. If the directory does not exist, then try to create it. Fail if we cannot creat it with the original error
 		if os.IsNotExist(err) {
-			err2 = os.Mkdir(globalSettings.Directory, os.ModeDir + os.ModePerm)
+			err2 = os.Mkdir(globalSettings.Directory, os.ModeDir+os.ModePerm)
 			symPath, err3 = filepath.EvalSymlinks(globalSettings.Directory)
 			if err2 != nil || err3 != nil {
 				panic(fmt.Sprintf("err: %v\nerr2: %v\nerr3: %v\n", err, err2, err3))
