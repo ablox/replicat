@@ -174,15 +174,17 @@ func handleFilesystemEvent(event Event, pathName string) {
 
 	log.Printf("handleFilsystemEvent name: %s pathName: %s serverMap: %v\n", event.Name, pathName, serverMap)
 
+	serverMapLock.RLock()
+	defer serverMapLock.RUnlock()
 	currentServer := serverMap[globalSettings.Name]
 	currentServer.Lock.Lock()
 	defer currentServer.Lock.Unlock()
 
+	currentValue, exists := currentServer.CurrentState[pathName]
+	fmt.Printf("Before: %s: Existing value for %s: %v (%v)\n", event.Name, pathName, currentValue, exists)
+
 	switch event.Name {
 	case "notify.Create":
-		original_value, exists := currentServer.CurrentState[pathName]
-
-		fmt.Printf("notify.Create: Existing value for %s: %v (%v)\n", pathName, original_value, exists)
 		// make sure there is an entry in the DirTreeMap for this folder. Since and empty list will always be returned, we can use that
 		currentServer.CurrentState[pathName] = currentServer.CurrentState[pathName]
 
@@ -190,10 +192,7 @@ func handleFilesystemEvent(event Event, pathName string) {
 		fmt.Printf("notify.Create: Updated  value for %s: %v (%s)\n", pathName, updated_value, exists)
 
 	case "notify.Remove":
-		original_value, exists := currentServer.CurrentState[pathName]
-
-		fmt.Printf("notify.Remove: Existing value for %s: %v (%v)\n", pathName, original_value, exists)
-		// make sure there is an entry in the DirTreeMap for this folder. Since and empty list will always be returned, we can use that
+		// clean out the entry in the DirTreMap for this folder
 		delete(currentServer.CurrentState, pathName)
 
 		updated_value, exists := currentServer.CurrentState[pathName]
@@ -209,12 +208,15 @@ func handleFilesystemEvent(event Event, pathName string) {
 	default:
 	}
 
+	currentValue, exists = currentServer.CurrentState[pathName]
+	fmt.Printf("After: %s: Existing value for %s: %v (%v)\n", event.Name, pathName, currentValue, exists)
+
+	// sendEvent to manager
+	sendEvent(&event, globalSettings.ManagerAddress, globalSettings.ManagerCredentials)
+
 	// todo - remove this if condition, it is temporary for debugging.
 	if globalSettings.Name == "NodeA" {
 		log.Println("We are NodeA send to our peers")
-		// sendEvent to manager
-		sendEvent(&event, globalSettings.ManagerAddress, globalSettings.ManagerCredentials)
-
 		// SendEvent to all peers
 		for k, v := range serverMap {
 			fmt.Printf("Considering sending to: %s\n", k)
