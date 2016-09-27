@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"log"
 )
 
 func bootstrapAndServe() {
@@ -21,12 +22,16 @@ func bootstrapAndServe() {
 	}
 	fmt.Println("Listening on:", lsnr.Addr().String())
 
-	err = http.Serve(lsnr, nil)
-	if err != nil {
-		panic(err)
-	}
+	go func(lsnr net.Listener) {
+		err = http.Serve(lsnr, nil)
+		if err != nil {
+			panic(err)
+		}
+	}(lsnr)
 
+	fmt.Println("about to send config to server")
 	go sendConfigToServer(lsnr.Addr())
+	fmt.Printf("config sent to server with address: %s\n", lsnr.Addr())
 }
 
 func sendConfigToServer(addr net.Addr) {
@@ -51,11 +56,13 @@ func sendConfigToServer(addr net.Addr) {
 }
 
 func configHandler(w http.ResponseWriter, r *http.Request) {
+	log.Println("configHandler called on bootstrap")
 	switch r.Method {
 	case "POST":
 		decoder := json.NewDecoder(r.Body)
+		log.Printf("configHandler is about to overwrite servermap. old: %v\n", serverMap)
 		err := decoder.Decode(&serverMap)
-		fmt.Printf("configHander nodes: %s", serverMap)
+		log.Printf("configHandler serverMap overwritten to: %v\n", serverMap)
 
 		if err != nil {
 			fmt.Println(err)
