@@ -12,7 +12,20 @@ import (
 	"os"
 	"strconv"
 	"log"
+	"sync"
 )
+
+type ReplicatServer struct {
+	Cluster      string
+	Name         string
+	Address      string
+	CurrentState DirTreeMap
+	PreviousState DirTreeMap
+	Lock		 sync.Mutex
+}
+
+var serverMap = make(map[string]ReplicatServer)
+var serverMapLock sync.RWMutex
 
 func bootstrapAndServe() {
 	lsnr, err := net.Listen("tcp4", ":0")
@@ -55,17 +68,62 @@ func sendConfigToServer(addr net.Addr) {
 	}
 }
 
-func configHandler(w http.ResponseWriter, r *http.Request) {
+func configHandler(_ http.ResponseWriter, r *http.Request) {
 	log.Println("configHandler called on bootstrap")
 	switch r.Method {
 	case "POST":
-		decoder := json.NewDecoder(r.Body)
-		log.Printf("configHandler is about to overwrite servermap. old: %v\n", serverMap)
-		err := decoder.Decode(&serverMap)
-		log.Printf("configHandler serverMap overwritten to: %v\n", serverMap)
+		serverMapLock.Lock()
+		defer serverMapLock.Unlock()
 
+		//todo move this to a channel to ensure ordering. It should always be safe to grab the latest one only.
+		decoder := json.NewDecoder(r.Body)
+		var newServerMap map[string]ReplicatServer //:= make(map[string]ReplicatServer)
+		err := decoder.Decode(&newServerMap)
 		if err != nil {
 			fmt.Println(err)
+		}
+		log.Printf("configHandler serverMap read from webcat to: %v\n", newServerMap)
+
+		// find any nodes that have been deleted
+		for name, serverData := range serverMap {
+			newServerData, exists := newServerMap[name]
+			if !exists {
+				fmt.Printf("No longer found config for: %s deleting\n", name)
+				delete(serverMap, name)
+				continue
+			}
+
+			if serverData.Address != newServerData.Address || serverData.Name != newServerData.Name || serverData.Cluster != newServerData.Cluster {
+				fmt.Printf("Server data is radically changed. Replacing.\nold: %v\nnew: %v\n", serverData, newServerData)
+				serverMap[name] = newServerData
+				fmt.Println("Server data replaced with new server data")
+			} else {
+				fmt.Printf("Server data has not radically changed. ignoring.\nold: %v\nnew: %v\n", serverData, newServerData)
+			}
+		}
+
+		// find any new nodes
+		for name, newServerData := range newServerMap {
+			_, exists := serverMap[name]
+			if !exists {
+				fmt.Printf("New server configuration for %s: %v\n", name, newServerData)
+
+				// If this server map is for ourselves, build a list of folder if needed and notify others
+				if name == globalSettings.Name {
+					listOfFileInfo, err := createListOfFolders()
+					if err != nil {
+						log.Fatal(err)
+					}
+					newServerData.CurrentState = listOfFileInfo
+					// Tell all of our friends that we exist and our current state for them to compare against.
+					go func(tree DirTreeMap) {
+						sendFolderTree(tree)
+					}(listOfFileInfo)
+				}
+
+				fmt.Printf("New server configuration provided. Copying: %s\n", name)
+				serverMap[name] = newServerData
+			}
 		}
 	}
 }
