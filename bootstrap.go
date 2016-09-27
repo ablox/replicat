@@ -7,21 +7,21 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"log"
 	"net"
 	"net/http"
 	"os"
 	"strconv"
-	"log"
 	"sync"
 )
 
 type ReplicatServer struct {
-	Cluster      string
-	Name         string
-	Address      string
-	CurrentState DirTreeMap
+	Cluster       string
+	Name          string
+	Address       string
+	CurrentState  DirTreeMap
 	PreviousState DirTreeMap
-	Lock		 sync.Mutex
+	Lock          sync.Mutex
 }
 
 var serverMap = make(map[string]ReplicatServer)
