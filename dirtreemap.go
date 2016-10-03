@@ -11,7 +11,7 @@ import (
 type DirTreeMap map[string][]string
 
 // create a clone of the DirTreeMap
-func (orig DirTreeMap) clone() (clone DirTreeMap) {
+func (orig DirTreeMap) Clone() (clone DirTreeMap) {
 	clone = make(DirTreeMap)
 	for k, v := range orig {
 		cloneV := make([]string, len(v))
@@ -23,6 +23,10 @@ func (orig DirTreeMap) clone() (clone DirTreeMap) {
 
 	return
 }
+
+
+// move is tracked by nodeid node id to string list of relative paths
+// Create and delete
 
 //type DirTreeMap map[string][]os.FileInfo
 
@@ -40,7 +44,7 @@ func checkForChanges(originalState, newState DirTreeMap) (changed bool, updatedS
 			panic(err)
 		}
 	} else {
-		updatedState = newState.clone()
+		updatedState = newState.Clone()
 	}
 
 	// Get a list of paths and compare them
