@@ -29,7 +29,7 @@ func TestDirectoryStorage(t *testing.T) {
 
 	folderList = tracker.ListFolders()
 
-	fmt.Printf("first Type: %s, second Type: %s\n", folderList.Type(), folderTemplate.Type())
+	fmt.Printf("first Type: %s, second Type: %s\n", reflect.TypeOf(folderList), reflect.TypeOf(folderTemplate))
 
 
 	folderList2 := make([]string, len(folderList))
