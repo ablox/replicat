@@ -19,19 +19,27 @@ type FilesystemTracker struct {
 	directory string
 	contents  DirTreeMap
 	setup     bool
+	watcher   *ChangeHandler
 }
 
-func (self *FilesystemTracker) init(directory string) {
+func (self *FilesystemTracker) init() {
 	if !self.setup {
 		self.contents = make(DirTreeMap)
 		self.setup = true
 	}
+}
 
+func (self *FilesystemTracker) watchDirectory(directory string, watcher *ChangeHandler) {
+	fmt.Printf("watchDirectory called with %s\n", directory)
+	if self.directory == directory {
+		return
+	}
 	self.directory = directory
+	self.watcher = watcher
 }
 
 func (self *FilesystemTracker) CreateFolder(name string) (err error) {
-	self.init("")
+	self.init()
 
 	_, exists := self.contents[name]
 	fmt.Printf("CreateFolder: '%s' (%v)\n", name, exists)
@@ -44,7 +52,7 @@ func (self *FilesystemTracker) CreateFolder(name string) (err error) {
 }
 
 func (self *FilesystemTracker) DeleteFolder(name string) (err error) {
-	self.init("")
+	self.init()
 
 	fmt.Printf("DeleteFolder: '%s'\n", name)
 	delete(self.contents, name)
@@ -53,7 +61,7 @@ func (self *FilesystemTracker) DeleteFolder(name string) (err error) {
 }
 
 func (self *FilesystemTracker) ListFolders() (list []string) {
-	self.init("")
+	self.init()
 
 	fmt.Println("ListFolders")
 
