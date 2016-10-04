@@ -6,6 +6,7 @@ import (
 	"testing"
 	"fmt"
 	"reflect"
+	"sort"
 )
 
 func TestDirectoryStorage(t *testing.T) {
@@ -18,7 +19,7 @@ func TestDirectoryStorage(t *testing.T) {
 		t.Fatal(fmt.Sprintf("expected empty folder, found something: %v\n", folderList))
 	}
 
-	folderTemplate := [...]string{"A", "B", "C"}
+	folderTemplate := []string{"A", "B", "C"}
 
 	for _, folder := range folderTemplate {
 		err := tracker.CreateFolder(folder)
@@ -28,21 +29,12 @@ func TestDirectoryStorage(t *testing.T) {
 	}
 
 	folderList = tracker.ListFolders()
+	
+	sort.Strings(folderList)
+	sort.Strings(folderTemplate)
 
-	fmt.Printf("first Type: %s, second Type: %s\n", reflect.TypeOf(folderList), reflect.TypeOf(folderTemplate))
-
-
-	folderList2 := make([]string, len(folderList))
-	index := 0
-
-	for _, k := range folderTemplate {
-		folderList2[index] = k
-		index++
-	}
-
-
-	if reflect.DeepEqual(folderList2, folderList) == false {
-		t.Fatal(fmt.Sprintf("Expected: %v\nFound: %v\n", folderTemplate, folderList2))
+	if reflect.DeepEqual(folderList, folderTemplate) == false {
+		t.Fatal(fmt.Sprintf("Found: %v\nExpected: %v\n", folderList, folderTemplate))
 	}
 
 
