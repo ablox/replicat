@@ -53,7 +53,7 @@ func (self *FilesystemTracker) DeleteFolder(name string) (err error) {
 }
 
 func (self *FilesystemTracker) ListFolders() (list []string) {
-	self.init(nil)
+	self.init("")
 
 	fmt.Println("ListFolders")
 
