@@ -7,7 +7,6 @@ import "fmt"
 type ChangeHandler interface {
 	FolderCreated(name string) (err error)
 	FolderDeleted(name string) (err error)
-	//FolderList(folders []string) (err error)
 }
 
 type StorageTracker interface {
