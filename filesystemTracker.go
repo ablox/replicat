@@ -18,16 +18,20 @@ type StorageTracker interface {
 type FilesystemTracker struct {
 	directory string
 	contents  DirTreeMap
+	setup     bool
 }
 
-func (self *FilesystemTracker) init() {
-	if self.contents == nil {
+func (self *FilesystemTracker) init(directory string) {
+	if !self.setup {
 		self.contents = make(DirTreeMap)
+		self.setup = true
 	}
+
+	self.directory = directory
 }
 
 func (self *FilesystemTracker) CreateFolder(name string) (err error) {
-	self.init()
+	self.init("")
 
 	_, exists := self.contents[name]
 	fmt.Printf("CreateFolder: '%s' (%v)\n", name, exists)
@@ -40,7 +44,7 @@ func (self *FilesystemTracker) CreateFolder(name string) (err error) {
 }
 
 func (self *FilesystemTracker) DeleteFolder(name string) (err error) {
-	self.init()
+	self.init("")
 
 	fmt.Printf("DeleteFolder: '%s'\n", name)
 	delete(self.contents, name)
@@ -49,7 +53,7 @@ func (self *FilesystemTracker) DeleteFolder(name string) (err error) {
 }
 
 func (self *FilesystemTracker) ListFolders() (list []string) {
-	self.init()
+	self.init(nil)
 
 	fmt.Println("ListFolders")
 

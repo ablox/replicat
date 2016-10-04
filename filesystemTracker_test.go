@@ -37,7 +37,6 @@ func TestDirectoryStorage(t *testing.T) {
 		t.Fatal(fmt.Sprintf("Found: %v\nExpected: %v\n", folderList, folderTemplate))
 	}
 
-
 	err := tracker.DeleteFolder(folderTemplate[0])
 	if err != nil {
 		t.Fatal(err)
@@ -51,7 +50,5 @@ func TestDirectoryStorage(t *testing.T) {
 	if reflect.DeepEqual(folderList, folderTemplate) == false {
 		t.Fatal(fmt.Sprintf("Found: %v\nExpected: %v\n", folderList, folderTemplate))
 	}
-
-
 
 }
