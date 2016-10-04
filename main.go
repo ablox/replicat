@@ -31,18 +31,13 @@ type Event struct {
 var events = make([]Event, 0, 100)
 
 type FileEvent struct {
-	NodeID       int32
-	Name         string
-	Time         time.Time
+	NodeID int32
+	Name   string
+	Time   time.Time
 }
 
 // recentHistory is nodeID -> events
 //recentHistory = make(map[string]FileEvent)
-
-
-
-
-
 
 func main() {
 	fmt.Println("replicat initializing....")
