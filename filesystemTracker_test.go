@@ -3,10 +3,10 @@
 package main
 
 import (
-	"testing"
 	"fmt"
 	"reflect"
 	"sort"
+	"testing"
 )
 
 func TestDirectoryStorage(t *testing.T) {
@@ -29,13 +29,12 @@ func TestDirectoryStorage(t *testing.T) {
 	}
 
 	folderList = tracker.ListFolders()
-	
+
 	sort.Strings(folderList)
 	sort.Strings(folderTemplate)
 
 	if reflect.DeepEqual(folderList, folderTemplate) == false {
 		t.Fatal(fmt.Sprintf("Found: %v\nExpected: %v\n", folderList, folderTemplate))
 	}
-
 
 }

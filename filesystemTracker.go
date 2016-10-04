@@ -18,7 +18,7 @@ type StorageTracker interface {
 
 type FilesystemTracker struct {
 	directory string
-	contents DirTreeMap
+	contents  DirTreeMap
 }
 
 func (self *FilesystemTracker) init() {
@@ -64,4 +64,3 @@ func (self *FilesystemTracker) ListFolders() (list []string) {
 
 	return folderList
 }
-

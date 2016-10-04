@@ -24,7 +24,6 @@ func (orig DirTreeMap) Clone() (clone DirTreeMap) {
 	return
 }
 
-
 // move is tracked by nodeid node id to string list of relative paths
 // Create and delete
 
