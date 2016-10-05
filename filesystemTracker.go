@@ -259,6 +259,7 @@ func (self *FilesystemTracker) processEvent(event Event, pathName string) {
 	//	}
 	//	fmt.Printf("notify.Rename: %s\n", pathName)
 	default:
+		fmt.Printf("%s: %s not known, skipping\n", event.Name, pathName)
 	}
 
 	currentValue, exists = self.contents[pathName]
