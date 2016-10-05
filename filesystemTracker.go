@@ -8,6 +8,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"sync"
 	"syscall"
 )
 
@@ -41,23 +42,40 @@ type FilesystemTracker struct {
 	setup           bool
 	watcher         *ChangeHandler
 	fsEventsChannel chan notify.EventInfo
+	fsLock          sync.RWMutex
 }
 
 func (self *FilesystemTracker) init() {
-	if !self.setup {
-		self.contents = make(DirTreeMap)
-		self.setup = true
+	self.fsLock.Lock()
+	defer self.fsLock.Unlock()
+
+	if self.setup {
+		return
 	}
+
+	fmt.Println("Setting up filesystemTracker!")
+	self.contents = make(DirTreeMap)
+	self.setup = true
 }
 
 func (self *FilesystemTracker) cleanup() {
-	fmt.Println("time to cleanup")
-	// todo implement cleanup
+	self.fsLock.Lock()
+	defer self.fsLock.Unlock()
+	if !self.setup {
+		panic("cleanup called when not yet setup")
+	}
 
 	notify.Stop(self.fsEventsChannel)
 }
 
 func (self *FilesystemTracker) watchDirectory(directory string, watcher *ChangeHandler) {
+	self.fsLock.Lock()
+	defer self.fsLock.Unlock()
+
+	if !self.setup {
+		panic("watchDirectory called when not yet setup")
+	}
+
 	fmt.Printf("watchDirectory called with %s\n", directory)
 
 	self.directory = directory
@@ -107,6 +125,9 @@ func validatePath(directory string) (fullPath string) {
 func (self *FilesystemTracker) CreateFolder(name string) (err error) {
 	self.init()
 
+	self.fsLock.Lock()
+	defer self.fsLock.Unlock()
+
 	_, exists := self.contents[name]
 	fmt.Printf("CreateFolder: '%s' (%v)\n", name, exists)
 
@@ -120,6 +141,9 @@ func (self *FilesystemTracker) CreateFolder(name string) (err error) {
 func (self *FilesystemTracker) DeleteFolder(name string) (err error) {
 	self.init()
 
+	self.fsLock.Lock()
+	defer self.fsLock.Unlock()
+
 	fmt.Printf("DeleteFolder: '%s'\n", name)
 	delete(self.contents, name)
 
@@ -128,6 +152,9 @@ func (self *FilesystemTracker) DeleteFolder(name string) (err error) {
 
 func (self *FilesystemTracker) ListFolders() (list []string) {
 	self.init()
+
+	self.fsLock.Lock()
+	defer self.fsLock.Unlock()
 
 	fmt.Println("ListFolders")
 	folderList := make([]string, len(self.contents))
@@ -185,39 +212,39 @@ func (self *FilesystemTracker) checkIfDirectory(event Event, path, fullPath stri
 		}
 	}
 
-	fmt.Printf("event raw data: %v with path: %v IsDirectory %v iNode: %d\n", event.Name, path, isDirectory, iNode)
+	fmt.Printf("checkIfDirectory: event raw data: %s with path: %s fullPath: %s isDirectory: %v iNode: %v\n", event.Name, path, fullPath, isDirectory, iNode)
 
 	return isDirectory
 
 }
 
 func (self *FilesystemTracker) processEvent(event Event, pathName string) {
-	// todo  Update the global directories
-
 	log.Printf("handleFilsystemEvent name: %s pathName: %s serverMap: %v\n", event.Name, pathName, serverMap)
 
-	serverMapLock.RLock()
-	defer serverMapLock.RUnlock()
-	currentServer := serverMap[globalSettings.Name]
-	currentServer.Lock.Lock()
-	defer currentServer.Lock.Unlock()
-
-	currentValue, exists := currentServer.CurrentState[pathName]
+	currentValue, exists := self.contents[pathName]
 	fmt.Printf("Before: %s: Existing value for %s: %v (%v)\n", event.Name, pathName, currentValue, exists)
 
 	switch event.Name {
 	case "notify.Create":
-		// make sure there is an entry in the DirTreeMap for this folder. Since and empty list will always be returned, we can use that
-		currentServer.CurrentState[pathName] = currentServer.CurrentState[pathName]
 
-		updated_value, exists := currentServer.CurrentState[pathName]
+		fmt.Printf("processEvent: About to assign from one path to the next. Original: %s Map: %s\n", self.contents[pathName], self.contents)
+		// make sure there is an entry in the DirTreeMap for this folder. Since and empty list will always be returned, we can use that
+		value, exists := self.contents[pathName]
+		fmt.Printf("processEvent: current value: %s exists: %v\n", value, exists)
+		if !exists {
+			self.contents[pathName] = make([]string, 0)
+		}
+
+		//self.contents[pathName] = self.contents[pathName]
+
+		updated_value, exists := self.contents[pathName]
 		fmt.Printf("notify.Create: Updated  value for %s: %v (%s)\n", pathName, updated_value, exists)
 
 	case "notify.Remove":
 		// clean out the entry in the DirTreMap for this folder
-		delete(currentServer.CurrentState, pathName)
+		delete(self.contents, pathName)
 
-		updated_value, exists := currentServer.CurrentState[pathName]
+		updated_value, exists := self.contents[pathName]
 		fmt.Printf("notify.Remove: Updated  value for %s: %v (%s)\n", pathName, updated_value, exists)
 
 	// todo fix this to handle the two rename events to be one event
@@ -230,7 +257,7 @@ func (self *FilesystemTracker) processEvent(event Event, pathName string) {
 	default:
 	}
 
-	currentValue, exists = currentServer.CurrentState[pathName]
+	currentValue, exists = self.contents[pathName]
 	fmt.Printf("After: %s: Existing value for %s: %v (%v)\n", event.Name, pathName, currentValue, exists)
 
 	// sendEvent to manager

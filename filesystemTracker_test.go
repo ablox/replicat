@@ -10,10 +10,13 @@ import (
 	"reflect"
 	"sort"
 	"testing"
+	"time"
 )
 
 func TestDirectoryStorage(t *testing.T) {
 	tracker := new(FilesystemTracker)
+	tracker.init()
+	defer tracker.cleanup()
 
 	empty := make([]string, 0)
 	folderList := tracker.ListFolders()
@@ -58,6 +61,8 @@ func TestDirectoryStorage(t *testing.T) {
 
 func TestFileChangeTrackerAutoCreateFolderAndCleanup(t *testing.T) {
 	tracker := new(FilesystemTracker)
+	tracker.init()
+	defer tracker.cleanup()
 
 	tmpFolder, err := ioutil.TempDir("", "blank")
 	defer os.RemoveAll(tmpFolder)
@@ -81,6 +86,8 @@ func TestFileChangeTrackerAutoCreateFolderAndCleanup(t *testing.T) {
 
 func TestFileChangeTrackerAddFolders(t *testing.T) {
 	tracker := new(FilesystemTracker)
+	tracker.init()
+	defer tracker.cleanup()
 
 	tmpFolder, err := ioutil.TempDir("", "blank")
 	defer os.RemoveAll(tmpFolder)
@@ -88,7 +95,9 @@ func TestFileChangeTrackerAddFolders(t *testing.T) {
 	logger := &LogOnlyChangeHandler{}
 	var loggerInterface ChangeHandler = logger
 
+	fmt.Println("About to call watchDirectory")
 	tracker.watchDirectory(tmpFolder, &loggerInterface)
+	fmt.Println("Done - About to call watchDirectory")
 
 	// Create 5 folders
 	numberOfSubFolders := 5
@@ -101,5 +110,7 @@ func TestFileChangeTrackerAddFolders(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
+	fmt.Println("done with creating 5 different subfolders. :)")
 
+	time.Sleep(time.Second * 5)
 }
