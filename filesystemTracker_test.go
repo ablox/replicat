@@ -84,23 +84,40 @@ func TestFileChangeTrackerAutoCreateFolderAndCleanup(t *testing.T) {
 	tracker.cleanup()
 }
 
+type countingChangeHandler struct {
+	folderCreated int
+	folderDeleted int
+}
+
+func (self *countingChangeHandler) FolderCreated(name string) (err error) {
+	fmt.Printf("FolderCreated: %s\n", name)
+	self.folderCreated++
+	return nil
+}
+
+func (self *countingChangeHandler) FolderDeleted(name string) (err error) {
+	fmt.Printf("FolderDeleted: %s\n", name)
+	self.folderDeleted++
+	return nil
+}
+
 func TestFileChangeTrackerAddFolders(t *testing.T) {
 	tracker := new(FilesystemTracker)
 	tracker.init()
 	defer tracker.cleanup()
 
+	logHandler := countingChangeHandler{}
+	var c ChangeHandler = &logHandler
+
 	tmpFolder, err := ioutil.TempDir("", "blank")
 	defer os.RemoveAll(tmpFolder)
 
-	logger := &LogOnlyChangeHandler{}
-	var loggerInterface ChangeHandler = logger
+	fmt.Println("TestFileChangeTrackerAddFolders: About to call watchDirectory")
+	tracker.watchDirectory(tmpFolder, &c)
+	fmt.Println("TestFileChangeTrackerAddFolders: Done - About to call watchDirectory")
 
-	fmt.Println("About to call watchDirectory")
-	tracker.watchDirectory(tmpFolder, &loggerInterface)
-	fmt.Println("Done - About to call watchDirectory")
-
-	// Create 5 folders
 	numberOfSubFolders := 5
+
 	newFolders := make([]string, 0, numberOfSubFolders)
 	for i := 0; i < numberOfSubFolders; i++ {
 		path := fmt.Sprintf("%s/a%d", tmpFolder, i)
@@ -109,8 +126,47 @@ func TestFileChangeTrackerAddFolders(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
+		time.Sleep(time.Millisecond * 10)
 	}
-	fmt.Println("done with creating 5 different subfolders. :)")
+	fmt.Printf("done with creating %d different subfolders. :)\n", numberOfSubFolders)
 
-	time.Sleep(time.Second * 5)
+	cycleCount := 0
+	for {
+		cycleCount++
+		folderList := tracker.ListFolders()
+		if len(folderList) < numberOfSubFolders {
+			fmt.Printf("did not get all folders. Current: %v\n", folderList)
+			if cycleCount > 500 {
+				t.Fatalf("Did not find enough folders. Got bored of waiting. What was found: %v\n", folderList)
+			}
+			time.Sleep(time.Millisecond * 5)
+		} else {
+			fmt.Printf("We have all of our ducks in a row\n")
+			break
+		}
+	}
+
+	// Delete two folders
+	fmt.Println(tracker.ListFolders())
+	tracker.DeleteFolder("a0")
+	//time.Sleep(time.Millisecond * 5)
+	tracker.DeleteFolder("a1")
+
+	cycleCount = 0
+	expectedSubFolders := numberOfSubFolders - 1 // we have one extra because the current folder has been added automatically
+	for {
+		cycleCount++
+		folderList := tracker.ListFolders()
+		if len(folderList) > expectedSubFolders {
+			fmt.Printf("Too many subfolders. Current: %v\n", folderList)
+			if cycleCount > 10 {
+				t.Fatalf("Kept finding too many subfolders. Got bored of waiting. What was found: %v\n", folderList)
+			}
+			time.Sleep(time.Millisecond * 5)
+		} else {
+			fmt.Printf("We have all of our ducks in a row again. Yay!\n")
+			break
+		}
+	}
+
 }

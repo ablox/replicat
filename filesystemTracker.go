@@ -8,6 +8,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"sort"
 	"sync"
 	"syscall"
 )
@@ -61,6 +62,7 @@ func (self *FilesystemTracker) init() {
 func (self *FilesystemTracker) cleanup() {
 	self.fsLock.Lock()
 	defer self.fsLock.Unlock()
+
 	if !self.setup {
 		panic("cleanup called when not yet setup")
 	}
@@ -144,8 +146,10 @@ func (self *FilesystemTracker) DeleteFolder(name string) (err error) {
 	self.fsLock.Lock()
 	defer self.fsLock.Unlock()
 
+	fmt.Printf("%s before delete of: %s\n", len(self.contents), name)
 	fmt.Printf("DeleteFolder: '%s'\n", name)
 	delete(self.contents, name)
+	fmt.Printf("%s after delete of: %s\n", len(self.contents), name)
 
 	return nil
 }
@@ -156,7 +160,6 @@ func (self *FilesystemTracker) ListFolders() (list []string) {
 	self.fsLock.Lock()
 	defer self.fsLock.Unlock()
 
-	fmt.Println("ListFolders")
 	folderList := make([]string, len(self.contents))
 	index := 0
 
@@ -165,6 +168,7 @@ func (self *FilesystemTracker) ListFolders() (list []string) {
 		index++
 	}
 
+	sort.Strings(folderList)
 	return folderList
 }
 
@@ -178,9 +182,13 @@ func (self *FilesystemTracker) monitorLoop(c chan notify.EventInfo) {
 		fullPath := string(ei.Path())
 
 		path := fullPath
-		if len(fullPath) >= directoryLength && globalSettings.Directory == fullPath[:directoryLength] {
-			// update the path to not have this prefix
-			path = fullPath[directoryLength+1:]
+		if len(fullPath) >= directoryLength && self.directory == fullPath[:directoryLength] {
+			if len(fullPath) == directoryLength {
+				path = "."
+			} else {
+				// update the path to not have this prefix
+				path = fullPath[directoryLength+1:]
+			}
 		}
 
 		event := Event{Name: ei.Event().String(), Message: path}
