@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"path/filepath"
 	"reflect"
 	"sort"
 	"testing"
@@ -53,6 +54,29 @@ func TestDirectoryStorage(t *testing.T) {
 		t.Fatal(fmt.Sprintf("Found: %v\nExpected: %v\n", folderList, folderTemplate))
 	}
 
+}
+
+func TestFileChangeTrackerAutoCreateFolderAndCleanup(t *testing.T) {
+	tracker := new(FilesystemTracker)
+
+	tmpFolder, err := ioutil.TempDir("", "blank")
+	defer os.RemoveAll(tmpFolder)
+
+	tmpFolder = tmpFolder + "R"
+	defer os.RemoveAll(tmpFolder)
+
+	logger := &LogOnlyChangeHandler{}
+	var loggerInterface ChangeHandler = logger
+
+	tracker.watchDirectory(tmpFolder, &loggerInterface)
+
+	// verify the folder was created
+	tmpFolder, err = filepath.EvalSymlinks(tmpFolder)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	tracker.cleanup()
 }
 
 func TestFileChangeTrackerAddFolders(t *testing.T) {
