@@ -5,13 +5,9 @@ package main
 import (
 	"fmt"
 	"io/ioutil"
-	"log"
 	"os"
-	"os/exec"
-	"path/filepath"
 	"reflect"
 	"testing"
-	"time"
 )
 
 func TestDirectoryScan(t *testing.T) {
