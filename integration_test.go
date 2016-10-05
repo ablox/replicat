@@ -1,14 +1,14 @@
 package main
 
 import (
+	"fmt"
+	"io/ioutil"
+	"log"
 	"os"
 	"os/exec"
-	"io/ioutil"
-	"fmt"
-	"testing"
 	"path/filepath"
+	"testing"
 	"time"
-	"log"
 )
 
 func TestMain(m *testing.M) {
@@ -86,4 +86,3 @@ func printOutput(outs []byte) {
 		fmt.Printf("==> Output: %s\n", string(outs))
 	}
 }
-
