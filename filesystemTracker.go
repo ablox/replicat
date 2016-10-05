@@ -59,9 +59,7 @@ func (self *FilesystemTracker) cleanup() {
 
 func (self *FilesystemTracker) watchDirectory(directory string, watcher *ChangeHandler) {
 	fmt.Printf("watchDirectory called with %s\n", directory)
-	if self.directory == directory {
-		return
-	}
+
 	self.directory = directory
 	self.watcher = watcher
 
@@ -79,6 +77,12 @@ func (self *FilesystemTracker) watchDirectory(directory string, watcher *ChangeH
 	}
 
 	go self.monitorLoop(self.fsEventsChannel)
+
+	// Set up a watch point listening for events within a directory tree rooted at the specified folder
+	err := notify.Watch(self.directory+"/...", self.fsEventsChannel, notify.All)
+	if err != nil {
+		log.Panic(err)
+	}
 }
 
 func validatePath(directory string) (fullPath string) {
@@ -143,6 +147,7 @@ func (self *FilesystemTracker) monitorLoop(c chan notify.EventInfo) {
 	for {
 		ei := <-c
 
+		fmt.Println("We have an event")
 		fullPath := string(ei.Path())
 
 		path := fullPath

@@ -5,13 +5,13 @@ package main
 import (
 	"fmt"
 	"io/ioutil"
+	"log"
 	"os"
+	"os/exec"
+	"path/filepath"
 	"reflect"
 	"testing"
-	"os/exec"
-	"log"
 	"time"
-	"path/filepath"
 )
 
 func TestMain(m *testing.M) {
