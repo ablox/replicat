@@ -222,20 +222,16 @@ func (self *FilesystemTracker) processEvent(event Event, pathName string) {
 	log.Printf("handleFilsystemEvent name: %s pathName: %s serverMap: %v\n", event.Name, pathName, serverMap)
 
 	currentValue, exists := self.contents[pathName]
-	fmt.Printf("Before: %s: Existing value for %s: %v (%v)\n", event.Name, pathName, currentValue, exists)
+	//fmt.Printf("Before: %s: Existing value for %s: %v (%v)\n", event.Name, pathName, currentValue, exists)
 
 	switch event.Name {
 	case "notify.Create":
-
 		fmt.Printf("processEvent: About to assign from one path to the next. Original: %s Map: %s\n", self.contents[pathName], self.contents)
 		// make sure there is an entry in the DirTreeMap for this folder. Since and empty list will always be returned, we can use that
-		value, exists := self.contents[pathName]
-		fmt.Printf("processEvent: current value: %s exists: %v\n", value, exists)
+		_, exists := self.contents[pathName]
 		if !exists {
 			self.contents[pathName] = make([]string, 0)
 		}
-
-		//self.contents[pathName] = self.contents[pathName]
 
 		updated_value, exists := self.contents[pathName]
 		fmt.Printf("notify.Create: Updated  value for %s: %v (%s)\n", pathName, updated_value, exists)
@@ -263,25 +259,15 @@ func (self *FilesystemTracker) processEvent(event Event, pathName string) {
 	// sendEvent to manager
 	sendEvent(&event, globalSettings.ManagerAddress, globalSettings.ManagerCredentials)
 
-	// todo - remove this if condition, it is temporary for debugging.
-	if globalSettings.Name == "NodeA" {
-		log.Println("We are NodeA send to our peers")
-		// SendEvent to all peers
-		for k, v := range serverMap {
-			fmt.Printf("Considering sending to: %s\n", k)
-			if k != globalSettings.Name {
-				fmt.Printf("sending to peer %s at %s\n", k, v.Address)
-				sendEvent(&event, v.Address, globalSettings.ManagerCredentials)
-			}
-		}
-	} else {
-		log.Println("We are not NodeA tell nobody what happened")
-		for k, v := range serverMap {
-			fmt.Printf("Considering: %s\n", k)
-			if k != globalSettings.Name {
-				fmt.Printf("NOT - sending to peer %s at %s\n", k, v.Address)
-				sendEvent(&event, v.Address, globalSettings.ManagerCredentials)
-			}
-		}
-	}
+	// todo - make this actually send to the peers
+	log.Println("TODO Send to peers here")
+	//log.Println("We are NodeA send to our peers")
+	//// SendEvent to all peers
+	//for k, v := range serverMap {
+	//	fmt.Printf("Considering sending to: %s\n", k)
+	//	if k != globalSettings.Name {
+	//		fmt.Printf("sending to peer %s at %s\n", k, v.Address)
+	//		sendEvent(&event, v.Address, globalSettings.ManagerCredentials)
+	//	}
+	//}
 }
