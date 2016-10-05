@@ -2,7 +2,14 @@
 // License: Apache2 - http://www.apache.org/licenses/LICENSE-2.0
 package main
 
-import "fmt"
+import (
+	"fmt"
+	"github.com/rjeczalik/notify"
+	"log"
+	"os"
+	"path/filepath"
+	"syscall"
+)
 
 type ChangeHandler interface {
 	FolderCreated(name string) (err error)
@@ -15,11 +22,25 @@ type StorageTracker interface {
 	ListFolders() (folders []string, err error)
 }
 
+type LogOnlyChangeHandler struct {
+}
+
+func (self *LogOnlyChangeHandler) FolderCreated(name string) (err error) {
+	fmt.Printf("FolderCreated: %s\n", name)
+	return nil
+}
+
+func (self *LogOnlyChangeHandler) FolderDeleted(name string) (err error) {
+	fmt.Printf("FolderDeleted: %s\n", name)
+	return nil
+}
+
 type FilesystemTracker struct {
-	directory string
-	contents  DirTreeMap
-	setup     bool
-	watcher   *ChangeHandler
+	directory       string
+	contents        DirTreeMap
+	setup           bool
+	watcher         *ChangeHandler
+	fsEventsChannel chan notify.EventInfo
 }
 
 func (self *FilesystemTracker) init() {
@@ -29,6 +50,13 @@ func (self *FilesystemTracker) init() {
 	}
 }
 
+func (self *FilesystemTracker) cleanup() {
+	fmt.Println("time to cleanup")
+	// todo implement cleanup
+
+	notify.Stop(self.fsEventsChannel)
+}
+
 func (self *FilesystemTracker) watchDirectory(directory string, watcher *ChangeHandler) {
 	fmt.Printf("watchDirectory called with %s\n", directory)
 	if self.directory == directory {
@@ -36,6 +64,40 @@ func (self *FilesystemTracker) watchDirectory(directory string, watcher *ChangeH
 	}
 	self.directory = directory
 	self.watcher = watcher
+
+	// Make the channel buffered to ensure no event is dropped. Notify will drop
+	// an event if the receiver is not able to keep up the sending pace.
+	self.fsEventsChannel = make(chan notify.EventInfo, 1)
+
+	// Update the path that traffic is served from to be the filesystem canonical path. This will allow the event folders that come in to match what we have.
+	fullPath := validatePath(directory)
+	self.directory = fullPath
+
+	if fullPath != globalSettings.Directory {
+		fmt.Printf("Updating serving directory to: %s\n", fullPath)
+		self.directory = fullPath
+	}
+
+	go self.monitorLoop(self.fsEventsChannel)
+}
+
+func validatePath(directory string) (fullPath string) {
+	fullPath, err := filepath.EvalSymlinks(directory)
+	if err != nil {
+		var err2, err3 error
+		// We have an error. If the directory does not exist, then try to create it. Fail if we cannot create it and return the original error
+		if os.IsNotExist(err) {
+			err2 = os.Mkdir(directory, os.ModeDir+os.ModePerm)
+			fullPath, err3 = filepath.EvalSymlinks(directory)
+			if err2 != nil || err3 != nil {
+				panic(fmt.Sprintf("err: %v\nerr2: %v\nerr3: %v\n", err, err2, err3))
+			}
+		} else {
+			panic(err)
+		}
+	}
+
+	return
 }
 
 func (self *FilesystemTracker) CreateFolder(name string) (err error) {
@@ -64,7 +126,6 @@ func (self *FilesystemTracker) ListFolders() (list []string) {
 	self.init()
 
 	fmt.Println("ListFolders")
-
 	folderList := make([]string, len(self.contents))
 	index := 0
 
@@ -74,4 +135,121 @@ func (self *FilesystemTracker) ListFolders() (list []string) {
 	}
 
 	return folderList
+}
+
+// Monitor the filesystem looking for changes to files we are keeping track of.
+func (self *FilesystemTracker) monitorLoop(c chan notify.EventInfo) {
+	directoryLength := len(self.directory)
+	for {
+		ei := <-c
+
+		fullPath := string(ei.Path())
+
+		path := fullPath
+		if len(fullPath) >= directoryLength && globalSettings.Directory == fullPath[:directoryLength] {
+			// update the path to not have this prefix
+			path = fullPath[directoryLength+1:]
+		}
+
+		event := Event{Name: ei.Event().String(), Message: path}
+		log.Printf("Event captured name: %s location: %s", event.Name, event.Message)
+
+		// It looks like there is some sort of reversal of paths now. where adds are being removed from the other side.
+		isDirectory := self.checkIfDirectory(event, path, fullPath)
+
+		if isDirectory {
+			self.processEvent(event, path)
+		}
+
+	}
+}
+
+func (self *FilesystemTracker) checkIfDirectory(event Event, path, fullPath string) bool {
+	// Check to see if this was a path we knew about
+	_, isDirectory := self.contents[path]
+	var iNode uint64
+	// if we have not found it yet, check to see if it can be stated
+	info, err := os.Stat(fullPath)
+	if err == nil {
+		isDirectory = info.IsDir()
+		sysInterface := info.Sys()
+		fmt.Printf("sysInterface: %v\n", sysInterface)
+		if sysInterface != nil {
+			foo := sysInterface.(*syscall.Stat_t)
+			iNode = foo.Ino
+		}
+	}
+
+	fmt.Printf("event raw data: %v with path: %v IsDirectory %v iNode: %d\n", event.Name, path, isDirectory, iNode)
+
+	return isDirectory
+
+}
+
+func (self *FilesystemTracker) processEvent(event Event, pathName string) {
+	// todo  Update the global directories
+
+	log.Printf("handleFilsystemEvent name: %s pathName: %s serverMap: %v\n", event.Name, pathName, serverMap)
+
+	serverMapLock.RLock()
+	defer serverMapLock.RUnlock()
+	currentServer := serverMap[globalSettings.Name]
+	currentServer.Lock.Lock()
+	defer currentServer.Lock.Unlock()
+
+	currentValue, exists := currentServer.CurrentState[pathName]
+	fmt.Printf("Before: %s: Existing value for %s: %v (%v)\n", event.Name, pathName, currentValue, exists)
+
+	switch event.Name {
+	case "notify.Create":
+		// make sure there is an entry in the DirTreeMap for this folder. Since and empty list will always be returned, we can use that
+		currentServer.CurrentState[pathName] = currentServer.CurrentState[pathName]
+
+		updated_value, exists := currentServer.CurrentState[pathName]
+		fmt.Printf("notify.Create: Updated  value for %s: %v (%s)\n", pathName, updated_value, exists)
+
+	case "notify.Remove":
+		// clean out the entry in the DirTreMap for this folder
+		delete(currentServer.CurrentState, pathName)
+
+		updated_value, exists := currentServer.CurrentState[pathName]
+		fmt.Printf("notify.Remove: Updated  value for %s: %v (%s)\n", pathName, updated_value, exists)
+
+	// todo fix this to handle the two rename events to be one event
+	//case "notify.Rename":
+	//	err = os.Remove(pathName)
+	//	if err != nil && !os.IsNotExist(err) {
+	//		panic(fmt.Sprintf("Error deleting folder that was renamed %s: %v\n", pathName, err))
+	//	}
+	//	fmt.Printf("notify.Rename: %s\n", pathName)
+	default:
+	}
+
+	currentValue, exists = currentServer.CurrentState[pathName]
+	fmt.Printf("After: %s: Existing value for %s: %v (%v)\n", event.Name, pathName, currentValue, exists)
+
+	// sendEvent to manager
+	sendEvent(&event, globalSettings.ManagerAddress, globalSettings.ManagerCredentials)
+
+	// todo - remove this if condition, it is temporary for debugging.
+	if globalSettings.Name == "NodeA" {
+		log.Println("We are NodeA send to our peers")
+		// SendEvent to all peers
+		for k, v := range serverMap {
+			fmt.Printf("Considering sending to: %s\n", k)
+			if k != globalSettings.Name {
+				fmt.Printf("sending to peer %s at %s\n", k, v.Address)
+				sendEvent(&event, v.Address, globalSettings.ManagerCredentials)
+			}
+		}
+	} else {
+		log.Println("We are not NodeA tell nobody what happened")
+		for k, v := range serverMap {
+			fmt.Printf("Considering: %s\n", k)
+			if k != globalSettings.Name {
+				fmt.Printf("NOT - sending to peer %s at %s\n", k, v.Address)
+				sendEvent(&event, v.Address, globalSettings.ManagerCredentials)
+			}
+		}
+	}
 }

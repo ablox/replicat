@@ -4,6 +4,8 @@ package main
 
 import (
 	"fmt"
+	"io/ioutil"
+	"os"
 	"reflect"
 	"sort"
 	"testing"
@@ -49,6 +51,31 @@ func TestDirectoryStorage(t *testing.T) {
 
 	if reflect.DeepEqual(folderList, folderTemplate) == false {
 		t.Fatal(fmt.Sprintf("Found: %v\nExpected: %v\n", folderList, folderTemplate))
+	}
+
+}
+
+func TestFileChangeTrackerAddFolders(t *testing.T) {
+	tracker := new(FilesystemTracker)
+
+	tmpFolder, err := ioutil.TempDir("", "blank")
+	defer os.RemoveAll(tmpFolder)
+
+	logger := &LogOnlyChangeHandler{}
+	var loggerInterface ChangeHandler = logger
+
+	tracker.watchDirectory(tmpFolder, &loggerInterface)
+
+	// Create 5 folders
+	numberOfSubFolders := 5
+	newFolders := make([]string, 0, numberOfSubFolders)
+	for i := 0; i < numberOfSubFolders; i++ {
+		path := fmt.Sprintf("%s/a%d", tmpFolder, i)
+		newFolders = append(newFolders, path)
+		err = os.Mkdir(path, os.ModeDir+os.ModePerm)
+		if err != nil {
+			t.Fatal(err)
+		}
 	}
 
 }

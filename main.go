@@ -44,6 +44,12 @@ func main() {
 	rand.Seed(int64(time.Now().Nanosecond()))
 
 	SetupCli()
+	logOnlyHandler := LogOnlyChangeHandler{}
+	tracker := FilesystemTracker{}
+	tracker.init()
+	var c ChangeHandler
+	c = &logOnlyHandler
+	tracker.watchDirectory(globalSettings.Directory, &c)
 
 	// Update the path that traffic is served from to be the filsystem canonical path. This will allow the event folders that come in to match what we have.
 	symPath, err := filepath.EvalSymlinks(globalSettings.Directory)
