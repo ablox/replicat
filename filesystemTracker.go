@@ -24,16 +24,17 @@ type StorageTracker interface {
 	ListFolders() (folders []string, err error)
 }
 
+// sample change handler
 type LogOnlyChangeHandler struct {
 }
 
 func (self *LogOnlyChangeHandler) FolderCreated(name string) (err error) {
-	fmt.Printf("FolderCreated: %s\n", name)
+	fmt.Printf("LogOnlyChangeHandler:FolderCreated: %s\n", name)
 	return nil
 }
 
 func (self *LogOnlyChangeHandler) FolderDeleted(name string) (err error) {
-	fmt.Printf("FolderDeleted: %s\n", name)
+	fmt.Printf("LogOnlyChangeHandler:FolderDeleted: %s\n", name)
 	return nil
 }
 
