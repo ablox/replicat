@@ -149,10 +149,10 @@ func TestFileChangeTrackerAddFolders(t *testing.T) {
 		folderList := tracker.ListFolders()
 		if len(folderList) < numberOfSubFolders {
 			//fmt.Printf("did not get all folders. Current: %v\n", folderList)
-			if cycleCount > 500 {
+			if cycleCount > 200 {
 				t.Fatalf("Did not find enough folders. Got bored of waiting. What was found: %v\n", folderList)
 			}
-			time.Sleep(time.Millisecond * 20)
+			time.Sleep(time.Millisecond * 50)
 		} else {
 			fmt.Printf("We have all of our ducks in a row\n")
 			break
@@ -165,6 +165,7 @@ func TestFileChangeTrackerAddFolders(t *testing.T) {
 	// Delete two folders
 	fmt.Println(tracker.ListFolders())
 	os.Remove(folder1)
+	time.Sleep(time.Millisecond * 20)
 	os.Remove(folder2)
 	fmt.Printf("deleted two folders \n%s\n%s\n", folder1, folder2)
 
@@ -177,11 +178,11 @@ func TestFileChangeTrackerAddFolders(t *testing.T) {
 		cycleCount++
 
 		if logHandler.FoldersCreated != expectedCreated || logHandler.FoldersDeleted != expectedDeleted {
-			if cycleCount > 4000 {
+			if cycleCount > 200 {
 				fmt.Printf("Kept finding bad data. Got bored of waiting. What was found: %v\n", tracker.ListFolders())
 				break
 			}
-			time.Sleep(time.Millisecond * 20)
+			time.Sleep(time.Millisecond * 50)
 		} else {
 			fmt.Println("We have all of our ducks in a row again. Yay!")
 			break
