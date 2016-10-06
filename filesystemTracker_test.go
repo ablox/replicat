@@ -85,19 +85,21 @@ func TestFileChangeTrackerAutoCreateFolderAndCleanup(t *testing.T) {
 }
 
 type countingChangeHandler struct {
-	folderCreated int
-	folderDeleted int
+	FoldersCreated int
+	FoldersDeleted int
 }
 
 func (self *countingChangeHandler) FolderCreated(name string) (err error) {
-	fmt.Printf("FolderCreated: %s\n", name)
-	self.folderCreated++
+	self.FoldersCreated++
+
+	fmt.Printf("countingChangeHandler:FolderCreated: %s (%d)\n", name, self.FoldersCreated)
 	return nil
 }
 
 func (self *countingChangeHandler) FolderDeleted(name string) (err error) {
-	fmt.Printf("FolderDeleted: %s\n", name)
-	self.folderDeleted++
+	self.FoldersDeleted++
+
+	fmt.Printf("countingChangeHandler:FolderDeleted: %s (%d)\n", name, self.FoldersDeleted)
 	return nil
 }
 
@@ -122,6 +124,9 @@ func TestFileChangeTrackerAddFolders(t *testing.T) {
 	for i := 0; i < numberOfSubFolders; i++ {
 		path := fmt.Sprintf("%s/a%d", tmpFolder, i)
 		newFolders = append(newFolders, path)
+
+		fmt.Printf("Making directory: %s\n", path)
+
 		err = os.Mkdir(path, os.ModeDir+os.ModePerm)
 		if err != nil {
 			t.Fatal(err)
@@ -146,27 +151,36 @@ func TestFileChangeTrackerAddFolders(t *testing.T) {
 		}
 	}
 
+	folder1 := fmt.Sprintf("%s/a0", tmpFolder)
+	folder2 := fmt.Sprintf("%s/a1", tmpFolder)
+	fmt.Printf("about to delete two folders \n%s\n%s\n", folder1, folder2)
 	// Delete two folders
 	fmt.Println(tracker.ListFolders())
-	tracker.DeleteFolder("a0")
-	//time.Sleep(time.Millisecond * 5)
-	tracker.DeleteFolder("a1")
+	os.Remove(folder1)
+	os.Remove(folder2)
+	fmt.Printf("deleted two folders \n%s\n%s\n", folder1, folder2)
 
+	expectedCreated := 6
+	expectedDeleted := 2
+
+	// wait for the final tally to come through.
 	cycleCount = 0
-	expectedSubFolders := numberOfSubFolders - 1 // we have one extra because the current folder has been added automatically
 	for {
 		cycleCount++
-		folderList := tracker.ListFolders()
-		if len(folderList) > expectedSubFolders {
-			fmt.Printf("Too many subfolders. Current: %v\n", folderList)
-			if cycleCount > 10 {
-				t.Fatalf("Kept finding too many subfolders. Got bored of waiting. What was found: %v\n", folderList)
+
+		if logHandler.FoldersCreated != expectedCreated || logHandler.FoldersDeleted != expectedDeleted {
+			if cycleCount > 4000 {
+				fmt.Printf("Kept finding bad data. Got bored of waiting. What was found: %v\n", tracker.ListFolders())
+				break
 			}
 			time.Sleep(time.Millisecond * 5)
 		} else {
-			fmt.Printf("We have all of our ducks in a row again. Yay!\n")
+			fmt.Println("We have all of our ducks in a row again. Yay!")
 			break
 		}
 	}
 
+	if logHandler.FoldersCreated != expectedCreated || logHandler.FoldersDeleted != expectedDeleted {
+		t.Fatalf("Expected/Found created: (%d/%d) deleted: (%d/%d)\n", expectedCreated, logHandler.FoldersCreated, expectedDeleted, logHandler.FoldersDeleted)
+	}
 }
