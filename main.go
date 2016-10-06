@@ -46,10 +46,10 @@ func main() {
 	SetupCli()
 	logOnlyHandler := LogOnlyChangeHandler{}
 	tracker := FilesystemTracker{}
-	tracker.init()
+	tracker.init(globalSettings.Directory)
 	var c ChangeHandler
 	c = &logOnlyHandler
-	tracker.watchDirectory(globalSettings.Directory, &c)
+	tracker.watchDirectory(&c)
 
 	// Update the path that traffic is served from to be the filsystem canonical path. This will allow the event folders that come in to match what we have.
 	symPath, err := filepath.EvalSymlinks(globalSettings.Directory)

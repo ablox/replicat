@@ -14,11 +14,16 @@ import (
 )
 
 func TestDirectoryStorage(t *testing.T) {
+	tmpFolder, err := ioutil.TempDir("", "blank")
+	defer os.RemoveAll(tmpFolder)
+
 	tracker := new(FilesystemTracker)
-	tracker.init()
+	tracker.init(tmpFolder)
 	defer tracker.cleanup()
 
 	empty := make([]string, 0)
+	empty = append(empty, ".")
+
 	folderList := tracker.ListFolders()
 
 	if reflect.DeepEqual(empty, folderList) == false {
@@ -36,14 +41,15 @@ func TestDirectoryStorage(t *testing.T) {
 
 	folderList = tracker.ListFolders()
 
+	expectedFolderList := append(folderTemplate, ".")
+	sort.Strings(expectedFolderList)
 	sort.Strings(folderList)
-	sort.Strings(folderTemplate)
 
-	if reflect.DeepEqual(folderList, folderTemplate) == false {
-		t.Fatal(fmt.Sprintf("Found: %v\nExpected: %v\n", folderList, folderTemplate))
+	if reflect.DeepEqual(expectedFolderList, folderList) == false {
+		t.Fatal(fmt.Sprintf("Found: %v\nExpected: %v\n", folderList, expectedFolderList))
 	}
 
-	err := tracker.DeleteFolder(folderTemplate[0])
+	err = tracker.DeleteFolder(folderTemplate[0])
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -53,16 +59,17 @@ func TestDirectoryStorage(t *testing.T) {
 
 	folderTemplate = folderTemplate[1:]
 
-	if reflect.DeepEqual(folderList, folderTemplate) == false {
-		t.Fatal(fmt.Sprintf("Found: %v\nExpected: %v\n", folderList, folderTemplate))
+	expectedFolderList = append(folderTemplate, ".")
+	sort.Strings(expectedFolderList)
+
+	if reflect.DeepEqual(folderList, expectedFolderList) == false {
+		t.Fatal(fmt.Sprintf("Found: %v\nExpected: %v\n", folderList, expectedFolderList))
 	}
 
 }
 
 func TestFileChangeTrackerAutoCreateFolderAndCleanup(t *testing.T) {
 	tracker := new(FilesystemTracker)
-	tracker.init()
-	defer tracker.cleanup()
 
 	tmpFolder, err := ioutil.TempDir("", "blank")
 	defer os.RemoveAll(tmpFolder)
@@ -73,7 +80,8 @@ func TestFileChangeTrackerAutoCreateFolderAndCleanup(t *testing.T) {
 	logger := &LogOnlyChangeHandler{}
 	var loggerInterface ChangeHandler = logger
 
-	tracker.watchDirectory(tmpFolder, &loggerInterface)
+	tracker.init(tmpFolder)
+	tracker.watchDirectory(&loggerInterface)
 
 	// verify the folder was created
 	tmpFolder, err = filepath.EvalSymlinks(tmpFolder)
@@ -104,10 +112,6 @@ func (self *countingChangeHandler) FolderDeleted(name string) (err error) {
 }
 
 func TestFileChangeTrackerAddFolders(t *testing.T) {
-	tracker := new(FilesystemTracker)
-	tracker.init()
-	defer tracker.cleanup()
-
 	logHandler := countingChangeHandler{}
 	var c ChangeHandler = &logHandler
 
@@ -115,7 +119,11 @@ func TestFileChangeTrackerAddFolders(t *testing.T) {
 	defer os.RemoveAll(tmpFolder)
 
 	fmt.Println("TestFileChangeTrackerAddFolders: About to call watchDirectory")
-	tracker.watchDirectory(tmpFolder, &c)
+	tracker := new(FilesystemTracker)
+	tracker.init(tmpFolder)
+	defer tracker.cleanup()
+
+	tracker.watchDirectory(&c)
 	fmt.Println("TestFileChangeTrackerAddFolders: Done - About to call watchDirectory")
 
 	numberOfSubFolders := 5
@@ -140,11 +148,11 @@ func TestFileChangeTrackerAddFolders(t *testing.T) {
 		cycleCount++
 		folderList := tracker.ListFolders()
 		if len(folderList) < numberOfSubFolders {
-			fmt.Printf("did not get all folders. Current: %v\n", folderList)
+			//fmt.Printf("did not get all folders. Current: %v\n", folderList)
 			if cycleCount > 500 {
 				t.Fatalf("Did not find enough folders. Got bored of waiting. What was found: %v\n", folderList)
 			}
-			time.Sleep(time.Millisecond * 5)
+			time.Sleep(time.Millisecond * 20)
 		} else {
 			fmt.Printf("We have all of our ducks in a row\n")
 			break
@@ -173,7 +181,7 @@ func TestFileChangeTrackerAddFolders(t *testing.T) {
 				fmt.Printf("Kept finding bad data. Got bored of waiting. What was found: %v\n", tracker.ListFolders())
 				break
 			}
-			time.Sleep(time.Millisecond * 5)
+			time.Sleep(time.Millisecond * 20)
 		} else {
 			fmt.Println("We have all of our ducks in a row again. Yay!")
 			break

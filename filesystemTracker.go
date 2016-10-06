@@ -47,7 +47,7 @@ type FilesystemTracker struct {
 	fsLock          sync.RWMutex
 }
 
-func (self *FilesystemTracker) init() {
+func (self *FilesystemTracker) init(directory string) {
 	self.fsLock.Lock()
 	defer self.fsLock.Unlock()
 
@@ -55,8 +55,27 @@ func (self *FilesystemTracker) init() {
 		return
 	}
 
+	fmt.Printf("FilesystemTracker:init called with %s\n", directory)
+	self.directory = directory
+
+	// Make the channel buffered to ensure no event is dropped. Notify will drop
+	// an event if the receiver is not able to keep up the sending pace.
+	self.fsEventsChannel = make(chan notify.EventInfo, 1)
+
+	// Update the path that traffic is served from to be the filesystem canonical path. This will allow the event folders that come in to match what we have.
+	fullPath := validatePath(directory)
+	self.directory = fullPath
+
+	if fullPath != globalSettings.Directory {
+		fmt.Printf("Updating serving directory to: %s\n", fullPath)
+		self.directory = fullPath
+	}
+
 	fmt.Println("Setting up filesystemTracker!")
-	self.contents = make(DirTreeMap)
+	err := self.scanFolders()
+	if err != nil {
+		panic(err)
+	}
 	self.setup = true
 }
 
@@ -71,31 +90,19 @@ func (self *FilesystemTracker) cleanup() {
 	notify.Stop(self.fsEventsChannel)
 }
 
-func (self *FilesystemTracker) watchDirectory(directory string, watcher *ChangeHandler) {
+func (self *FilesystemTracker) watchDirectory(watcher *ChangeHandler) {
 	self.fsLock.Lock()
 	defer self.fsLock.Unlock()
 
 	if !self.setup {
-		panic("watchDirectory called when not yet setup")
+		panic("FilesystemTracker:watchDirectory called when not yet setup")
 	}
 
-	fmt.Printf("watchDirectory called with %s\n", directory)
+	if self.watcher != nil {
+		panic("watchDirectory called a second time. Not allowed")
+	}
 
-	self.directory = directory
 	self.watcher = watcher
-
-	// Make the channel buffered to ensure no event is dropped. Notify will drop
-	// an event if the receiver is not able to keep up the sending pace.
-	self.fsEventsChannel = make(chan notify.EventInfo, 1)
-
-	// Update the path that traffic is served from to be the filesystem canonical path. This will allow the event folders that come in to match what we have.
-	fullPath := validatePath(directory)
-	self.directory = fullPath
-
-	if fullPath != globalSettings.Directory {
-		fmt.Printf("Updating serving directory to: %s\n", fullPath)
-		self.directory = fullPath
-	}
 
 	go self.monitorLoop(self.fsEventsChannel)
 
@@ -126,7 +133,9 @@ func validatePath(directory string) (fullPath string) {
 }
 
 func (self *FilesystemTracker) CreateFolder(name string) (err error) {
-	self.init()
+	if !self.setup {
+		panic("FilesystemTracker:CreateFolder called when not yet setup")
+	}
 
 	self.fsLock.Lock()
 	defer self.fsLock.Unlock()
@@ -142,21 +151,25 @@ func (self *FilesystemTracker) CreateFolder(name string) (err error) {
 }
 
 func (self *FilesystemTracker) DeleteFolder(name string) (err error) {
-	self.init()
+	if !self.setup {
+		panic("FilesystemTracker:DeleteFolder called when not yet setup")
+	}
 
 	self.fsLock.Lock()
 	defer self.fsLock.Unlock()
 
-	fmt.Printf("%s before delete of: %s\n", len(self.contents), name)
+	fmt.Printf("%d before delete of: %s\n", len(self.contents), name)
 	fmt.Printf("DeleteFolder: '%s'\n", name)
 	delete(self.contents, name)
-	fmt.Printf("%s after delete of: %s\n", len(self.contents), name)
+	fmt.Printf("%d after delete of: %s\n", len(self.contents), name)
 
 	return nil
 }
 
 func (self *FilesystemTracker) ListFolders() (folderList []string) {
-	self.init()
+	if !self.setup {
+		panic("FilesystemTracker:ListFolders called when not yet setup")
+	}
 
 	self.fsLock.Lock()
 	defer self.fsLock.Unlock()
@@ -281,13 +294,52 @@ func (self *FilesystemTracker) processEvent(event Event, pathName string) {
 
 	// todo - make this actually send to the peers
 	log.Println("TODO Send to peers here")
-	//log.Println("We are NodeA send to our peers")
-	//// SendEvent to all peers
-	//for k, v := range serverMap {
-	//	fmt.Printf("Considering sending to: %s\n", k)
-	//	if k != globalSettings.Name {
-	//		fmt.Printf("sending to peer %s at %s\n", k, v.Address)
-	//		sendEvent(&event, v.Address, globalSettings.ManagerCredentials)
-	//	}
-	//}
+}
+
+// Scan the files and folders inside of the directory we are watching and add them to the contents. This function
+// can only be called inside of a writelock on self.fsLock
+func (self *FilesystemTracker) scanFolders() error {
+	pendingPaths := make([]string, 0, 100)
+	pendingPaths = append(pendingPaths, self.directory)
+	self.contents = make(DirTreeMap)
+
+	for len(pendingPaths) > 0 {
+		currentPath := pendingPaths[0]
+		fileList := make([]string, 0, 100)
+		pendingPaths = pendingPaths[1:]
+
+		// Read the directories in the path
+		f, err := os.Open(currentPath)
+		if err != nil {
+			return err
+		}
+
+		dirEntries, err := f.Readdir(-1)
+		for _, entry := range dirEntries {
+			if entry.IsDir() {
+				newDirectory := filepath.Join(currentPath, entry.Name())
+				pendingPaths = append(pendingPaths, newDirectory)
+			} else {
+				fileList = append(fileList, entry.Name())
+			}
+		}
+
+		f.Close()
+		if err != nil {
+			return err
+		}
+
+		sort.Strings(fileList)
+
+		// Strip the base path off of the current path
+		// make sure all of the paths are still '/' prefixed
+		relativePath := currentPath[len(self.directory):]
+		if relativePath == "" {
+			relativePath = "."
+		}
+
+		self.contents[relativePath] = fileList
+	}
+
+	return nil
 }
