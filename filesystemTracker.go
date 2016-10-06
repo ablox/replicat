@@ -154,13 +154,13 @@ func (self *FilesystemTracker) DeleteFolder(name string) (err error) {
 	return nil
 }
 
-func (self *FilesystemTracker) ListFolders() (list []string) {
+func (self *FilesystemTracker) ListFolders() (folderList []string) {
 	self.init()
 
 	self.fsLock.Lock()
 	defer self.fsLock.Unlock()
 
-	folderList := make([]string, len(self.contents))
+	folderList = make([]string, len(self.contents))
 	index := 0
 
 	for k, _ := range self.contents {
@@ -169,7 +169,7 @@ func (self *FilesystemTracker) ListFolders() (list []string) {
 	}
 
 	sort.Strings(folderList)
-	return folderList
+	return
 }
 
 // Monitor the filesystem looking for changes to files we are keeping track of.
@@ -242,13 +242,23 @@ func (self *FilesystemTracker) processEvent(event Event, pathName string) {
 		}
 
 		updated_value, exists := self.contents[pathName]
+		if self.watcher != nil {
+			(*self.watcher).FolderCreated(pathName)
+		}
 		fmt.Printf("notify.Create: Updated  value for %s: %v (%s)\n", pathName, updated_value, exists)
 
 	case "notify.Remove":
-		// clean out the entry in the DirTreMap for this folder
+		// clean out the entry in the DirTreeMap for this folder
 		delete(self.contents, pathName)
 
 		updated_value, exists := self.contents[pathName]
+
+		if self.watcher != nil {
+			(*self.watcher).FolderDeleted(pathName)
+		} else {
+			fmt.Println("In the notify.Remove section but did not see a watcher")
+		}
+
 		fmt.Printf("notify.Remove: Updated  value for %s: %v (%s)\n", pathName, updated_value, exists)
 
 	// todo fix this to handle the two rename events to be one event
