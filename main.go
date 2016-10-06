@@ -36,8 +36,6 @@ type FileEvent struct {
 	Time   time.Time
 }
 
-// recentHistory is nodeID -> events
-//recentHistory = make(map[string]FileEvent)
 
 func main() {
 	fmt.Println("replicat initializing....")
@@ -137,6 +135,7 @@ func main() {
 	}
 }
 
+// moved
 // Monitor the filesystem looking for changes to files we are keeping track of.
 func filesystemMonitorLoop(c chan notify.EventInfo, listOfFileInfo *DirTreeMap) {
 	directoryLength := len(globalSettings.Directory)
@@ -160,6 +159,7 @@ func filesystemMonitorLoop(c chan notify.EventInfo, listOfFileInfo *DirTreeMap) 
 	}
 }
 
+// moved
 func processFilesystemEvent(event Event, path, fullPath string, listOfFileInfo *DirTreeMap) {
 	// Check to see if this was a path we knew about
 	_, isDirectory := (*listOfFileInfo)[path]
@@ -184,6 +184,7 @@ func processFilesystemEvent(event Event, path, fullPath string, listOfFileInfo *
 
 }
 
+// moved
 func handleFilesystemEvent(event Event, pathName string) {
 	// todo  Update the global directories
 
