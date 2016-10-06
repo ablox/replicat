@@ -154,7 +154,7 @@ func TestFileChangeTrackerAddFolders(t *testing.T) {
 			}
 			time.Sleep(time.Millisecond * 50)
 		} else {
-			fmt.Printf("We have all of our ducks in a row\n")
+			fmt.Println("We have all of our ducks in a row")
 			break
 		}
 	}
