@@ -20,21 +20,6 @@ import (
 	"time"
 )
 
-type Event struct {
-	Source      string
-	Name        string
-	Message     string
-	Time        time.Time
-	IsDirectory bool
-}
-
-var events = make([]Event, 0, 100)
-
-type FileEvent struct {
-	NodeID int32
-	Name   string
-	Time   time.Time
-}
 
 
 func main() {
