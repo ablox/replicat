@@ -11,6 +11,11 @@ import (
 	"sort"
 	"sync"
 	"syscall"
+	"encoding/json"
+	"net/http"
+	"bytes"
+	"encoding/base64"
+	"io/ioutil"
 )
 
 type ChangeHandler interface {
@@ -37,6 +42,108 @@ func (self *LogOnlyChangeHandler) FolderDeleted(name string) (err error) {
 	fmt.Printf("LogOnlyChangeHandler:FolderDeleted: %s\n", name)
 	return nil
 }
+
+
+type Tracker struct {
+}
+
+var primaryTracker = new(Tracker)
+
+func (self *Tracker) SendEvent(event Event) {
+	// sendEvent to manager
+	self.sendEvent(&event, globalSettings.ManagerAddress, globalSettings.ManagerCredentials)
+
+	log.Println("We are NodeA send to our peers")
+	// SendEvent to all peers
+	for k, v := range serverMap {
+		fmt.Printf("Considering sending to: %s\n", k)
+		if k != globalSettings.Name {
+			fmt.Printf("sending to peer %s at %s\n", k, v.Address)
+			self.sendEvent(&event, v.Address, globalSettings.ManagerCredentials)
+		}
+	}
+}
+
+func (self *Tracker) sendEvent(event *Event, address string, credentials string) {
+	url := "http://" + address + "/event/"
+	fmt.Printf("target url: %s\n", url)
+
+	// Set the event source (server name)
+	event.Source = globalSettings.Name
+
+	jsonStr, _ := json.Marshal(event)
+	req, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonStr))
+	req.Header.Set("Content-Type", "application/json")
+
+	data := []byte(credentials)
+	authHash := base64.StdEncoding.EncodeToString(data)
+	req.Header.Add("Authorization", "Basic "+authHash)
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		log.Println(err)
+		return
+	}
+
+	defer resp.Body.Close()
+
+	fmt.Println("response Status:", resp.Status)
+	fmt.Println("response Headers:", resp.Header)
+	body, _ := ioutil.ReadAll(resp.Body)
+	fmt.Println("response Body:", string(body))
+}
+
+
+func (self *Tracker) EventHandler(w http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+	case "GET":
+		json.NewEncoder(w).Encode(events)
+	case "POST":
+		log.Println("Got POST: ", r.Body)
+		decoder := json.NewDecoder(r.Body)
+		var event Event
+		err := decoder.Decode(&event)
+		if err != nil {
+			panic("bad json body")
+		}
+
+		log.Println(event.Name + ", path: " + event.Message)
+		log.Printf("Event info: %v\n", event)
+
+		pathName := globalSettings.Directory + "/" + event.Message
+
+		//todo remember these events and skip the logging on the other side. Possibly use nodeID?
+
+		switch event.Name {
+		case "notify.Create":
+			err = os.MkdirAll(pathName, os.ModeDir+os.ModePerm)
+			if err != nil && !os.IsExist(err) {
+				panic(fmt.Sprintf("Error creating folder %s: %v\n", pathName, err))
+			}
+			fmt.Printf("notify.Create: %s\n", pathName)
+		case "notify.Remove":
+			err = os.Remove(pathName)
+			if err != nil && !os.IsNotExist(err) {
+				panic(fmt.Sprintf("Error deleting folder %s: %v\n", pathName, err))
+			}
+			fmt.Printf("notify.Remove: %s\n", pathName)
+		// todo fix this to handle the two rename events to be one event
+		//case "notify.Rename":
+		//	err = os.Remove(pathName)
+		//	if err != nil && !os.IsNotExist(err) {
+		//		panic(fmt.Sprintf("Error deleting folder that was renamed %s: %v\n", pathName, err))
+		//	}
+		//	fmt.Printf("notify.Rename: %s\n", pathName)
+		default:
+			fmt.Printf("Unknown event found, doing nothing. Event: %v\n", event)
+		}
+
+		events = append([]Event{event}, events...)
+	}
+}
+
+
 
 type FilesystemTracker struct {
 	directory       string
