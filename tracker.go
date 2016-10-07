@@ -116,8 +116,7 @@ func (self *FilesystemTracker) watchDirectory(watcher *ChangeHandler) {
 	go self.monitorLoop(self.fsEventsChannel)
 
 	// Set up a watch point listening for events within a directory tree rooted at the specified folder
-	err := notify.Watch(self.directory+"/", self.fsEventsChannel, notify.All)
-	//err := notify.Watch(self.directory+"/...", self.fsEventsChannel, notify.All)
+	err := notify.Watch(self.directory+"/...", self.fsEventsChannel, notify.All)
 	if err != nil {
 		log.Panic(err)
 	}
