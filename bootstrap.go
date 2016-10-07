@@ -13,6 +13,7 @@ import (
 	"os"
 	"strconv"
 	"sync"
+	"github.com/goji/httpauth"
 )
 
 type ReplicatServer struct {
@@ -28,6 +29,10 @@ var serverMap = make(map[string]ReplicatServer)
 var serverMapLock sync.RWMutex
 
 func bootstrapAndServe() {
+	http.Handle("/event/", httpauth.SimpleBasicAuth("replicat", "isthecat")(http.HandlerFunc(eventHandler)))
+	http.Handle("/tree/", httpauth.SimpleBasicAuth("replicat", "isthecat")(http.HandlerFunc(folderTreeHandler)))
+	http.Handle("/config/", httpauth.SimpleBasicAuth("replicat", "isthecat")(http.HandlerFunc(configHandler)))
+
 	lsnr, err := net.Listen("tcp4", ":0")
 	if err != nil {
 		fmt.Println("Error listening:", err)

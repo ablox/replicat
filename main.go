@@ -4,11 +4,9 @@ package main
 
 import (
 	"fmt"
-	"github.com/goji/httpauth"
 	"github.com/rjeczalik/notify"
 	"log"
 	"math/rand"
-	"net/http"
 	"os"
 	"path/filepath"
 	"time"
@@ -79,11 +77,7 @@ func main() {
 
 	fmt.Printf("Now keeping an eye on %d folders and %d files located under: %s\n", len(listOfFileInfo), totalFiles, globalSettings.Directory)
 
-	http.Handle("/event/", httpauth.SimpleBasicAuth("replicat", "isthecat")(http.HandlerFunc(eventHandler)))
-	http.Handle("/tree/", httpauth.SimpleBasicAuth("replicat", "isthecat")(http.HandlerFunc(folderTreeHandler)))
-	http.Handle("/config/", httpauth.SimpleBasicAuth("replicat", "isthecat")(http.HandlerFunc(configHandler)))
-
-	go bootstrapAndServe()
+	bootstrapAndServe()
 
 	dotCount := 0
 	sleepSeconds := time.Duration(25 + rand.Intn(10))
