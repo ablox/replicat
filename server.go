@@ -31,6 +31,21 @@ type FileEvent struct {
 	Time   time.Time
 }
 
+func SendEvent(event Event) {
+	// sendEvent to manager
+	sendEvent(&event, globalSettings.ManagerAddress, globalSettings.ManagerCredentials)
+
+	log.Println("We are NodeA send to our peers")
+	// SendEvent to all peers
+	for k, v := range serverMap {
+		fmt.Printf("Considering sending to: %s\n", k)
+		if k != globalSettings.Name {
+			fmt.Printf("sending to peer %s at %s\n", k, v.Address)
+			sendEvent(&event, v.Address, globalSettings.ManagerCredentials)
+		}
+	}
+}
+
 func sendEvent(event *Event, address string, credentials string) {
 	url := "http://" + address + "/event/"
 	fmt.Printf("target url: %s\n", url)
