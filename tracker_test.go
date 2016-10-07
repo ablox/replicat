@@ -116,6 +116,7 @@ func TestFileChangeTrackerAddFolders(t *testing.T) {
 	var c ChangeHandler = &logHandler
 
 	tmpFolder, err := ioutil.TempDir("", "blank")
+	//tmpFolder := "/tmp/foot"
 	defer os.RemoveAll(tmpFolder)
 
 	fmt.Println("TestFileChangeTrackerAddFolders: About to call watchDirectory")
@@ -128,18 +129,14 @@ func TestFileChangeTrackerAddFolders(t *testing.T) {
 
 	numberOfSubFolders := 5
 
-	newFolders := make([]string, 0, numberOfSubFolders)
 	for i := 0; i < numberOfSubFolders; i++ {
 		path := fmt.Sprintf("%s/a%d", tmpFolder, i)
-		newFolders = append(newFolders, path)
-
-		fmt.Printf("Making directory: %s\n", path)
 
 		err = os.Mkdir(path, os.ModeDir+os.ModePerm)
 		if err != nil {
 			t.Fatal(err)
 		}
-		time.Sleep(time.Millisecond * 50)
+		time.Sleep(time.Millisecond * 100)
 	}
 	fmt.Printf("done with creating %d different subfolders. :)\n", numberOfSubFolders)
 
@@ -164,13 +161,13 @@ func TestFileChangeTrackerAddFolders(t *testing.T) {
 	fmt.Printf("about to delete two folders \n%s\n%s\n", folder1, folder2)
 	// Delete two folders
 	fmt.Println(tracker.ListFolders())
-	time.Sleep(time.Millisecond * 50)
+	//time.Sleep(time.Millisecond * 50)
 	os.Remove(folder1)
-	time.Sleep(time.Millisecond * 50)
+	//time.Sleep(time.Millisecond * 50)
 	os.Remove(folder2)
 	fmt.Printf("deleted two folders \n%s\n%s\n", folder1, folder2)
 
-	expectedCreated := 6
+	expectedCreated := numberOfSubFolders + 1
 	expectedDeleted := 2
 
 	// wait for the final tally to come through.
