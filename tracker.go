@@ -93,54 +93,6 @@ func (self *Tracker) sendEvent(event *Event, address string, credentials string)
 	fmt.Println("response Body:", string(body))
 }
 
-func (self *Tracker) EventHandler(w http.ResponseWriter, r *http.Request) {
-	switch r.Method {
-	case "GET":
-		json.NewEncoder(w).Encode(events)
-	case "POST":
-		log.Println("Got POST: ", r.Body)
-		decoder := json.NewDecoder(r.Body)
-		var event Event
-		err := decoder.Decode(&event)
-		if err != nil {
-			panic("bad json body")
-		}
-
-		log.Println(event.Name + ", path: " + event.Message)
-		log.Printf("Event info: %v\n", event)
-
-		pathName := globalSettings.Directory + "/" + event.Message
-
-		//todo remember these events and skip the logging on the other side. Possibly use nodeID?
-
-		switch event.Name {
-		case "notify.Create":
-			err = os.MkdirAll(pathName, os.ModeDir+os.ModePerm)
-			if err != nil && !os.IsExist(err) {
-				panic(fmt.Sprintf("Error creating folder %s: %v\n", pathName, err))
-			}
-			fmt.Printf("notify.Create: %s\n", pathName)
-		case "notify.Remove":
-			err = os.Remove(pathName)
-			if err != nil && !os.IsNotExist(err) {
-				panic(fmt.Sprintf("Error deleting folder %s: %v\n", pathName, err))
-			}
-			fmt.Printf("notify.Remove: %s\n", pathName)
-		// todo fix this to handle the two rename events to be one event
-		//case "notify.Rename":
-		//	err = os.Remove(pathName)
-		//	if err != nil && !os.IsNotExist(err) {
-		//		panic(fmt.Sprintf("Error deleting folder that was renamed %s: %v\n", pathName, err))
-		//	}
-		//	fmt.Printf("notify.Rename: %s\n", pathName)
-		default:
-			fmt.Printf("Unknown event found, doing nothing. Event: %v\n", event)
-		}
-
-		events = append([]Event{event}, events...)
-	}
-}
-
 type FilesystemTracker struct {
 	directory       string
 	contents        DirTreeMap
