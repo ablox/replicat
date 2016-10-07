@@ -45,12 +45,14 @@ var primaryTracker = new(Tracker)
 
 type FilesystemTracker struct {
 	directory       string
-	contents        DirTreeMap
+	contents        fileContentsMap
 	setup           bool
 	watcher         *ChangeHandler
 	fsEventsChannel chan notify.EventInfo
 	fsLock          sync.RWMutex
 }
+
+type fileContentsMap map[string][]os.FileInfo
 
 func (self *FilesystemTracker) init(directory string) {
 	self.fsLock.Lock()
@@ -149,7 +151,7 @@ func (self *FilesystemTracker) CreateFolder(name string) (err error) {
 	fmt.Printf("CreateFolder: '%s' (%v)\n", name, exists)
 
 	if !exists {
-		self.contents[name] = make([]string, 0, 10)
+		self.contents[name] = make([]os.FileInfo, 0, 10)
 	}
 
 	return nil
@@ -249,7 +251,6 @@ func (self *FilesystemTracker) processEvent(event Event, pathName string) {
 	log.Printf("handleFilsystemEvent name: %s pathName: %s serverMap: %v\n", event.Name, pathName, serverMap)
 
 	currentValue, exists := self.contents[pathName]
-	//fmt.Printf("Before: %s: Existing value for %s: %v (%v)\n", event.Name, pathName, currentValue, exists)
 
 	switch event.Name {
 	case "notify.Create":
@@ -257,14 +258,14 @@ func (self *FilesystemTracker) processEvent(event Event, pathName string) {
 		// make sure there is an entry in the DirTreeMap for this folder. Since and empty list will always be returned, we can use that
 		_, exists := self.contents[pathName]
 		if !exists {
-			self.contents[pathName] = make([]string, 0)
+			self.contents[pathName] = make([]os.FileInfo, 0)
 		}
 
 		updated_value, exists := self.contents[pathName]
 		if self.watcher != nil {
 			(*self.watcher).FolderCreated(pathName)
 		}
-		fmt.Printf("notify.Create: Updated  value for %s: %v (%s)\n", pathName, updated_value, exists)
+		fmt.Printf("notify.Create: Updated  value for %s: %v (%t)\n", pathName, updated_value, exists)
 
 	case "notify.Remove":
 		// clean out the entry in the DirTreeMap for this folder
@@ -278,7 +279,7 @@ func (self *FilesystemTracker) processEvent(event Event, pathName string) {
 			fmt.Println("In the notify.Remove section but did not see a watcher")
 		}
 
-		fmt.Printf("notify.Remove: Updated  value for %s: %v (%s)\n", pathName, updated_value, exists)
+		fmt.Printf("notify.Remove: Updated  value for %s: %v (%t)\n", pathName, updated_value, exists)
 
 	// todo fix this to handle the two rename events to be one event
 	//case "notify.Rename":
@@ -306,11 +307,11 @@ func (self *FilesystemTracker) processEvent(event Event, pathName string) {
 func (self *FilesystemTracker) scanFolders() error {
 	pendingPaths := make([]string, 0, 100)
 	pendingPaths = append(pendingPaths, self.directory)
-	self.contents = make(DirTreeMap)
+	self.contents = make(fileContentsMap)
 
 	for len(pendingPaths) > 0 {
 		currentPath := pendingPaths[0]
-		fileList := make([]string, 0, 100)
+		fileInfoList := make([]os.FileInfo, 0, 100)
 		pendingPaths = pendingPaths[1:]
 
 		// Read the directories in the path
@@ -325,7 +326,7 @@ func (self *FilesystemTracker) scanFolders() error {
 				newDirectory := filepath.Join(currentPath, entry.Name())
 				pendingPaths = append(pendingPaths, newDirectory)
 			} else {
-				fileList = append(fileList, entry.Name())
+				fileInfoList = append(fileInfoList, entry)
 			}
 		}
 
@@ -334,7 +335,7 @@ func (self *FilesystemTracker) scanFolders() error {
 			return err
 		}
 
-		sort.Strings(fileList)
+		sort.Sort(FileInfoSlice{})
 
 		// Strip the base path off of the current path
 		// make sure all of the paths are still '/' prefixed
@@ -343,8 +344,21 @@ func (self *FilesystemTracker) scanFolders() error {
 			relativePath = "."
 		}
 
-		self.contents[relativePath] = fileList
+		self.contents[relativePath] = fileInfoList
 	}
 
 	return nil
 }
+
+
+// StringSlice attaches the methods of Interface to []string, sorting in increasing order.
+type FileInfoSlice []os.FileInfo
+func (p FileInfoSlice) Len() int           { return len(p) }
+func (p FileInfoSlice) Less(i, j int) bool { return p[i].Name() < p[j].Name() }
+func (p FileInfoSlice) Swap(i, j int)      { p[i], p[j] = p[j], p[i] }
+
+// Sort is a convenience method.
+//func (p FileInfoSlice) Sort() { Sort(p) }
+
+// Strings sorts a slice of strings in increasing order.
+//func fileInfos(a []os.FileInfo) { Sort(FileInfoSlice(a)) }
