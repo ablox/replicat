@@ -69,7 +69,7 @@ func (self *FilesystemTracker) init(directory string) {
 
 	// Make the channel buffered to ensure no event is dropped. Notify will drop
 	// an event if the receiver is not able to keep up the sending pace.
-	self.fsEventsChannel = make(chan notify.EventInfo, 1)
+	self.fsEventsChannel = make(chan notify.EventInfo, 1000)
 
 	// Update the path that traffic is served from to be the filesystem canonical path. This will allow the event folders that come in to match what we have.
 	fullPath := validatePath(directory)
