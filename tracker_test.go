@@ -127,7 +127,7 @@ func TestFileChangeTrackerAddFolders(t *testing.T) {
 	tracker.watchDirectory(&c)
 	fmt.Println("TestFileChangeTrackerAddFolders: Done - About to call watchDirectory")
 
-	numberOfSubFolders := 50
+	numberOfSubFolders := 10
 
 	for i := 0; i < numberOfSubFolders; i++ {
 		path := fmt.Sprintf("%s/a%d", tmpFolder, i)
