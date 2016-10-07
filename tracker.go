@@ -48,51 +48,6 @@ type Tracker struct {
 
 var primaryTracker = new(Tracker)
 
-func (self *Tracker) SendEvent(event Event) {
-	// sendEvent to manager
-	self.sendEvent(&event, globalSettings.ManagerAddress, globalSettings.ManagerCredentials)
-
-	log.Println("We are NodeA send to our peers")
-	// SendEvent to all peers
-	for k, v := range serverMap {
-		fmt.Printf("Considering sending to: %s\n", k)
-		if k != globalSettings.Name {
-			fmt.Printf("sending to peer %s at %s\n", k, v.Address)
-			self.sendEvent(&event, v.Address, globalSettings.ManagerCredentials)
-		}
-	}
-}
-
-func (self *Tracker) sendEvent(event *Event, address string, credentials string) {
-	url := "http://" + address + "/event/"
-	fmt.Printf("target url: %s\n", url)
-
-	// Set the event source (server name)
-	event.Source = globalSettings.Name
-
-	jsonStr, _ := json.Marshal(event)
-	req, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonStr))
-	req.Header.Set("Content-Type", "application/json")
-
-	data := []byte(credentials)
-	authHash := base64.StdEncoding.EncodeToString(data)
-	req.Header.Add("Authorization", "Basic "+authHash)
-
-	client := &http.Client{}
-	resp, err := client.Do(req)
-	if err != nil {
-		log.Println(err)
-		return
-	}
-
-	defer resp.Body.Close()
-
-	fmt.Println("response Status:", resp.Status)
-	fmt.Println("response Headers:", resp.Header)
-	body, _ := ioutil.ReadAll(resp.Body)
-	fmt.Println("response Body:", string(body))
-}
-
 type FilesystemTracker struct {
 	directory       string
 	contents        DirTreeMap
