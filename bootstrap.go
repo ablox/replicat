@@ -110,7 +110,7 @@ func configHandler(_ http.ResponseWriter, r *http.Request) {
 
 				// If this server map is for ourselves, build a list of folder if needed and notify others
 				if name == globalSettings.Name {
-					listOfFileInfo, err := createListOfFolders()
+					listOfFileInfo, err := scanDirectoryContents()
 					if err != nil {
 						log.Fatal(err)
 					}

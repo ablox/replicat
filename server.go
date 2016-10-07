@@ -182,7 +182,7 @@ func sendFolderTree(initialTree DirTreeMap) {
 func folderTreeHandler(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case "GET":
-		listOfFileInfo, err := createListOfFolders()
+		listOfFileInfo, err := scanDirectoryContents()
 		if err != nil {
 			log.Fatal(err)
 		}
