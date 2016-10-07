@@ -314,7 +314,6 @@ func (self *FilesystemTracker) scanFolders() error {
 	for len(pendingPaths) > 0 {
 		currentPath := pendingPaths[0]
 		directory := NewDirectory()
-
 		pendingPaths = pendingPaths[1:]
 
 		// Read the directories in the path
@@ -346,6 +345,11 @@ func (self *FilesystemTracker) scanFolders() error {
 		}
 
 		//todo add the directory stat into fileinfo
+		info, err := os.Stat(currentPath)
+		if err != nil {
+			panic(fmt.Sprintf("Could not get stats on directory %s", currentPath))
+		}
+		directory.FileInfo = info
 		self.contents[relativePath] = *directory
 	}
 

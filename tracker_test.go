@@ -187,4 +187,12 @@ func TestFileChangeTrackerAddFolders(t *testing.T) {
 	if logHandler.FoldersCreated != expectedCreated || logHandler.FoldersDeleted != expectedDeleted {
 		t.Fatalf("Expected/Found created: (%d/%d) deleted: (%d/%d)\n", expectedCreated, logHandler.FoldersCreated, expectedDeleted, logHandler.FoldersDeleted)
 	}
+
+	rootDirectory, exists := tracker.contents["."]
+	if !exists {
+		fmt.Println("root directory fileinfo is nil")
+	} else {
+		fmt.Printf("Root directory %v\n", rootDirectory)
+		fmt.Printf("Root directory named: %s and has size %d\n", rootDirectory.Name(), rootDirectory.Size())
+	}
 }

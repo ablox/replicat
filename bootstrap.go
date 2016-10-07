@@ -7,13 +7,13 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"github.com/goji/httpauth"
 	"log"
 	"net"
 	"net/http"
 	"os"
 	"strconv"
 	"sync"
-	"github.com/goji/httpauth"
 )
 
 type ReplicatServer struct {
