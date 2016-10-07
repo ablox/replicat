@@ -215,15 +215,9 @@ func (self *FilesystemTracker) monitorLoop(c chan notify.EventInfo) {
 		}
 
 		event := Event{Name: ei.Event().String(), Message: path}
-		log.Printf("Event captured name: %s location: %s", event.Name, event.Message)
+		log.Printf("Event captured name: %s location: %s, ei.Path(): %s", event.Name, event.Message, ei.Path())
 
-		// It looks like there is some sort of reversal of paths now. where adds are being removed from the other side.
-		isDirectory := self.checkIfDirectory(event, path, fullPath)
-
-		if isDirectory {
-			self.processEvent(event, path)
-		}
-
+		self.processEvent(event, path)
 	}
 }
 
@@ -298,7 +292,8 @@ func (self *FilesystemTracker) processEvent(event Event, pathName string) {
 	fmt.Printf("After: %s: Existing value for %s: %v (%v)\n", event.Name, pathName, currentValue, exists)
 
 	// sendEvent to manager
-	sendEvent(&event, globalSettings.ManagerAddress, globalSettings.ManagerCredentials)
+	//sendEvent(&event, globalSettings.ManagerAddress, globalSettings.ManagerCredentials)
+	SendEvent(event)
 
 	// todo - make this actually send to the peers
 	log.Println("TODO Send to peers here")
