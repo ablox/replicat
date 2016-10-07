@@ -38,21 +38,23 @@ func (self *LogOnlyChangeHandler) FolderDeleted(name string) (err error) {
 	return nil
 }
 
-type Tracker struct {
-}
-
-var primaryTracker = new(Tracker)
-
 type FilesystemTracker struct {
 	directory       string
-	contents        fileContentsMap
+	contents        map[string]Directory
 	setup           bool
 	watcher         *ChangeHandler
 	fsEventsChannel chan notify.EventInfo
 	fsLock          sync.RWMutex
 }
 
-type fileContentsMap map[string][]os.FileInfo
+type Directory struct {
+	os.FileInfo
+	contents map[string]os.FileInfo
+}
+
+func NewDirectory() *Directory {
+	return &Directory{contents: make(map[string]os.FileInfo)}
+}
 
 func (self *FilesystemTracker) init(directory string) {
 	self.fsLock.Lock()
@@ -151,7 +153,7 @@ func (self *FilesystemTracker) CreateFolder(name string) (err error) {
 	fmt.Printf("CreateFolder: '%s' (%v)\n", name, exists)
 
 	if !exists {
-		self.contents[name] = make([]os.FileInfo, 0, 10)
+		self.contents[name] = Directory{}
 	}
 
 	return nil
@@ -258,7 +260,7 @@ func (self *FilesystemTracker) processEvent(event Event, pathName string) {
 		// make sure there is an entry in the DirTreeMap for this folder. Since and empty list will always be returned, we can use that
 		_, exists := self.contents[pathName]
 		if !exists {
-			self.contents[pathName] = make([]os.FileInfo, 0)
+			self.contents[pathName] = Directory{}
 		}
 
 		updated_value, exists := self.contents[pathName]
@@ -307,11 +309,12 @@ func (self *FilesystemTracker) processEvent(event Event, pathName string) {
 func (self *FilesystemTracker) scanFolders() error {
 	pendingPaths := make([]string, 0, 100)
 	pendingPaths = append(pendingPaths, self.directory)
-	self.contents = make(fileContentsMap)
+	self.contents = make(map[string]Directory)
 
 	for len(pendingPaths) > 0 {
 		currentPath := pendingPaths[0]
-		fileInfoList := make([]os.FileInfo, 0, 100)
+		directory := NewDirectory()
+
 		pendingPaths = pendingPaths[1:]
 
 		// Read the directories in the path
@@ -326,7 +329,7 @@ func (self *FilesystemTracker) scanFolders() error {
 				newDirectory := filepath.Join(currentPath, entry.Name())
 				pendingPaths = append(pendingPaths, newDirectory)
 			} else {
-				fileInfoList = append(fileInfoList, entry)
+				directory.contents[entry.Name()] = entry
 			}
 		}
 
@@ -335,8 +338,6 @@ func (self *FilesystemTracker) scanFolders() error {
 			return err
 		}
 
-		sort.Sort(FileInfoSlice{})
-
 		// Strip the base path off of the current path
 		// make sure all of the paths are still '/' prefixed
 		relativePath := currentPath[len(self.directory):]
@@ -344,15 +345,16 @@ func (self *FilesystemTracker) scanFolders() error {
 			relativePath = "."
 		}
 
-		self.contents[relativePath] = fileInfoList
+		//todo add the directory stat into fileinfo
+		self.contents[relativePath] = *directory
 	}
 
 	return nil
 }
 
-
 // StringSlice attaches the methods of Interface to []string, sorting in increasing order.
 type FileInfoSlice []os.FileInfo
+
 func (p FileInfoSlice) Len() int           { return len(p) }
 func (p FileInfoSlice) Less(i, j int) bool { return p[i].Name() < p[j].Name() }
 func (p FileInfoSlice) Swap(i, j int)      { p[i], p[j] = p[j], p[i] }
