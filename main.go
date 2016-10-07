@@ -95,7 +95,7 @@ func main() {
 			listOfFileInfo = updatedState
 
 			// Post the changes to the other side.
-			sendFolderTree(listOfFileInfo)
+			//sendFolderTree(listOfFileInfo)
 		} else {
 			fmt.Print(".")
 			dotCount++

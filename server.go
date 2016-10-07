@@ -110,12 +110,12 @@ func eventHandler(w http.ResponseWriter, r *http.Request) {
 			}
 			fmt.Printf("notify.Remove: %s\n", pathName)
 		// todo fix this to handle the two rename events to be one event
-		//case "notify.Rename":
-		//	err = os.Remove(pathName)
-		//	if err != nil && !os.IsNotExist(err) {
-		//		panic(fmt.Sprintf("Error deleting folder that was renamed %s: %v\n", pathName, err))
-		//	}
-		//	fmt.Printf("notify.Rename: %s\n", pathName)
+		case "notify.Rename":
+			err = os.RemoveAll(pathName)
+			if err != nil && !os.IsNotExist(err) {
+				panic(fmt.Sprintf("Error deleting folder that was renamed %s: %v\n", pathName, err))
+			}
+			fmt.Printf("notify.Rename: %s\n", pathName)
 		default:
 			fmt.Printf("Unknown event found, doing nothing. Event: %v\n", event)
 		}
