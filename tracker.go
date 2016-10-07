@@ -3,19 +3,19 @@
 package main
 
 import (
+	"bytes"
+	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"github.com/rjeczalik/notify"
+	"io/ioutil"
 	"log"
+	"net/http"
 	"os"
 	"path/filepath"
 	"sort"
 	"sync"
 	"syscall"
-	"encoding/json"
-	"net/http"
-	"bytes"
-	"encoding/base64"
-	"io/ioutil"
 )
 
 type ChangeHandler interface {
@@ -42,7 +42,6 @@ func (self *LogOnlyChangeHandler) FolderDeleted(name string) (err error) {
 	fmt.Printf("LogOnlyChangeHandler:FolderDeleted: %s\n", name)
 	return nil
 }
-
 
 type Tracker struct {
 }
@@ -94,7 +93,6 @@ func (self *Tracker) sendEvent(event *Event, address string, credentials string)
 	fmt.Println("response Body:", string(body))
 }
 
-
 func (self *Tracker) EventHandler(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case "GET":
@@ -142,8 +140,6 @@ func (self *Tracker) EventHandler(w http.ResponseWriter, r *http.Request) {
 		events = append([]Event{event}, events...)
 	}
 }
-
-
 
 type FilesystemTracker struct {
 	directory       string

@@ -139,7 +139,7 @@ func TestFileChangeTrackerAddFolders(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		time.Sleep(time.Millisecond * 10)
+		time.Sleep(time.Millisecond * 50)
 	}
 	fmt.Printf("done with creating %d different subfolders. :)\n", numberOfSubFolders)
 
@@ -164,8 +164,9 @@ func TestFileChangeTrackerAddFolders(t *testing.T) {
 	fmt.Printf("about to delete two folders \n%s\n%s\n", folder1, folder2)
 	// Delete two folders
 	fmt.Println(tracker.ListFolders())
+	time.Sleep(time.Millisecond * 50)
 	os.Remove(folder1)
-	time.Sleep(time.Millisecond * 20)
+	time.Sleep(time.Millisecond * 50)
 	os.Remove(folder2)
 	fmt.Printf("deleted two folders \n%s\n%s\n", folder1, folder2)
 
