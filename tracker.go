@@ -3,14 +3,9 @@
 package main
 
 import (
-	"bytes"
-	"encoding/base64"
-	"encoding/json"
 	"fmt"
 	"github.com/rjeczalik/notify"
-	"io/ioutil"
 	"log"
-	"net/http"
 	"os"
 	"path/filepath"
 	"sort"
