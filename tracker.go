@@ -182,7 +182,7 @@ func (self *FilesystemTracker) ListFolders() (folderList []string) {
 	folderList = make([]string, len(self.contents))
 	index := 0
 
-	for k, _ := range self.contents {
+	for k := range self.contents {
 		folderList[index] = k
 		index++
 	}
