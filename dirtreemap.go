@@ -38,7 +38,7 @@ func checkForChanges(originalState, newState DirTreeMap) (changed bool, updatedS
 
 	// if no updated state is provided, resurvey the drive. If there is updated state, use it
 	if newState == nil {
-		updatedState, err = createListOfFolders()
+		updatedState, err = scanDirectoryContents()
 		if err != nil {
 			panic(err)
 		}
@@ -130,7 +130,7 @@ func checkForChanges(originalState, newState DirTreeMap) (changed bool, updatedS
 	return changed, updatedState, newPaths, deletedPaths, matchingPaths
 }
 
-func createListOfFolders() (DirTreeMap, error) {
+func scanDirectoryContents() (DirTreeMap, error) {
 	pendingPaths := make([]string, 0, 100)
 	pendingPaths = append(pendingPaths, globalSettings.Directory)
 	listOfFileInfo := make(DirTreeMap)

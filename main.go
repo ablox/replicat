@@ -47,7 +47,7 @@ func main() {
 		globalSettings.Directory = symPath
 	}
 
-	listOfFileInfo, err := createListOfFolders()
+	listOfFileInfo, err := scanDirectoryContents()
 	if err != nil {
 		log.Fatal(err)
 	}

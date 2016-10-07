@@ -14,7 +14,7 @@ func TestDirectoryScan(t *testing.T) {
 	tmpFolder, err := ioutil.TempDir("", "blank")
 	defer os.RemoveAll(tmpFolder)
 	globalSettings.Directory = tmpFolder
-	emptyState, err := createListOfFolders()
+	emptyState, err := scanDirectoryContents()
 	if err != nil {
 		t.Fail()
 	}
@@ -32,7 +32,7 @@ func TestDirectoryScan(t *testing.T) {
 	}
 
 	totalFolders := numberOfSubFolders + 1
-	dirState, err := createListOfFolders()
+	dirState, err := scanDirectoryContents()
 	verifyClonedDirTree(t, dirState)
 	if len(dirState) != totalFolders {
 		t.Fatalf("Unexpected Number of items in state. Expected %d, found %d\n", totalFolders, len(dirState))
@@ -63,7 +63,7 @@ func TestDirectoryScan(t *testing.T) {
 	verifyClonedDirTree(t, updatedState)
 
 	// get caught up and add more!
-	dirState, err = createListOfFolders()
+	dirState, err = scanDirectoryContents()
 	verifyClonedDirTree(t, dirState)
 
 	subDirs = []string{"1", "2", "3", "4", "5"}
@@ -88,7 +88,7 @@ func TestDirectoryScan(t *testing.T) {
 	subDirs = []string{"a", "b", "c", "d", "e", "ab", "abc", "abd"}
 	addFlatSubDirs(t, tmpFolder, subDirs)
 	totalFolders += len(subDirs)
-	dirState, err = createListOfFolders()
+	dirState, err = scanDirectoryContents()
 	verifyClonedDirTree(t, dirState)
 
 	changed, updatedState, newPaths, deletedPaths, matchingPaths = checkForChanges(dirState, nil)
@@ -111,7 +111,7 @@ func TestDirectoryScan(t *testing.T) {
 
 	// get caught up and delete the start and end ones
 	totalFolders -= len(deletedPaths)
-	dirState, err = createListOfFolders()
+	dirState, err = scanDirectoryContents()
 	verifyClonedDirTree(t, dirState)
 	deletePath = tmpFolder + "/a"
 	os.Remove(deletePath)
@@ -128,7 +128,7 @@ func TestDirectoryScan(t *testing.T) {
 
 	// get caught up and recreate them all
 	totalFolders -= len(deletedPaths)
-	dirState, err = createListOfFolders()
+	dirState, err = scanDirectoryContents()
 	verifyClonedDirTree(t, dirState)
 
 	subDirs = []string{"a", "abd"}
