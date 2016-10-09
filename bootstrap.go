@@ -16,6 +16,8 @@ import (
 	"sync"
 )
 
+// ReplicatServer is a structure that contains the definition of the servers in a cluster. Each node has a name and this
+// node (as determined by globalSettings.name at the moment) also has a StorageTracker interface.
 type ReplicatServer struct {
 	Cluster       string
 	Name          string
