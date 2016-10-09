@@ -128,17 +128,17 @@ type countingChangeHandler struct {
 	FoldersDeleted int
 }
 
-func (self *countingChangeHandler) FolderCreated(name string) (err error) {
-	self.FoldersCreated++
+func (handler *countingChangeHandler) FolderCreated(name string) (err error) {
+	handler.FoldersCreated++
 
-	fmt.Printf("countingChangeHandler:FolderCreated: %s (%d)\n", name, self.FoldersCreated)
+	fmt.Printf("countingChangeHandler:FolderCreated: %s (%d)\n", name, handler.FoldersCreated)
 	return nil
 }
 
-func (self *countingChangeHandler) FolderDeleted(name string) (err error) {
-	self.FoldersDeleted++
+func (handler *countingChangeHandler) FolderDeleted(name string) (err error) {
+	handler.FoldersDeleted++
 
-	fmt.Printf("countingChangeHandler:FolderDeleted: %s (%d)\n", name, self.FoldersDeleted)
+	fmt.Printf("countingChangeHandler:FolderDeleted: %s (%d)\n", name, handler.FoldersDeleted)
 	return nil
 }
 
