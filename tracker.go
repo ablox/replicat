@@ -31,13 +31,13 @@ type LogOnlyChangeHandler struct {
 }
 
 // FolderCreated - track a new folder being created
-func (self *LogOnlyChangeHandler) FolderCreated(name string) (err error) {
+func (handler *LogOnlyChangeHandler) FolderCreated(name string) (err error) {
 	fmt.Printf("LogOnlyChangeHandler:FolderCreated: %s\n", name)
 	return nil
 }
 
 // FolderDeleted - track a new folder being deleted
-func (self *LogOnlyChangeHandler) FolderDeleted(name string) (err error) {
+func (handler *LogOnlyChangeHandler) FolderDeleted(name string) (err error) {
 	fmt.Printf("LogOnlyChangeHandler:FolderDeleted: %s\n", name)
 	return nil
 }
@@ -63,68 +63,68 @@ func NewDirectory() *Directory {
 	return &Directory{contents: make(map[string]os.FileInfo)}
 }
 
-func (self *FilesystemTracker) init(directory string) {
-	self.fsLock.Lock()
-	defer self.fsLock.Unlock()
+func (handler *FilesystemTracker) init(directory string) {
+	handler.fsLock.Lock()
+	defer handler.fsLock.Unlock()
 
-	if self.setup {
+	if handler.setup {
 		return
 	}
 
 	fmt.Printf("FilesystemTracker:init called with %s\n", directory)
-	self.directory = directory
+	handler.directory = directory
 
 	// Make the channel buffered to ensure no event is dropped. Notify will drop
 	// an event if the receiver is not able to keep up the sending pace.
-	self.fsEventsChannel = make(chan notify.EventInfo, 10000)
+	handler.fsEventsChannel = make(chan notify.EventInfo, 10000)
 
 	// Update the path that traffic is served from to be the filesystem canonical path. This will allow the event folders that come in to match what we have.
 	fullPath := validatePath(directory)
-	self.directory = fullPath
+	handler.directory = fullPath
 
 	if fullPath != globalSettings.Directory {
 		fmt.Printf("Updating serving directory to: %s\n", fullPath)
-		self.directory = fullPath
+		handler.directory = fullPath
 	}
 
 	fmt.Println("Setting up filesystemTracker!")
-	err := self.scanFolders()
+	err := handler.scanFolders()
 	if err != nil {
 		panic(err)
 	}
 
-	self.setup = true
+	handler.setup = true
 }
 
-func (self *FilesystemTracker) cleanup() {
-	self.fsLock.Lock()
-	defer self.fsLock.Unlock()
+func (handler *FilesystemTracker) cleanup() {
+	handler.fsLock.Lock()
+	defer handler.fsLock.Unlock()
 
-	if !self.setup {
+	if !handler.setup {
 		panic("cleanup called when not yet setup")
 	}
 
-	notify.Stop(self.fsEventsChannel)
+	notify.Stop(handler.fsEventsChannel)
 }
 
-func (self *FilesystemTracker) watchDirectory(watcher *ChangeHandler) {
-	self.fsLock.Lock()
-	defer self.fsLock.Unlock()
+func (handler *FilesystemTracker) watchDirectory(watcher *ChangeHandler) {
+	handler.fsLock.Lock()
+	defer handler.fsLock.Unlock()
 
-	if !self.setup {
+	if !handler.setup {
 		panic("FilesystemTracker:watchDirectory called when not yet setup")
 	}
 
-	if self.watcher != nil {
+	if handler.watcher != nil {
 		panic("watchDirectory called a second time. Not allowed")
 	}
 
-	self.watcher = watcher
+	handler.watcher = watcher
 
-	go self.monitorLoop(self.fsEventsChannel)
+	go handler.monitorLoop(handler.fsEventsChannel)
 
 	// Set up a watch point listening for events within a directory tree rooted at the specified folder
-	err := notify.Watch(self.directory+"/...", self.fsEventsChannel, notify.All)
+	err := notify.Watch(handler.directory+"/...", handler.fsEventsChannel, notify.All)
 	if err != nil {
 		log.Panic(err)
 	}
@@ -149,28 +149,28 @@ func validatePath(directory string) (fullPath string) {
 	return
 }
 
-func (self *FilesystemTracker) CreateFolder(relativePath string) (err error) {
-	if !self.setup {
+func (handler *FilesystemTracker) CreateFolder(relativePath string) (err error) {
+	if !handler.setup {
 		panic("FilesystemTracker:CreateFolder called when not yet setup")
 	}
 
-	self.fsLock.Lock()
-	defer self.fsLock.Unlock()
+	handler.fsLock.Lock()
+	defer handler.fsLock.Unlock()
 
-	absolutePath := self.directory + "/" + relativePath
+	absolutePath := handler.directory + "/" + relativePath
 
 	err = os.MkdirAll(absolutePath, os.ModeDir+os.ModePerm)
 	if err != nil && !os.IsExist(err) {
 		panic(fmt.Sprintf("Error creating folder %s: %v\n", absolutePath, err))
 	}
 
-	_, exists := self.contents[relativePath]
+	_, exists := handler.contents[relativePath]
 	fmt.Printf("CreateFolder: '%s' (%v)\n", relativePath, exists)
 
 	if !exists {
 		directory := Directory{}
 		directory.FileInfo, err = os.Stat(absolutePath)
-		self.contents[relativePath] = directory
+		handler.contents[relativePath] = directory
 	} else {
 		fmt.Printf("for some reason the directory object already exists in the map: %s\n", relativePath)
 	}
@@ -178,34 +178,34 @@ func (self *FilesystemTracker) CreateFolder(relativePath string) (err error) {
 	return nil
 }
 
-func (self *FilesystemTracker) DeleteFolder(name string) (err error) {
-	if !self.setup {
+func (handler *FilesystemTracker) DeleteFolder(name string) (err error) {
+	if !handler.setup {
 		panic("FilesystemTracker:DeleteFolder called when not yet setup")
 	}
 
-	self.fsLock.Lock()
-	defer self.fsLock.Unlock()
+	handler.fsLock.Lock()
+	defer handler.fsLock.Unlock()
 
-	fmt.Printf("%d before delete of: %s\n", len(self.contents), name)
+	fmt.Printf("%d before delete of: %s\n", len(handler.contents), name)
 	fmt.Printf("DeleteFolder: '%s'\n", name)
-	delete(self.contents, name)
-	fmt.Printf("%d after delete of: %s\n", len(self.contents), name)
+	delete(handler.contents, name)
+	fmt.Printf("%d after delete of: %s\n", len(handler.contents), name)
 
 	return nil
 }
 
-func (self *FilesystemTracker) ListFolders() (folderList []string) {
-	if !self.setup {
+func (handler *FilesystemTracker) ListFolders() (folderList []string) {
+	if !handler.setup {
 		panic("FilesystemTracker:ListFolders called when not yet setup")
 	}
 
-	self.fsLock.Lock()
-	defer self.fsLock.Unlock()
+	handler.fsLock.Lock()
+	defer handler.fsLock.Unlock()
 
-	folderList = make([]string, len(self.contents))
+	folderList = make([]string, len(handler.contents))
 	index := 0
 
-	for k := range self.contents {
+	for k := range handler.contents {
 		folderList[index] = k
 		index++
 	}
@@ -215,8 +215,8 @@ func (self *FilesystemTracker) ListFolders() (folderList []string) {
 }
 
 // Monitor the filesystem looking for changes to files we are keeping track of.
-func (self *FilesystemTracker) monitorLoop(c chan notify.EventInfo) {
-	directoryLength := len(self.directory)
+func (handler *FilesystemTracker) monitorLoop(c chan notify.EventInfo) {
+	directoryLength := len(handler.directory)
 	for {
 		ei := <-c
 
@@ -224,7 +224,7 @@ func (self *FilesystemTracker) monitorLoop(c chan notify.EventInfo) {
 		fullPath := string(ei.Path())
 
 		path := fullPath
-		if len(fullPath) >= directoryLength && self.directory == fullPath[:directoryLength] {
+		if len(fullPath) >= directoryLength && handler.directory == fullPath[:directoryLength] {
 			if len(fullPath) == directoryLength {
 				path = "."
 			} else {
@@ -236,13 +236,13 @@ func (self *FilesystemTracker) monitorLoop(c chan notify.EventInfo) {
 		event := Event{Name: ei.Event().String(), Message: path}
 		log.Printf("Event captured name: %s location: %s, ei.Path(): %s", event.Name, event.Message, ei.Path())
 
-		self.processEvent(event, path)
+		handler.processEvent(event, path)
 	}
 }
 
-func (self *FilesystemTracker) checkIfDirectory(event Event, path, fullPath string) bool {
+func (handler *FilesystemTracker) checkIfDirectory(event Event, path, fullPath string) bool {
 	// Check to see if this was a path we knew about
-	_, isDirectory := self.contents[path]
+	_, isDirectory := handler.contents[path]
 	var iNode uint64
 	// if we have not found it yet, check to see if it can be stated
 	info, err := os.Stat(fullPath)
@@ -262,34 +262,34 @@ func (self *FilesystemTracker) checkIfDirectory(event Event, path, fullPath stri
 
 }
 
-func (self *FilesystemTracker) processEvent(event Event, pathName string) {
+func (handler *FilesystemTracker) processEvent(event Event, pathName string) {
 	log.Printf("handleFilsystemEvent name: %s pathName: %s serverMap: %v\n", event.Name, pathName, serverMap)
 
-	currentValue, exists := self.contents[pathName]
+	currentValue, exists := handler.contents[pathName]
 
 	switch event.Name {
 	case "notify.Create":
-		fmt.Printf("processEvent: About to assign from one path to the next. Original: %s Map: %s\n", currentValue, self.contents)
+		fmt.Printf("processEvent: About to assign from one path to the next. Original: %s Map: %s\n", currentValue, handler.contents)
 		// make sure there is an entry in the DirTreeMap for this folder. Since and empty list will always be returned, we can use that
 		if !exists {
-			self.contents[pathName] = Directory{}
+			handler.contents[pathName] = Directory{}
 		}
 
-		updated_value, exists := self.contents[pathName]
-		if self.watcher != nil {
-			(*self.watcher).FolderCreated(pathName)
+		updated_value, exists := handler.contents[pathName]
+		if handler.watcher != nil {
+			(*handler.watcher).FolderCreated(pathName)
 		}
 		fmt.Printf("notify.Create: Updated  value for %s: %v (%t)\n", pathName, updated_value, exists)
 
 	case "notify.Remove":
 		// clean out the entry in the DirTreeMap for this folder
-		delete(self.contents, pathName)
+		delete(handler.contents, pathName)
 
 		//todo FIXME: uhm, we just deleted this and now we are checking it? Uhm, ....
-		updated_value, exists := self.contents[pathName]
+		updated_value, exists := handler.contents[pathName]
 
-		if self.watcher != nil {
-			(*self.watcher).FolderDeleted(pathName)
+		if handler.watcher != nil {
+			(*handler.watcher).FolderDeleted(pathName)
 		} else {
 			fmt.Println("In the notify.Remove section but did not see a watcher")
 		}
@@ -298,7 +298,7 @@ func (self *FilesystemTracker) processEvent(event Event, pathName string) {
 
 	// todo fix this to handle the two rename events to be one event
 	case "notify.Rename":
-		currentValue, exists := self.contents[pathName]
+		currentValue, exists := handler.contents[pathName]
 		var iNode uint64
 		//if exists && !(currentValue == nil) {
 		if exists {
@@ -309,19 +309,19 @@ func (self *FilesystemTracker) processEvent(event Event, pathName string) {
 			}
 
 			// At this point, the item is a directory and this is the original location
-			destinationPath, exists := self.renamesInProgress[iNode]
+			destinationPath, exists := handler.renamesInProgress[iNode]
 			if exists {
-				self.contents[destinationPath] = currentValue
-				delete(self.contents, pathName)
+				handler.contents[destinationPath] = currentValue
+				delete(handler.contents, pathName)
 
 				fmt.Printf("Renamed: %s to: %s", pathName, destinationPath)
 				//os.Rename(pathName, destinationPath)
 			} else {
-				fmt.Printf("Could not find rename in progress for iNode: %d\n%v\n", iNode, self.renamesInProgress)
+				fmt.Printf("Could not find rename in progress for iNode: %d\n%v\n", iNode, handler.renamesInProgress)
 			}
 
 		} else {
-			fmt.Printf("Could not find %s in self.contents\n%v\n", pathName, self.contents)
+			fmt.Printf("Could not find %s in handler.contents\n%v\n", pathName, handler.contents)
 		}
 
 		//err := os.Remove(pathName)
@@ -333,7 +333,7 @@ func (self *FilesystemTracker) processEvent(event Event, pathName string) {
 		fmt.Printf("%s: %s not known, skipping\n", event.Name, pathName)
 	}
 
-	currentValue, exists = self.contents[pathName]
+	currentValue, exists = handler.contents[pathName]
 	fmt.Printf("After: %s: Existing value for %s: %v (%v)\n", event.Name, pathName, currentValue, exists)
 
 	// sendEvent to manager
@@ -342,11 +342,11 @@ func (self *FilesystemTracker) processEvent(event Event, pathName string) {
 }
 
 // Scan the files and folders inside of the directory we are watching and add them to the contents. This function
-// can only be called inside of a writelock on self.fsLock
-func (self *FilesystemTracker) scanFolders() error {
+// can only be called inside of a writelock on handler.fsLock
+func (handler *FilesystemTracker) scanFolders() error {
 	pendingPaths := make([]string, 0, 100)
-	pendingPaths = append(pendingPaths, self.directory)
-	self.contents = make(map[string]Directory)
+	pendingPaths = append(pendingPaths, handler.directory)
+	handler.contents = make(map[string]Directory)
 
 	for len(pendingPaths) > 0 {
 		currentPath := pendingPaths[0]
@@ -376,7 +376,7 @@ func (self *FilesystemTracker) scanFolders() error {
 
 		// Strip the base path off of the current path
 		// make sure all of the paths are still '/' prefixed
-		relativePath := currentPath[len(self.directory):]
+		relativePath := currentPath[len(handler.directory):]
 		if relativePath == "" {
 			relativePath = "."
 		}
@@ -387,7 +387,7 @@ func (self *FilesystemTracker) scanFolders() error {
 			panic(fmt.Sprintf("Could not get stats on directory %s", currentPath))
 		}
 		directory.FileInfo = info
-		self.contents[relativePath] = *directory
+		handler.contents[relativePath] = *directory
 	}
 
 	return nil
