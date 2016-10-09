@@ -7,7 +7,7 @@ import (
 	"os"
 )
 
-// settings for the server
+// Settings for the server
 type Settings struct {
 	Directory          string
 	ManagerAddress     string
@@ -27,6 +27,7 @@ var globalSettings Settings = Settings{
 	BootstrapAddress:   ":8080",
 }
 
+// Setup the command line environment. Provide help and read the settings in.
 func SetupCli() {
 
 	app := cli.NewApp()
