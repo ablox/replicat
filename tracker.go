@@ -275,11 +275,11 @@ func (handler *FilesystemTracker) processEvent(event Event, pathName string) {
 			handler.contents[pathName] = Directory{}
 		}
 
-		updated_value, exists := handler.contents[pathName]
+		updatedValue, exists := handler.contents[pathName]
 		if handler.watcher != nil {
 			(*handler.watcher).FolderCreated(pathName)
 		}
-		fmt.Printf("notify.Create: Updated  value for %s: %v (%t)\n", pathName, updated_value, exists)
+		fmt.Printf("notify.Create: Updated  value for %s: %v (%t)\n", pathName, updatedValue, exists)
 
 	case "notify.Remove":
 		// clean out the entry in the DirTreeMap for this folder

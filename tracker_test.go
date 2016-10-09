@@ -115,7 +115,7 @@ func TestFileChangeTrackerAutoCreateFolderAndCleanup(t *testing.T) {
 	tracker.watchDirectory(&loggerInterface)
 
 	// verify the folder was created
-	tmpFolder, err = filepath.EvalSymlinks(tmpFolder)
+	_, err = filepath.EvalSymlinks(tmpFolder)
 	if err != nil {
 		t.Fatal(err)
 	}
