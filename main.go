@@ -13,18 +13,12 @@ func main() {
 	rand.Seed(int64(time.Now().Nanosecond()))
 
 	SetupCli()
-	logOnlyHandler := LogOnlyChangeHandler{}
-	tracker := FilesystemTracker{}
-	tracker.init(globalSettings.Directory)
-	var c ChangeHandler
-	c = &logOnlyHandler
-	tracker.watchDirectory(&c)
 
+	bootstrapAndServe()
 	fmt.Printf("replicat %s online....\n", globalSettings.Name)
 	defer fmt.Println("End of line")
 
-	bootstrapAndServe()
-
+	// keep this process running until it is shut down
 	for {
 		time.Sleep(time.Millisecond * 500)
 	}

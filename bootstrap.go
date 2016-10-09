@@ -41,6 +41,15 @@ func bootstrapAndServe() {
 	}
 	fmt.Println("Listening on:", lsnr.Addr().String())
 
+	logOnlyHandler := LogOnlyChangeHandler{}
+	tracker := FilesystemTracker{}
+	tracker.init(globalSettings.Directory)
+	var c ChangeHandler
+	c = &logOnlyHandler
+	tracker.watchDirectory(&c)
+
+	serverMap[globalSettings.Name] = ReplicatServer{Name: globalSettings.Name, Address: "127.0.0.1:" + strconv.Itoa(lsnr.Addr().(*net.TCPAddr).Port), storage: &tracker}
+
 	go func(lsnr net.Listener) {
 		err = http.Serve(lsnr, nil)
 		if err != nil {
@@ -57,7 +66,7 @@ func sendConfigToServer(addr net.Addr) {
 	url := "http://" + globalSettings.BootstrapAddress + "/config/"
 	fmt.Printf("Manager location: %s\n", url)
 
-	jsonStr, _ := json.Marshal(ReplicatServer{Name: globalSettings.Name, Address: "127.0.0.1:" + strconv.Itoa(addr.(*net.TCPAddr).Port)})
+	jsonStr, _ := json.Marshal(serverMap[globalSettings.Name])
 	fmt.Printf("jsonStr: %s\n", jsonStr)
 
 	req, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonStr))
