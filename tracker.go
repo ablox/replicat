@@ -30,16 +30,19 @@ type StorageTracker interface {
 type LogOnlyChangeHandler struct {
 }
 
+// FolderCreated - track a new folder being created
 func (self *LogOnlyChangeHandler) FolderCreated(name string) (err error) {
 	fmt.Printf("LogOnlyChangeHandler:FolderCreated: %s\n", name)
 	return nil
 }
 
+// FolderDeleted - track a new folder being deleted
 func (self *LogOnlyChangeHandler) FolderDeleted(name string) (err error) {
 	fmt.Printf("LogOnlyChangeHandler:FolderDeleted: %s\n", name)
 	return nil
 }
 
+// FilesystemTracker - Track a filesystem and keep it in sync
 type FilesystemTracker struct {
 	directory         string
 	contents          map[string]Directory
@@ -50,6 +53,7 @@ type FilesystemTracker struct {
 	fsLock            sync.RWMutex
 }
 
+// Directory - struct
 type Directory struct {
 	os.FileInfo
 	contents map[string]os.FileInfo
