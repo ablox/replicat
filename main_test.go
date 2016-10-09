@@ -54,7 +54,7 @@ func TestDirectoryScan(t *testing.T) {
 
 	changed, updatedState, newPaths, deletedPaths, matchingPaths = checkForChanges(dirState, nil)
 	if !changed || (len(newPaths)+len(deletedPaths)+len(matchingPaths) != totalFolders) {
-		t.Fatal("comparision of current state with current state did not result in empty....ouch\n")
+		t.Fatal("comparison of current state with current state did not result in empty....ouch\n")
 	}
 
 	if len(newPaths) != len(subDirs) {
@@ -73,7 +73,7 @@ func TestDirectoryScan(t *testing.T) {
 
 	changed, updatedState, newPaths, deletedPaths, matchingPaths = checkForChanges(dirState, nil)
 	if !changed || (len(newPaths)+len(deletedPaths)+len(matchingPaths) != totalFolders) {
-		t.Fatal("comparision of changed state with current state does not add up....ouch\n")
+		t.Fatal("comparison of changed state with current state does not add up....ouch\n")
 	}
 	if len(newPaths) != len(subDirs) {
 		t.Fatal(fmt.Sprintf("wrong number of new paths. expected %d, got %d....ouch\n", len(subDirs), len(newPaths)))
@@ -93,7 +93,7 @@ func TestDirectoryScan(t *testing.T) {
 
 	changed, updatedState, newPaths, deletedPaths, matchingPaths = checkForChanges(dirState, nil)
 	if changed || (len(newPaths)+len(deletedPaths)+len(matchingPaths) != totalFolders) {
-		t.Fatal(fmt.Sprintf("comparision of current state with current state did not result in empty....ouch\nChanged %v\nnewPaths: %v\ndeletedPaths: %v\nmatchingPaths: %v\nlen of matchingPaths: %d, totalFolders: %d\n", changed, newPaths, deletedPaths, matchingPaths, len(matchingPaths), totalFolders))
+		t.Fatal(fmt.Sprintf("comparison of current state with current state did not result in empty....ouch\nChanged %v\nnewPaths: %v\ndeletedPaths: %v\nmatchingPaths: %v\nlen of matchingPaths: %d, totalFolders: %d\n", changed, newPaths, deletedPaths, matchingPaths, len(matchingPaths), totalFolders))
 	}
 	verifyClonedDirTree(t, updatedState)
 
@@ -102,7 +102,7 @@ func TestDirectoryScan(t *testing.T) {
 	os.Remove(deletePath)
 	changed, updatedState, newPaths, deletedPaths, matchingPaths = checkForChanges(dirState, nil)
 	if !changed || (len(newPaths)+len(deletedPaths)+len(matchingPaths) != totalFolders) {
-		t.Fatal("comparision of changed state with current state does not add up....ouch\n")
+		t.Fatal("comparison of changed state with current state does not add up....ouch\n")
 	}
 	if len(deletedPaths) != 1 {
 		t.Fatal(fmt.Sprintf("wrong number of deleted paths. expected 1, got %d....ouch\n", len(deletedPaths)))
@@ -119,7 +119,7 @@ func TestDirectoryScan(t *testing.T) {
 	os.Remove(deletePath)
 	changed, updatedState, newPaths, deletedPaths, matchingPaths = checkForChanges(dirState, nil)
 	if !changed || (len(newPaths)+len(deletedPaths)+len(matchingPaths) != totalFolders) {
-		t.Fatal("comparision of changed state with current state does not add up....ouch\n")
+		t.Fatal("comparison of changed state with current state does not add up....ouch\n")
 	}
 	if len(deletedPaths) != 2 {
 		t.Fatal(fmt.Sprintf("wrong number of deleted paths. expected 2, got %d....ouch\n", len(deletedPaths)))
@@ -136,7 +136,7 @@ func TestDirectoryScan(t *testing.T) {
 	totalFolders += len(subDirs)
 	changed, updatedState, newPaths, deletedPaths, matchingPaths = checkForChanges(dirState, nil)
 	if !changed || (len(newPaths)+len(deletedPaths)+len(matchingPaths) != totalFolders) {
-		t.Fatal("comparision of changed state with current state does not add up....ouch\n")
+		t.Fatal("comparison of changed state with current state does not add up....ouch\n")
 	}
 	if len(newPaths) != 2 {
 		t.Fatal(fmt.Sprintf("wrong number of new paths. expected 2, got %d....ouch\n", len(deletedPaths)))

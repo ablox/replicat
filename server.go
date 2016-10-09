@@ -15,7 +15,7 @@ import (
 	"time"
 )
 
-// Event stores the relevent information on events or updates to the storage layer.
+// Event stores the relevant information on events or updates to the storage layer.
 type Event struct {
 	Source      string
 	Name        string
