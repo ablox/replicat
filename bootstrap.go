@@ -23,6 +23,7 @@ type ReplicatServer struct {
 	CurrentState  DirTreeMap
 	PreviousState DirTreeMap
 	Lock          sync.Mutex
+	storage       StorageTracker
 }
 
 var serverMap = make(map[string]ReplicatServer)
