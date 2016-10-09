@@ -39,12 +39,13 @@ func (self *LogOnlyChangeHandler) FolderDeleted(name string) (err error) {
 }
 
 type FilesystemTracker struct {
-	directory       string
-	contents        map[string]Directory
-	setup           bool
-	watcher         *ChangeHandler
-	fsEventsChannel chan notify.EventInfo
-	fsLock          sync.RWMutex
+	directory         string
+	contents          map[string]Directory
+	setup             bool
+	watcher           *ChangeHandler
+	fsEventsChannel   chan notify.EventInfo
+	renamesInProgress map[uint64]string // map from inode to source/destination of items being moved
+	fsLock            sync.RWMutex
 }
 
 type Directory struct {
@@ -250,9 +251,8 @@ func (self *FilesystemTracker) processEvent(event Event, pathName string) {
 
 	switch event.Name {
 	case "notify.Create":
-		fmt.Printf("processEvent: About to assign from one path to the next. Original: %s Map: %s\n", self.contents[pathName], self.contents)
+		fmt.Printf("processEvent: About to assign from one path to the next. Original: %s Map: %s\n", currentValue, self.contents)
 		// make sure there is an entry in the DirTreeMap for this folder. Since and empty list will always be returned, we can use that
-		_, exists := self.contents[pathName]
 		if !exists {
 			self.contents[pathName] = Directory{}
 		}
@@ -267,6 +267,7 @@ func (self *FilesystemTracker) processEvent(event Event, pathName string) {
 		// clean out the entry in the DirTreeMap for this folder
 		delete(self.contents, pathName)
 
+		//todo FIXME: uhm, we just deleted this and now we are checking it? Uhm, ....
 		updated_value, exists := self.contents[pathName]
 
 		if self.watcher != nil {
@@ -278,12 +279,38 @@ func (self *FilesystemTracker) processEvent(event Event, pathName string) {
 		fmt.Printf("notify.Remove: Updated  value for %s: %v (%t)\n", pathName, updated_value, exists)
 
 	// todo fix this to handle the two rename events to be one event
-	//case "notify.Rename":
-	//	err = os.Remove(pathName)
-	//	if err != nil && !os.IsNotExist(err) {
-	//		panic(fmt.Sprintf("Error deleting folder that was renamed %s: %v\n", pathName, err))
-	//	}
-	//	fmt.Printf("notify.Rename: %s\n", pathName)
+	case "notify.Rename":
+		currentValue, exists := self.contents[pathName]
+		var iNode uint64
+		//if exists && !(currentValue == nil) {
+		if exists {
+			sysInterface := currentValue.Sys()
+			if sysInterface != nil {
+				foo := sysInterface.(*syscall.Stat_t)
+				iNode = foo.Ino
+			}
+
+			// At this point, the item is a directory and this is the original location
+			destinationPath, exists := self.renamesInProgress[iNode]
+			if exists {
+				self.contents[destinationPath] = currentValue
+				delete(self.contents, pathName)
+
+				fmt.Printf("Renamed: %s to: %s", pathName, destinationPath)
+				//os.Rename(pathName, destinationPath)
+			} else {
+				fmt.Printf("Could not find rename in progress for iNode: %d\n%v\n", iNode, self.renamesInProgress)
+			}
+
+		} else {
+			fmt.Printf("Could not find %s in self.contents\n%v\n", pathName, self.contents)
+		}
+
+		//err := os.Remove(pathName)
+		//if err != nil && !os.IsNotExist(err) {
+		//	panic(fmt.Sprintf("Error deleting folder that was renamed %s: %v\n", pathName, err))
+		//}
+		//fmt.Printf("notify.Rename: %s\n", pathName)
 	default:
 		fmt.Printf("%s: %s not known, skipping\n", event.Name, pathName)
 	}
@@ -294,9 +321,6 @@ func (self *FilesystemTracker) processEvent(event Event, pathName string) {
 	// sendEvent to manager
 	//sendEvent(&event, globalSettings.ManagerAddress, globalSettings.ManagerCredentials)
 	SendEvent(event)
-
-	// todo - make this actually send to the peers
-	log.Println("TODO Send to peers here")
 }
 
 // Scan the files and folders inside of the directory we are watching and add them to the contents. This function
