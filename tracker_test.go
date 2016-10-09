@@ -13,6 +13,37 @@ import (
 	"time"
 )
 
+func TestDirectoryCreation(t *testing.T) {
+	tmpFolder, err := ioutil.TempDir("", "blank")
+	defer os.RemoveAll(tmpFolder)
+
+	tracker := new(FilesystemTracker)
+	tracker.init(tmpFolder)
+	defer tracker.cleanup()
+
+	testDirectory := tmpFolder + "/" + "newbie"
+	before, err := os.Stat(testDirectory)
+
+	os.Mkdir(testDirectory, os.ModeDir+os.ModePerm)
+
+	after, err := os.Stat(testDirectory)
+
+	if err != nil {
+		fmt.Println("GACK, directory should exist")
+	}
+
+	err = os.Remove(testDirectory)
+
+	_, err = os.Stat(testDirectory)
+
+	if !os.IsNotExist(err) {
+		t.Fatal("The folder still exists.....oopps")
+	}
+
+	fmt.Printf("TestDirectoryCreation\nbefore: %v\nafter: %v\n", before, after)
+
+}
+
 func TestDirectoryStorage(t *testing.T) {
 	tmpFolder, err := ioutil.TempDir("", "blank")
 	defer os.RemoveAll(tmpFolder)
