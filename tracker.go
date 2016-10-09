@@ -19,9 +19,9 @@ type ChangeHandler interface {
 }
 
 type StorageTracker interface {
-	CreateFolder(name string) (err error)
+	CreateFolder(relativePath string) (err error)
 	DeleteFolder(name string) (err error)
-	ListFolders() (folders []string, err error)
+	ListFolders() (folderList []string)
 }
 
 // sample change handler
@@ -86,6 +86,7 @@ func (self *FilesystemTracker) init(directory string) {
 	if err != nil {
 		panic(err)
 	}
+
 	self.setup = true
 }
 
