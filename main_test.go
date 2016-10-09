@@ -129,6 +129,9 @@ func TestDirectoryScan(t *testing.T) {
 	// get caught up and recreate them all
 	totalFolders -= len(deletedPaths)
 	dirState, err = scanDirectoryContents()
+	if err != nil {
+		panic(err)
+	}
 	verifyClonedDirTree(t, dirState)
 
 	subDirs = []string{"a", "abd"}
