@@ -172,7 +172,6 @@ func scanDirectoryContents() (DirTreeMap, error) {
 			relativePath = "/"
 		}
 
-		//fmt.Printf("stripping path from:\n%s\nto:\n%s\n", currentPath, relativePath)
 		listOfFileInfo[relativePath] = fileList
 	}
 
