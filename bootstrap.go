@@ -111,11 +111,11 @@ func configHandler(_ http.ResponseWriter, r *http.Request) {
 			}
 
 			if serverData.Address != newServerData.Address || serverData.Name != newServerData.Name || serverData.Cluster != newServerData.Cluster {
-				fmt.Printf("Server data is radically changed. Replacing.\nold: %v\nnew: %v\n", serverData, newServerData)
+				fmt.Printf("Server data is radically changed. Replacing.\nold: %v\nnew: %v\n", &serverData, &newServerData)
 				serverMap[name] = &newServerData
 				fmt.Println("Server data replaced with new server data")
 			} else {
-				fmt.Printf("Server data has not radically changed. ignoring.\nold: %v\nnew: %v\n", serverData, newServerData)
+				fmt.Printf("Server data has not radically changed. ignoring.\nold: %v\nnew: %v\n", &serverData, &newServerData)
 			}
 		}
 
