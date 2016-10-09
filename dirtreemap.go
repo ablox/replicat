@@ -8,9 +8,10 @@ import (
 	"sort"
 )
 
+// DirTreeMap is a mapping between directories and lists of file names.
 type DirTreeMap map[string][]string
 
-// create a clone of the DirTreeMap
+// Clone a DirTreeMap
 func (orig DirTreeMap) Clone() (clone DirTreeMap) {
 	clone = make(DirTreeMap)
 	for k, v := range orig {

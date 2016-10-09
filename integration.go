@@ -11,7 +11,7 @@ import (
 	"time"
 )
 
-func TestMain(m *testing.M) {
+func testMain(m *testing.M) {
 	m.Run()
 	//go buildApps()
 	startWebcat()
