@@ -94,7 +94,7 @@ func configHandler(_ http.ResponseWriter, r *http.Request) {
 
 		//todo move this to a channel to ensure ordering. It should always be safe to grab the latest one only.
 		decoder := json.NewDecoder(r.Body)
-		var newServerMap map[string]ReplicatServer //:= make(map[string]ReplicatServer)
+		var newServerMap map[string]*ReplicatServer //:= make(map[string]ReplicatServer)
 		err := decoder.Decode(&newServerMap)
 		if err != nil {
 			fmt.Println(err)
@@ -112,7 +112,7 @@ func configHandler(_ http.ResponseWriter, r *http.Request) {
 
 			if serverData.Address != newServerData.Address || serverData.Name != newServerData.Name || serverData.Cluster != newServerData.Cluster {
 				fmt.Printf("Server data is radically changed. Replacing.\nold: %v\nnew: %v\n", &serverData, &newServerData)
-				serverMap[name] = &newServerData
+				serverMap[name] = newServerData
 				fmt.Println("Server data replaced with new server data")
 			} else {
 				fmt.Printf("Server data has not radically changed. ignoring.\nold: %v\nnew: %v\n", &serverData, &newServerData)
@@ -139,7 +139,7 @@ func configHandler(_ http.ResponseWriter, r *http.Request) {
 				}
 
 				fmt.Printf("New server configuration provided. Copying: %s\n", name)
-				serverMap[name] = &newServerData
+				serverMap[name] = newServerData
 			}
 		}
 	}
