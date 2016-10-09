@@ -93,16 +93,28 @@ func eventHandler(w http.ResponseWriter, r *http.Request) {
 		log.Printf("Event info: %v\n", event)
 
 		pathName := globalSettings.Directory + "/" + event.Message
+		relativePath := event.Message
 
 		//todo remember these events and skip the logging on the other side. Possibly use nodeID?
 
 		switch event.Name {
 		case "notify.Create":
-			err = os.MkdirAll(pathName, os.ModeDir+os.ModePerm)
-			if err != nil && !os.IsExist(err) {
-				panic(fmt.Sprintf("Error creating folder %s: %v\n", pathName, err))
-			}
 			fmt.Printf("notify.Create: %s\n", pathName)
+
+			server, exists := serverMap[globalSettings.Name]
+			if !exists {
+				panic("Unable to find server definition")
+			}
+
+			fmt.Printf("server is %v\n", server)
+			fmt.Printf("server.storage is %v\n", server.storage)
+
+			server.storage.CreateFolder(relativePath)
+
+			//err = os.MkdirAll(pathName, os.ModeDir+os.ModePerm)
+			//if err != nil && !os.IsExist(err) {
+			//	panic(fmt.Sprintf("Error creating folder %s: %v\n", pathName, err))
+			//}
 		case "notify.Remove":
 			err = os.Remove(pathName)
 			if err != nil && !os.IsNotExist(err) {

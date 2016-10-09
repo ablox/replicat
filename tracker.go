@@ -142,7 +142,7 @@ func validatePath(directory string) (fullPath string) {
 	return
 }
 
-func (self *FilesystemTracker) CreateFolder(name string) (err error) {
+func (self *FilesystemTracker) CreateFolder(relativePath string) (err error) {
 	if !self.setup {
 		panic("FilesystemTracker:CreateFolder called when not yet setup")
 	}
@@ -150,11 +150,22 @@ func (self *FilesystemTracker) CreateFolder(name string) (err error) {
 	self.fsLock.Lock()
 	defer self.fsLock.Unlock()
 
-	_, exists := self.contents[name]
-	fmt.Printf("CreateFolder: '%s' (%v)\n", name, exists)
+	absolutePath := self.directory + "/" + relativePath
+
+	err = os.MkdirAll(absolutePath, os.ModeDir+os.ModePerm)
+	if err != nil && !os.IsExist(err) {
+		panic(fmt.Sprintf("Error creating folder %s: %v\n", absolutePath, err))
+	}
+
+	_, exists := self.contents[relativePath]
+	fmt.Printf("CreateFolder: '%s' (%v)\n", relativePath, exists)
 
 	if !exists {
-		self.contents[name] = Directory{}
+		directory := Directory{}
+		directory.FileInfo, err = os.Stat(absolutePath)
+		self.contents[relativePath] = directory
+	} else {
+		fmt.Printf("for some reason the directory object already exists in the map: %s\n", relativePath)
 	}
 
 	return nil
