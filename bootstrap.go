@@ -28,7 +28,7 @@ type ReplicatServer struct {
 	storage       StorageTracker
 }
 
-var serverMap = make(map[string]ReplicatServer)
+var serverMap = make(map[string]*ReplicatServer)
 var serverMapLock sync.RWMutex
 
 func bootstrapAndServe() {
@@ -50,7 +50,7 @@ func bootstrapAndServe() {
 	c = &logOnlyHandler
 	tracker.watchDirectory(&c)
 
-	serverMap[globalSettings.Name] = ReplicatServer{Name: globalSettings.Name, Address: "127.0.0.1:" + strconv.Itoa(lsnr.Addr().(*net.TCPAddr).Port), storage: &tracker}
+	serverMap[globalSettings.Name] = &ReplicatServer{Name: globalSettings.Name, Address: "127.0.0.1:" + strconv.Itoa(lsnr.Addr().(*net.TCPAddr).Port), storage: &tracker}
 
 	go func(lsnr net.Listener) {
 		err = http.Serve(lsnr, nil)
@@ -112,7 +112,7 @@ func configHandler(_ http.ResponseWriter, r *http.Request) {
 
 			if serverData.Address != newServerData.Address || serverData.Name != newServerData.Name || serverData.Cluster != newServerData.Cluster {
 				fmt.Printf("Server data is radically changed. Replacing.\nold: %v\nnew: %v\n", serverData, newServerData)
-				serverMap[name] = newServerData
+				serverMap[name] = &newServerData
 				fmt.Println("Server data replaced with new server data")
 			} else {
 				fmt.Printf("Server data has not radically changed. ignoring.\nold: %v\nnew: %v\n", serverData, newServerData)
@@ -139,7 +139,7 @@ func configHandler(_ http.ResponseWriter, r *http.Request) {
 				}
 
 				fmt.Printf("New server configuration provided. Copying: %s\n", name)
-				serverMap[name] = newServerData
+				serverMap[name] = &newServerData
 			}
 		}
 	}
