@@ -15,6 +15,7 @@ import (
 	"time"
 )
 
+// Event stores the relevent information on events or updates to the storage layer.
 type Event struct {
 	Source      string
 	Name        string
@@ -25,12 +26,14 @@ type Event struct {
 
 var events = make([]Event, 0, 100)
 
+// FileEvent stores the nodeid, string, and time of file related events
 type FileEvent struct {
 	NodeID int32
 	Name   string
 	Time   time.Time
 }
 
+// SendEvent gets events that have happened off to the peer servers so they can replicate the same change
 func SendEvent(event Event) {
 	// sendEvent to manager
 	sendEvent(&event, globalSettings.ManagerAddress, globalSettings.ManagerCredentials)

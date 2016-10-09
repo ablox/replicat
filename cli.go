@@ -27,7 +27,7 @@ var globalSettings Settings = Settings{
 	BootstrapAddress:   ":8080",
 }
 
-// Setup the command line environment. Provide help and read the settings in.
+// SetupCli sets up the command line environment. Provide help and read the settings in.
 func SetupCli() {
 
 	app := cli.NewApp()

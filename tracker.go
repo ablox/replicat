@@ -13,18 +13,20 @@ import (
 	"syscall"
 )
 
+// ChangeHandler - Listener for tracking changes that happen to a storage system
 type ChangeHandler interface {
 	FolderCreated(name string) (err error)
 	FolderDeleted(name string) (err error)
 }
 
+// StorageTracker - Listener that allows you to tell the tracker what has happened elsewhere so it can mirror the changes
 type StorageTracker interface {
 	CreateFolder(relativePath string) (err error)
 	DeleteFolder(name string) (err error)
 	ListFolders() (folderList []string)
 }
 
-// sample change handler
+// LogOnlyChangeHandler - sample change handler
 type LogOnlyChangeHandler struct {
 }
 
