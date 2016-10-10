@@ -15,7 +15,6 @@ import (
 	"os"
 	"strconv"
 	"sync"
-	"math/rand"
 )
 
 // ReplicatServer is a structure that contains the definition of the servers in a cluster. Each node has a name and this
@@ -66,11 +65,11 @@ func bootstrapAndServe() {
 	go configUpdateProcessor(configUpdateChannel)
 
 	fmt.Println("about to send config to server")
-	go sendConfigToServer(lsnr.Addr())
+	go sendConfigToServer()
 	fmt.Printf("config sent to server with address: %s\n", lsnr.Addr())
 }
 
-func sendConfigToServer(addr net.Addr) {
+func sendConfigToServer() {
 	url := "http://" + globalSettings.BootstrapAddress + "/config/"
 	fmt.Printf("Manager location: %s\n", url)
 
@@ -113,8 +112,7 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 var configUpdateMapLock = sync.RWMutex{}
-var configUpdateMap = make(map[int]map[string]*ReplicatServer)
-var configUpdateChannel = make(chan int, 100)
+var configUpdateChannel = make(chan *map[string]*ReplicatServer, 100)
 
 func configHandler(_ http.ResponseWriter, r *http.Request) {
 	log.Println("configHandler called on bootstrap")
@@ -133,31 +131,18 @@ func configHandler(_ http.ResponseWriter, r *http.Request) {
 
 		configUpdateMapLock.Lock()
 		defer configUpdateMapLock.Unlock()
-
-		for {
-			index := rand.Int()
-			_, exists := configUpdateMap[index]
-			if !exists {
-				configUpdateMap[index] = newServerMap
-				configUpdateChannel <- index
-				break
-			}
-		}
+		configUpdateChannel <- &newServerMap
 	}
 }
 
-func configUpdateProcessor(c chan int) {
+func configUpdateProcessor(c chan *map[string]*ReplicatServer) {
 	for {
-		index := <-c
-
+		newServerMap := <-c
 		configUpdateMapLock.Lock()
-		newServerMap := configUpdateMap[index]
-		delete(configUpdateMap, index)
-		configUpdateMapLock.Unlock()
 
 		// find any nodes that have been deleted
 		for name, serverData := range serverMap {
-			newServerData, exists := newServerMap[name]
+			newServerData, exists := (*newServerMap)[name]
 			if !exists {
 				fmt.Printf("No longer found config for: %s deleting\n", name)
 				delete(serverMap, name)
@@ -174,7 +159,7 @@ func configUpdateProcessor(c chan int) {
 		}
 
 		// find any new nodes
-		for name, newServerData := range newServerMap {
+		for name, newServerData := range (*newServerMap) {
 			_, exists := serverMap[name]
 			if !exists {
 				fmt.Printf("New server configuration for %s: %v\n", name, newServerData)
@@ -196,5 +181,6 @@ func configUpdateProcessor(c chan int) {
 				serverMap[name] = newServerData
 			}
 		}
+		configUpdateMapLock.Unlock()
 	}
 }
