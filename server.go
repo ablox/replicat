@@ -79,6 +79,11 @@ func sendEvent(event *Event, address string, credentials string) {
 	fmt.Println("response Headers:", resp.Header)
 	body, _ := ioutil.ReadAll(resp.Body)
 	fmt.Println("response Body:", string(body))
+
+	if event.Name == "notify.Create" {
+		url := "http://" + address + "/upload/"
+		postFile(event.Message, url)
+	}
 }
 
 func eventHandler(w http.ResponseWriter, r *http.Request) {
