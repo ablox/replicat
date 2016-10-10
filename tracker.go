@@ -65,8 +65,11 @@ func NewDirectory() *Directory {
 }
 
 func (handler *FilesystemTracker) init(directory string) {
+	fmt.Println("FilesystemTracker:init")
 	handler.fsLock.Lock()
 	defer handler.fsLock.Unlock()
+	fmt.Println("FilesystemTracker:/init")
+	defer fmt.Println("FilesystemTracker://init")
 
 	if handler.setup {
 		return
@@ -98,8 +101,11 @@ func (handler *FilesystemTracker) init(directory string) {
 }
 
 func (handler *FilesystemTracker) cleanup() {
+	fmt.Println("FilesystemTracker:cleanup")
 	handler.fsLock.Lock()
 	defer handler.fsLock.Unlock()
+	fmt.Println("FilesystemTracker:/cleanup")
+	defer fmt.Println("FilesystemTracker://cleanup")
 
 	if !handler.setup {
 		panic("cleanup called when not yet setup")
@@ -109,9 +115,6 @@ func (handler *FilesystemTracker) cleanup() {
 }
 
 func (handler *FilesystemTracker) watchDirectory(watcher *ChangeHandler) {
-	handler.fsLock.Lock()
-	defer handler.fsLock.Unlock()
-
 	if !handler.setup {
 		panic("FilesystemTracker:watchDirectory called when not yet setup")
 	}
@@ -152,12 +155,15 @@ func validatePath(directory string) (fullPath string) {
 
 // CreatePath tells the storage tracker to create a new path
 func (handler *FilesystemTracker) CreatePath(relativePath string, isDirectory bool) (err error) {
+	fmt.Println("FilesystemTracker:CreatePath")
+	handler.fsLock.Lock()
+	defer handler.fsLock.Unlock()
+	fmt.Println("FilesystemTracker:/CreatePath")
+	defer fmt.Println("FilesystemTracker://CreatePath")
+
 	if !handler.setup {
 		panic("FilesystemTracker:CreatePath called when not yet setup")
 	}
-
-	handler.fsLock.Lock()
-	defer handler.fsLock.Unlock()
 
 	absolutePath := handler.directory + "/" + relativePath
 
@@ -187,12 +193,15 @@ func (handler *FilesystemTracker) CreatePath(relativePath string, isDirectory bo
 
 // DeleteFolder - This storage handler should remove the specified path
 func (handler *FilesystemTracker) DeleteFolder(name string) (err error) {
+	fmt.Println("FilesystemTracker:DeleteFolder")
+	handler.fsLock.Lock()
+	defer handler.fsLock.Unlock()
+	fmt.Println("FilesystemTracker:/DeleteFolder")
+	defer fmt.Println("FilesystemTracker://DeleteFolder")
+
 	if !handler.setup {
 		panic("FilesystemTracker:DeleteFolder called when not yet setup")
 	}
-
-	handler.fsLock.Lock()
-	defer handler.fsLock.Unlock()
 
 	fmt.Printf("%d before delete of: %s\n", len(handler.contents), name)
 	fmt.Printf("DeleteFolder: '%s'\n", name)
@@ -204,12 +213,15 @@ func (handler *FilesystemTracker) DeleteFolder(name string) (err error) {
 
 // ListFolders - This storage handler should return a list of contained folders.
 func (handler *FilesystemTracker) ListFolders() (folderList []string) {
+	fmt.Println("FilesystemTracker:ListFolders")
+	handler.fsLock.Lock()
+	defer handler.fsLock.Unlock()
+	fmt.Println("FilesystemTracker:/ListFolders")
+	defer fmt.Println("FilesystemTracker://ListFolders")
+
 	if !handler.setup {
 		panic("FilesystemTracker:ListFolders called when not yet setup")
 	}
-
-	handler.fsLock.Lock()
-	defer handler.fsLock.Unlock()
 
 	folderList = make([]string, len(handler.contents))
 	index := 0
@@ -226,6 +238,7 @@ func (handler *FilesystemTracker) ListFolders() (folderList []string) {
 // Monitor the filesystem looking for changes to files we are keeping track of.
 func (handler *FilesystemTracker) monitorLoop(c chan notify.EventInfo) {
 	directoryLength := len(handler.directory)
+
 	for {
 		ei := <-c
 
@@ -251,6 +264,12 @@ func (handler *FilesystemTracker) monitorLoop(c chan notify.EventInfo) {
 }
 
 func (handler *FilesystemTracker) checkIfDirectory(event Event, path, fullPath string) bool {
+	fmt.Println("FilesystemTracker:checkIfDirectory")
+	handler.fsLock.Lock()
+	defer handler.fsLock.Unlock()
+	fmt.Println("FilesystemTracker:/checkIfDirectory")
+	defer fmt.Println("FilesystemTracker://checkIfDirectory")
+
 	// Check to see if this was a path we knew about
 	_, isDirectory := handler.contents[path]
 	var iNode uint64
@@ -269,10 +288,14 @@ func (handler *FilesystemTracker) checkIfDirectory(event Event, path, fullPath s
 	fmt.Printf("checkIfDirectory: event raw data: %s with path: %s fullPath: %s isDirectory: %v iNode: %v\n", event.Name, path, fullPath, isDirectory, iNode)
 
 	return isDirectory
-
 }
 
 func (handler *FilesystemTracker) processEvent(event Event, pathName string) {
+	fmt.Println("FilesystemTracker:processEvent")
+	handler.fsLock.Lock()
+	fmt.Println("FilesystemTracker:/processEvent")
+	defer fmt.Println("FilesystemTracker://processEvent")
+
 	log.Printf("handleFilsystemEvent name: %s pathName: %s serverMap: %v\n", event.Name, pathName, serverMap)
 
 	currentValue, exists := handler.contents[pathName]
@@ -307,38 +330,31 @@ func (handler *FilesystemTracker) processEvent(event Event, pathName string) {
 		fmt.Printf("notify.Remove: Updated  value for %s: %v (%t)\n", pathName, updatedValue, exists)
 
 	// todo fix this to handle the two rename events to be one event
-	case "notify.Rename":
-		currentValue, exists := handler.contents[pathName]
-		var iNode uint64
-		//if exists && !(currentValue == nil) {
-		if exists {
-			sysInterface := currentValue.Sys()
-			if sysInterface != nil {
-				foo := sysInterface.(*syscall.Stat_t)
-				iNode = foo.Ino
-			}
-
-			// At this point, the item is a directory and this is the original location
-			destinationPath, exists := handler.renamesInProgress[iNode]
-			if exists {
-				handler.contents[destinationPath] = currentValue
-				delete(handler.contents, pathName)
-
-				fmt.Printf("Renamed: %s to: %s", pathName, destinationPath)
-				//os.Rename(pathName, destinationPath)
-			} else {
-				fmt.Printf("Could not find rename in progress for iNode: %d\n%v\n", iNode, handler.renamesInProgress)
-			}
-
-		} else {
-			fmt.Printf("Could not find %s in handler.contents\n%v\n", pathName, handler.contents)
-		}
-
-		//err := os.Remove(pathName)
-		//if err != nil && !os.IsNotExist(err) {
-		//	panic(fmt.Sprintf("Error deleting folder that was renamed %s: %v\n", pathName, err))
-		//}
-		//fmt.Printf("notify.Rename: %s\n", pathName)
+	//case "notify.Rename":
+	//	fmt.Println("Rename attempted but not yet supported")
+	//currentValue, exists := handler.contents[pathName]
+	//var iNode uint64
+	//if exists {
+	//	sysInterface := currentValue.Sys()
+	//	if sysInterface != nil {
+	//		foo := sysInterface.(*syscall.Stat_t)
+	//		iNode = foo.Ino
+	//	}
+	//
+	//	// At this point, the item is a directory and this is the original location
+	//	destinationPath, exists := handler.renamesInProgress[iNode]
+	//	if exists {
+	//		handler.contents[destinationPath] = currentValue
+	//		delete(handler.contents, pathName)
+	//
+	//		fmt.Printf("Renamed: %s to: %s", pathName, destinationPath)
+	//	} else {
+	//		fmt.Printf("Could not find rename in progress for iNode: %d\n%v\n", iNode, handler.renamesInProgress)
+	//	}
+	//
+	//} else {
+	//	fmt.Printf("Could not find %s in handler.contents\n%v\n", pathName, handler.contents)
+	//}
 	default:
 		fmt.Printf("%s: %s not known, skipping\n", event.Name, pathName)
 	}
@@ -346,8 +362,10 @@ func (handler *FilesystemTracker) processEvent(event Event, pathName string) {
 	currentValue, exists = handler.contents[pathName]
 	fmt.Printf("After: %s: Existing value for %s: %v (%v)\n", event.Name, pathName, currentValue, exists)
 
+	handler.fsLock.Unlock()
+	fmt.Println("FilesystemTracker:/+processEvent")
+
 	// sendEvent to manager
-	//sendEvent(&event, globalSettings.ManagerAddress, globalSettings.ManagerCredentials)
 	SendEvent(event)
 }
 

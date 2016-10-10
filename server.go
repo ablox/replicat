@@ -116,7 +116,9 @@ func eventHandler(w http.ResponseWriter, r *http.Request) {
 				panic("Unable to find server definition")
 			}
 
+			fmt.Println("eventHandler->CreatePath")
 			server.storage.CreatePath(relativePath, event.IsDirectory)
+			fmt.Println("eventHandler->/CreatePath")
 		case "notify.Remove":
 			err = os.Remove(pathName)
 			if err != nil && !os.IsNotExist(err) {
