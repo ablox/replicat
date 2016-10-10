@@ -14,6 +14,7 @@ import (
 	"os"
 	"strconv"
 	"sync"
+	"io"
 )
 
 // ReplicatServer is a structure that contains the definition of the servers in a cluster. Each node has a name and this
@@ -35,6 +36,7 @@ func bootstrapAndServe() {
 	http.Handle("/event/", httpauth.SimpleBasicAuth("replicat", "isthecat")(http.HandlerFunc(eventHandler)))
 	http.Handle("/tree/", httpauth.SimpleBasicAuth("replicat", "isthecat")(http.HandlerFunc(folderTreeHandler)))
 	http.Handle("/config/", httpauth.SimpleBasicAuth("replicat", "isthecat")(http.HandlerFunc(configHandler)))
+	http.Handle("/upload/", httpauth.SimpleBasicAuth("replicat", "isthecat")(http.HandlerFunc(uploadHandler)))
 
 	lsnr, err := net.Listen("tcp4", ":0")
 	if err != nil {
@@ -82,6 +84,27 @@ func sendConfigToServer(addr net.Addr) {
 	_, err = client.Do(req)
 	if err != nil {
 		panic(err)
+	}
+}
+
+func uploadHandler(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("method: ", r.Method)
+	if r.Method == "POST" {
+		r.ParseMultipartForm(32 << 20)
+		file, handler, err := r.FormFile("uploadfile")
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+		defer file.Close()
+		fmt.Fprint(w, "%v", handler.Header)
+		f, err := os.OpenFile(globalSettings.Directory+"/"+handler.Filename, os.O_WRONLY|os.O_CREATE, 0666)
+		if err!= nil {
+			fmt.Println(err)
+			return
+		}
+		defer f.Close()
+		io.Copy(f, file)
 	}
 }
 

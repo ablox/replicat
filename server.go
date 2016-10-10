@@ -13,6 +13,8 @@ import (
 	"os"
 	"sort"
 	"time"
+	"mime/multipart"
+	"io"
 )
 
 // Event stores the relevant information on events or updates to the storage layer.
@@ -112,7 +114,7 @@ func eventHandler(w http.ResponseWriter, r *http.Request) {
 			fmt.Printf("server is %v\n", server)
 			fmt.Printf("server.storage is %v\n", server.storage)
 
-			server.storage.CreateFolder(relativePath)
+			server.storage.CreatePath(relativePath, event.IsDirectory)
 
 			//err = os.MkdirAll(pathName, os.ModeDir+os.ModePerm)
 			//if err != nil && !os.IsExist(err) {
@@ -277,4 +279,47 @@ func folderTreeHandler(w http.ResponseWriter, r *http.Request) {
 		}
 
 	}
+
+}
+
+func postFile(filename string, targetUrl string) error {
+	bodyBuf := &bytes.Buffer{}
+	bodyWriter := multipart.NewWriter(bodyBuf)
+
+	fileWriter, err := bodyWriter.CreateFormFile("uploadfile", filename)
+	if err != nil {
+		fmt.Println("error writing to buffer")
+		return err
+	}
+
+	fh, err := os.Open(filename)
+	if err != nil {
+		fmt.Println("error opening file")
+		return err
+	}
+
+	_, err = io.Copy(fileWriter, fh)
+	if err != nil{
+		fmt.Println("error copying file")
+		return err
+	}
+
+	contentType := bodyWriter.FormDataContentType()
+	bodyWriter.Close()
+
+	resp, err := http.Post(targetUrl, contentType, bodyBuf)
+	if err != nil {
+		fmt.Println("error post to file upload url")
+		return err
+	}
+	defer resp.Body.Close()
+	resp_body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		fmt.Println("error reading resp body")
+		return err
+	}
+
+	fmt.Println(resp.Status)
+	fmt.Println(string(resp_body))
+	return nil
 }
