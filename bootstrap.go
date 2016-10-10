@@ -159,7 +159,7 @@ func configUpdateProcessor(c chan *map[string]*ReplicatServer) {
 		}
 
 		// find any new nodes
-		for name, newServerData := range (*newServerMap) {
+		for name, newServerData := range *newServerMap {
 			_, exists := serverMap[name]
 			if !exists {
 				fmt.Printf("New server configuration for %s: %v\n", name, newServerData)
