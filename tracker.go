@@ -59,6 +59,7 @@ type Directory struct {
 	contents map[string]os.FileInfo
 }
 
+// NewDirectory - creates and returns a new Directory
 func NewDirectory() *Directory {
 	return &Directory{contents: make(map[string]os.FileInfo)}
 }
@@ -149,6 +150,7 @@ func validatePath(directory string) (fullPath string) {
 	return
 }
 
+// CreatePath tells the storage tracker to create a new path
 func (handler *FilesystemTracker) CreatePath(relativePath string, isDirectory bool) (err error) {
 	if !handler.setup {
 		panic("FilesystemTracker:CreatePath called when not yet setup")
