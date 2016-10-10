@@ -232,7 +232,6 @@ func deletePaths(deletedPaths []string) {
 			panic(err)
 		}
 		fmt.Printf("%s: done removing (err = %v)\n", fullPath, err)
-		err = nil
 	}
 }
 

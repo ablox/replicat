@@ -97,7 +97,7 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		defer file.Close()
-		fmt.Fprint(w, "%v", handler.Header)
+		fmt.Fprint(w, "%s", handler.Header)
 		f, err := os.OpenFile(globalSettings.Directory+"/"+handler.Filename, os.O_WRONLY|os.O_CREATE, 0666)
 		if err != nil {
 			fmt.Println(err)
