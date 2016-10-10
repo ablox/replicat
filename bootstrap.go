@@ -15,6 +15,7 @@ import (
 	"os"
 	"strconv"
 	"sync"
+	"math/rand"
 )
 
 // ReplicatServer is a structure that contains the definition of the servers in a cluster. Each node has a name and this
@@ -60,6 +61,9 @@ func bootstrapAndServe() {
 			panic(err)
 		}
 	}(lsnr)
+
+	fmt.Println("Starting config update processor")
+	go configUpdateProcessor(configUpdateChannel)
 
 	fmt.Println("about to send config to server")
 	go sendConfigToServer(lsnr.Addr())
@@ -108,6 +112,10 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+var configUpdateMapLock = sync.RWMutex{}
+var configUpdateMap = make(map[int]map[string]*ReplicatServer)
+var configUpdateChannel = make(chan int, 100)
+
 func configHandler(_ http.ResponseWriter, r *http.Request) {
 	log.Println("configHandler called on bootstrap")
 	switch r.Method {
@@ -115,7 +123,6 @@ func configHandler(_ http.ResponseWriter, r *http.Request) {
 		serverMapLock.Lock()
 		defer serverMapLock.Unlock()
 
-		//todo move this to a channel to ensure ordering. It should always be safe to grab the latest one only.
 		decoder := json.NewDecoder(r.Body)
 		var newServerMap map[string]*ReplicatServer //:= make(map[string]ReplicatServer)
 		err := decoder.Decode(&newServerMap)
@@ -123,6 +130,30 @@ func configHandler(_ http.ResponseWriter, r *http.Request) {
 			fmt.Println(err)
 		}
 		log.Printf("configHandler serverMap read from webcat to: %v\n", newServerMap)
+
+		configUpdateMapLock.Lock()
+		defer configUpdateMapLock.Unlock()
+
+		for {
+			index := rand.Int()
+			_, exists := configUpdateMap[index]
+			if !exists {
+				configUpdateMap[index] = newServerMap
+				configUpdateChannel <- index
+				break
+			}
+		}
+	}
+}
+
+func configUpdateProcessor(c chan int) {
+	for {
+		index := <-c
+
+		configUpdateMapLock.Lock()
+		newServerMap := configUpdateMap[index]
+		delete(configUpdateMap, index)
+		configUpdateMapLock.Unlock()
 
 		// find any nodes that have been deleted
 		for name, serverData := range serverMap {
