@@ -7,14 +7,14 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"log"
+	"mime/multipart"
 	"net/http"
 	"os"
 	"sort"
 	"time"
-	"mime/multipart"
-	"io"
 )
 
 // Event stores the relevant information on events or updates to the storage layer.
@@ -299,7 +299,7 @@ func postFile(filename string, targetUrl string) error {
 	}
 
 	_, err = io.Copy(fileWriter, fh)
-	if err != nil{
+	if err != nil {
 		fmt.Println("error copying file")
 		return err
 	}

@@ -8,13 +8,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/goji/httpauth"
+	"io"
 	"log"
 	"net"
 	"net/http"
 	"os"
 	"strconv"
 	"sync"
-	"io"
 )
 
 // ReplicatServer is a structure that contains the definition of the servers in a cluster. Each node has a name and this
@@ -99,7 +99,7 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 		defer file.Close()
 		fmt.Fprint(w, "%v", handler.Header)
 		f, err := os.OpenFile(globalSettings.Directory+"/"+handler.Filename, os.O_WRONLY|os.O_CREATE, 0666)
-		if err!= nil {
+		if err != nil {
 			fmt.Println(err)
 			return
 		}
