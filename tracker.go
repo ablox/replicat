@@ -162,7 +162,7 @@ func (handler *FilesystemTracker) CreatePath(relativePath string, isDirectory bo
 	absolutePath := handler.directory + "/" + relativePath
 
 	if isDirectory {
-		err = os.MkdirAll(absolutePath, os.ModeDir + os.ModePerm)
+		err = os.MkdirAll(absolutePath, os.ModeDir+os.ModePerm)
 	} else {
 		_, err = os.Create(absolutePath)
 	}
