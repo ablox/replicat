@@ -21,7 +21,7 @@ type ChangeHandler interface {
 
 // StorageTracker - Listener that allows you to tell the tracker what has happened elsewhere so it can mirror the changes
 type StorageTracker interface {
-	CreateFolder(relativePath string) (err error)
+	CreatePath(relativePath string, isDirectory bool) (err error)
 	DeleteFolder(name string) (err error)
 	ListFolders() (folderList []string)
 }
@@ -149,9 +149,9 @@ func validatePath(directory string) (fullPath string) {
 	return
 }
 
-func (handler *FilesystemTracker) CreateFolder(relativePath string) (err error) {
+func (handler *FilesystemTracker) CreatePath(relativePath string, isDirectory bool) (err error) {
 	if !handler.setup {
-		panic("FilesystemTracker:CreateFolder called when not yet setup")
+		panic("FilesystemTracker:CreatePath called when not yet setup")
 	}
 
 	handler.fsLock.Lock()
@@ -159,13 +159,18 @@ func (handler *FilesystemTracker) CreateFolder(relativePath string) (err error) 
 
 	absolutePath := handler.directory + "/" + relativePath
 
-	err = os.MkdirAll(absolutePath, os.ModeDir+os.ModePerm)
+	if isDirectory {
+		err = os.MkdirAll(absolutePath, os.ModeDir + os.ModePerm)
+	} else {
+		_, err = os.Create(absolutePath)
+	}
+
 	if err != nil && !os.IsExist(err) {
 		panic(fmt.Sprintf("Error creating folder %s: %v\n", absolutePath, err))
 	}
 
 	_, exists := handler.contents[relativePath]
-	fmt.Printf("CreateFolder: '%s' (%v)\n", relativePath, exists)
+	fmt.Printf("CreatePath: '%s' (%v)\n", relativePath, exists)
 
 	if !exists {
 		directory := Directory{}
@@ -232,10 +237,11 @@ func (handler *FilesystemTracker) monitorLoop(c chan notify.EventInfo) {
 				path = fullPath[directoryLength+1:]
 			}
 		}
-
 		event := Event{Name: ei.Event().String(), Message: path}
 		log.Printf("Event captured name: %s location: %s, ei.Path(): %s", event.Name, event.Message, ei.Path())
 
+		isDirectory := handler.checkIfDirectory(event, path, fullPath)
+		event.IsDirectory = isDirectory
 		handler.processEvent(event, path)
 	}
 }
