@@ -185,6 +185,7 @@ func (handler *FilesystemTracker) CreatePath(relativePath string, isDirectory bo
 	return nil
 }
 
+// DeleteFolder - This storage handler should remove the specified path
 func (handler *FilesystemTracker) DeleteFolder(name string) (err error) {
 	if !handler.setup {
 		panic("FilesystemTracker:DeleteFolder called when not yet setup")
@@ -201,6 +202,7 @@ func (handler *FilesystemTracker) DeleteFolder(name string) (err error) {
 	return nil
 }
 
+// ListFolders - This storage handler should return a list of contained folders.
 func (handler *FilesystemTracker) ListFolders() (folderList []string) {
 	if !handler.setup {
 		panic("FilesystemTracker:ListFolders called when not yet setup")
@@ -294,7 +296,7 @@ func (handler *FilesystemTracker) processEvent(event Event, pathName string) {
 		delete(handler.contents, pathName)
 
 		//todo FIXME: uhm, we just deleted this and now we are checking it? Uhm, ....
-		updated_value, exists := handler.contents[pathName]
+		updatedValue, exists := handler.contents[pathName]
 
 		if handler.watcher != nil {
 			(*handler.watcher).FolderDeleted(pathName)
@@ -302,7 +304,7 @@ func (handler *FilesystemTracker) processEvent(event Event, pathName string) {
 			fmt.Println("In the notify.Remove section but did not see a watcher")
 		}
 
-		fmt.Printf("notify.Remove: Updated  value for %s: %v (%t)\n", pathName, updated_value, exists)
+		fmt.Printf("notify.Remove: Updated  value for %s: %v (%t)\n", pathName, updatedValue, exists)
 
 	// todo fix this to handle the two rename events to be one event
 	case "notify.Rename":
@@ -401,7 +403,7 @@ func (handler *FilesystemTracker) scanFolders() error {
 	return nil
 }
 
-// StringSlice attaches the methods of Interface to []string, sorting in increasing order.
+// FileInfoSlice attaches the methods of Interface to []os.FileInfo, sorting in increasing order.
 type FileInfoSlice []os.FileInfo
 
 func (p FileInfoSlice) Len() int           { return len(p) }
