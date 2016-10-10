@@ -196,17 +196,63 @@ func sendFolderTree(initialTree DirTreeMap) {
 	}
 }
 
+func getListOfFolders(w http.ResponseWriter) {
+	listOfFileInfo, err := scanDirectoryContents()
+	if err != nil {
+		log.Fatal(err)
+	}
+	json.NewEncoder(w).Encode(listOfFileInfo)
+	fmt.Printf("Sending tree of size %d back to client\n", len(listOfFileInfo))
+}
+
+func deletePaths(deletedPaths []string) {
+	if globalSettings.Directory == "" {
+		panic("globalSettings.Directory is not configured correctly. Aborting")
+	}
+
+	fmt.Println("Paths were deleted on the other side. Delete them here")
+
+	fmt.Printf("Paths to delete\nBefore sort:\n%v\n", deletedPaths)
+	// Reverse sort the paths so the most specific is first. This allows us to get away without a recursive delete
+	sort.Sort(sort.Reverse(sort.StringSlice(deletedPaths)))
+	fmt.Printf("Paths to delete after sort\nAfter sort:\n%v\n", deletedPaths)
+	for _, relativePath := range deletedPaths {
+		if relativePath == "" || relativePath == "/" {
+			fmt.Printf("We had a request to delete the base path. Skipping: %s\n", relativePath)
+			continue
+		}
+		fullPath := globalSettings.Directory + relativePath
+		fmt.Printf("Full path is: %s\n", fullPath)
+
+		fmt.Printf("%s: about to remove\n", fullPath)
+
+		// stop on any error except for not exist. We are trying to delete it anyway (or rather, it should have been deleted already)
+		err := os.Remove(fullPath)
+		if err != nil && !os.IsNotExist(err) {
+			panic(err)
+		}
+		fmt.Printf("%s: done removing (err = %v)\n", fullPath, err)
+		err = nil
+	}
+}
+
+func addPaths(newPaths []string) {
+	fmt.Println("Paths were added on the other side. Create them here")
+	for _, newPathName := range newPaths {
+		fmt.Printf("pathname is: %s\n", newPathName)
+		err := os.Mkdir(newPathName, os.ModeDir+os.ModePerm)
+		//todo figure out how to catch a path exists error.
+		if err != nil && !os.IsExist(err) {
+			panic(err)
+		}
+	}
+}
+
 func folderTreeHandler(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case "GET":
-		listOfFileInfo, err := scanDirectoryContents()
-		if err != nil {
-			log.Fatal(err)
-		}
-		json.NewEncoder(w).Encode(listOfFileInfo)
-		fmt.Printf("Sending tree of size %d back to client\n", len(listOfFileInfo))
+		getListOfFolders(w)
 	case "POST":
-		//log.Println("Got POST: ", r.Body)
 		decoder := json.NewDecoder(r.Body)
 
 		var remoteTreePreTranslate DirTreeMap
@@ -231,55 +277,18 @@ func folderTreeHandler(w http.ResponseWriter, r *http.Request) {
 		// deletion will show up as a new path.
 
 		fmt.Printf("about to check for deletions: %s\n", newPaths)
-
 		// delete folders that were deleted. We delete first, then add to make sure that the old ones will not be in the way
 		if len(newPaths) > 0 {
-			if globalSettings.Directory == "" {
-				panic("globalSettings.Directory is not configured correctly. Aborting")
-			}
-
-			fmt.Println("Paths were deleted on the other side. Delete them here")
-
-			fmt.Printf("Paths to delete\nBefore sort:\n%v\n", newPaths)
-			// Reverse sort the paths so the most specific is first. This allows us to get away without a recursive delete
-			sort.Sort(sort.Reverse(sort.StringSlice(newPaths)))
-			fmt.Printf("Paths to delete after sort\nAfter sort:\n%v\n", newPaths)
-			for _, relativePath := range newPaths {
-				if relativePath == "" || relativePath == "/" {
-					fmt.Printf("We had a request to delete the base path. Skipping: %s\n", relativePath)
-					continue
-				}
-				fullPath := globalSettings.Directory + relativePath
-				fmt.Printf("Full path is: %s\n", fullPath)
-
-				fmt.Printf("%s: about to remove\n", fullPath)
-
-				// stop on any error except for not exist. We are trying to delete it anyway (or rather, it should have been deleted already)
-				err = os.Remove(fullPath)
-				if err != nil && !os.IsNotExist(err) {
-					panic(err)
-				}
-				fmt.Printf("%s: done removing (err = %v)\n", fullPath, err)
-				err = nil
-			}
+			deletePaths(newPaths)
 		}
 
 		// add folders that were created
 		fmt.Printf("about to check for new folders: %s\n", deletedPaths)
+		// add folders that were added.
 		if len(deletedPaths) > 0 {
-			fmt.Println("Paths were added on the other side. Create them here")
-			for _, newPathName := range deletedPaths {
-				fmt.Printf("pathname is: %s\n", newPathName)
-				err = os.Mkdir(newPathName, os.ModeDir+os.ModePerm)
-				//todo figure out how to catch a path exists error.
-				if err != nil && !os.IsExist(err) {
-					panic(err)
-				}
-			}
+			addPaths(deletedPaths)
 		}
-
 	}
-
 }
 
 func postFile(filename string, targetUrl string) error {
@@ -313,13 +322,13 @@ func postFile(filename string, targetUrl string) error {
 		return err
 	}
 	defer resp.Body.Close()
-	resp_body, err := ioutil.ReadAll(resp.Body)
+	respBody, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		fmt.Println("error reading resp body")
 		return err
 	}
 
 	fmt.Println(resp.Status)
-	fmt.Println(string(resp_body))
+	fmt.Println(string(respBody))
 	return nil
 }

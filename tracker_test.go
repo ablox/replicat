@@ -64,7 +64,7 @@ func TestDirectoryStorage(t *testing.T) {
 	folderTemplate := []string{"A", "B", "C"}
 
 	for _, folder := range folderTemplate {
-		err := tracker.CreateFolder(folder)
+		err := tracker.CreatePath(folder, true)
 		if err != nil {
 			t.Fatal(err)
 		}
