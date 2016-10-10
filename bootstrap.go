@@ -61,12 +61,15 @@ func bootstrapAndServe() {
 		}
 	}(lsnr)
 
+	fmt.Println("Starting config update processor")
+	go configUpdateProcessor(configUpdateChannel)
+
 	fmt.Println("about to send config to server")
-	go sendConfigToServer(lsnr.Addr())
+	go sendConfigToServer()
 	fmt.Printf("config sent to server with address: %s\n", lsnr.Addr())
 }
 
-func sendConfigToServer(addr net.Addr) {
+func sendConfigToServer() {
 	url := "http://" + globalSettings.BootstrapAddress + "/config/"
 	fmt.Printf("Manager location: %s\n", url)
 
@@ -108,6 +111,9 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+var configUpdateMapLock = sync.RWMutex{}
+var configUpdateChannel = make(chan *map[string]*ReplicatServer, 100)
+
 func configHandler(_ http.ResponseWriter, r *http.Request) {
 	log.Println("configHandler called on bootstrap")
 	switch r.Method {
@@ -115,7 +121,6 @@ func configHandler(_ http.ResponseWriter, r *http.Request) {
 		serverMapLock.Lock()
 		defer serverMapLock.Unlock()
 
-		//todo move this to a channel to ensure ordering. It should always be safe to grab the latest one only.
 		decoder := json.NewDecoder(r.Body)
 		var newServerMap map[string]*ReplicatServer //:= make(map[string]ReplicatServer)
 		err := decoder.Decode(&newServerMap)
@@ -124,9 +129,20 @@ func configHandler(_ http.ResponseWriter, r *http.Request) {
 		}
 		log.Printf("configHandler serverMap read from webcat to: %v\n", newServerMap)
 
+		configUpdateMapLock.Lock()
+		defer configUpdateMapLock.Unlock()
+		configUpdateChannel <- &newServerMap
+	}
+}
+
+func configUpdateProcessor(c chan *map[string]*ReplicatServer) {
+	for {
+		newServerMap := <-c
+		configUpdateMapLock.Lock()
+
 		// find any nodes that have been deleted
 		for name, serverData := range serverMap {
-			newServerData, exists := newServerMap[name]
+			newServerData, exists := (*newServerMap)[name]
 			if !exists {
 				fmt.Printf("No longer found config for: %s deleting\n", name)
 				delete(serverMap, name)
@@ -143,7 +159,7 @@ func configHandler(_ http.ResponseWriter, r *http.Request) {
 		}
 
 		// find any new nodes
-		for name, newServerData := range newServerMap {
+		for name, newServerData := range *newServerMap {
 			_, exists := serverMap[name]
 			if !exists {
 				fmt.Printf("New server configuration for %s: %v\n", name, newServerData)
@@ -165,5 +181,6 @@ func configHandler(_ http.ResponseWriter, r *http.Request) {
 				serverMap[name] = newServerData
 			}
 		}
+		configUpdateMapLock.Unlock()
 	}
 }
