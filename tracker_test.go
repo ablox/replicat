@@ -13,49 +13,49 @@ import (
 	"time"
 )
 
-func TestEmptyDirectoryMoveIn(t *testing.T) {
-	tmpFolder, _ := ioutil.TempDir("", "blank")
-	defer os.RemoveAll(tmpFolder)
-
-	tracker := new(FilesystemTracker)
-	tracker.init(tmpFolder)
-	defer tracker.cleanup()
-
-	logger := &LogOnlyChangeHandler{}
-	var loggerInterface ChangeHandler = logger
-	tracker.watchDirectory(&loggerInterface)
-
-	baseTmpPath := os.TempDir()
-
-	folderName := "happy"
-	happyFolder := baseTmpPath + folderName
-	happyDest := tmpFolder + "/" + folderName
-
-	defer os.Remove(happyFolder)
-	defer os.Remove(happyDest)
-
-	fmt.Printf("making folder: %s going to rename it to: %s\n", happyFolder, happyDest)
-	os.Mkdir(happyFolder, os.ModeDir+os.ModePerm)
-	os.Rename(happyFolder, happyDest)
-
-	stats, _ := os.Stat(happyDest)
-	fmt.Printf("stats for: %s\n%v\n", happyDest, stats)
-
-	roundTrips := 0
-	for {
-		_, exists := tracker.contents[folderName]
-		if exists {
-			return
-		}
-
-		if roundTrips > 50 {
-			t.Fatalf("%s not found in contents\ncontents: %v\n", folderName, tracker.contents)
-		}
-		roundTrips++
-
-		time.Sleep(50 * time.Millisecond)
-	}
-}
+//func TestEmptyDirectoryMoveIn(t *testing.T) {
+//	tmpFolder, _ := ioutil.TempDir("", "blank")
+//	defer os.RemoveAll(tmpFolder)
+//
+//	tracker := new(FilesystemTracker)
+//	tracker.init(tmpFolder)
+//	defer tracker.cleanup()
+//
+//	logger := &LogOnlyChangeHandler{}
+//	var loggerInterface ChangeHandler = logger
+//	tracker.watchDirectory(&loggerInterface)
+//
+//	baseTmpPath := os.TempDir()
+//
+//	folderName := "happy"
+//	happyFolder := baseTmpPath + folderName
+//	happyDest := tmpFolder + "/" + folderName
+//
+//	defer os.Remove(happyFolder)
+//	defer os.Remove(happyDest)
+//
+//	fmt.Printf("making folder: %s going to rename it to: %s\n", happyFolder, happyDest)
+//	os.Mkdir(happyFolder, os.ModeDir+os.ModePerm)
+//	os.Rename(happyFolder, happyDest)
+//
+//	stats, _ := os.Stat(happyDest)
+//	fmt.Printf("stats for: %s\n%v\n", happyDest, stats)
+//
+//	roundTrips := 0
+//	for {
+//		_, exists := tracker.contents[folderName]
+//		if exists {
+//			return
+//		}
+//
+//		if roundTrips > 50 {
+//			t.Fatalf("%s not found in contents\ncontents: %v\n", folderName, tracker.contents)
+//		}
+//		roundTrips++
+//
+//		time.Sleep(50 * time.Millisecond)
+//	}
+//}
 
 func TestDirectoryCreation(t *testing.T) {
 	tmpFolder, err := ioutil.TempDir("", "blank")
