@@ -101,13 +101,19 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		defer file.Close()
 		fmt.Fprint(w, handler.Header)
-		f, err := os.OpenFile(globalSettings.Directory+"/"+handler.Filename, os.O_WRONLY|os.O_CREATE, 0666)
-		if err != nil {
-			fmt.Println(err)
-			return
+
+		hash := r.Form.Get("HASH")
+		myHash, err := fileMd5Hash(globalSettings.Directory + "/" + handler.Filename)
+		if hash != myHash {
+			f, err := os.OpenFile(globalSettings.Directory+"/"+handler.Filename, os.O_WRONLY|os.O_CREATE, 0666)
+
+			if err != nil {
+				fmt.Println(err)
+				return
+			}
+			defer f.Close()
+			io.Copy(f, file)
 		}
-		defer f.Close()
-		io.Copy(f, file)
 	}
 }
 

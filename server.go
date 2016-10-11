@@ -4,7 +4,9 @@ package main
 
 import (
 	"bytes"
+	"crypto/md5"
 	"encoding/base64"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -36,9 +38,9 @@ type FileEvent struct {
 }
 
 // SendEvent gets events that have happened off to the peer servers so they can replicate the same change
-func SendEvent(event Event) {
+func SendEvent(event Event, fullPath string) {
 	// sendEvent to manager
-	sendEvent(&event, globalSettings.ManagerAddress, globalSettings.ManagerCredentials)
+	sendEvent(&event, fullPath, globalSettings.ManagerAddress, globalSettings.ManagerCredentials)
 
 	log.Println("We are NodeA send to our peers")
 	// SendEvent to all peers
@@ -46,12 +48,12 @@ func SendEvent(event Event) {
 		fmt.Printf("Considering sending to: %s\n", k)
 		if k != globalSettings.Name {
 			fmt.Printf("sending to peer %s at %s\n", k, v.Address)
-			sendEvent(&event, v.Address, globalSettings.ManagerCredentials)
+			sendEvent(&event, fullPath, v.Address, globalSettings.ManagerCredentials)
 		}
 	}
 }
 
-func sendEvent(event *Event, address string, credentials string) {
+func sendEvent(event *Event, fullPath string, address string, credentials string) {
 	url := "http://" + address + "/event/"
 	fmt.Printf("target url: %s\n", url)
 
@@ -80,9 +82,10 @@ func sendEvent(event *Event, address string, credentials string) {
 	body, _ := ioutil.ReadAll(resp.Body)
 	fmt.Println("response Body:", string(body))
 
-	if event.Name == "notify.Create" {
+	if event.Name == "notify.Write" {
+		fmt.Println("source: notify.Write => %v", fullPath)
 		url := "http://" + address + "/upload/"
-		postFile(event.Message, url)
+		postFile(event.Message, fullPath, url, credentials)
 	}
 }
 
@@ -295,44 +298,76 @@ func folderTreeHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func postFile(filename string, targetUrl string) error {
-	bodyBuf := &bytes.Buffer{}
-	bodyWriter := multipart.NewWriter(bodyBuf)
-
+func postFile(filename string, fullPath string, targetUrl string, credentials string) error {
+	body := &bytes.Buffer{}
+	bodyWriter := multipart.NewWriter(body)
 	fileWriter, err := bodyWriter.CreateFormFile("uploadfile", filename)
 	if err != nil {
 		fmt.Println("error writing to buffer")
 		return err
 	}
 
-	fh, err := os.Open(filename)
+	file, err := os.Open(fullPath)
 	if err != nil {
-		fmt.Println("error opening file")
 		return err
 	}
+	defer file.Close()
 
-	_, err = io.Copy(fileWriter, fh)
+	_, err = io.Copy(fileWriter, file)
 	if err != nil {
 		fmt.Println("error copying file")
 		return err
 	}
 
+	myHash, err := fileMd5Hash(fullPath)
+	if err != nil {
+		fmt.Println("failed to calculate MD5 Hash for %s", fullPath)
+		return err
+	}
+
+	bodyWriter.WriteField("HASH", myHash)
 	contentType := bodyWriter.FormDataContentType()
-	bodyWriter.Close()
-
-	resp, err := http.Post(targetUrl, contentType, bodyBuf)
+	err = bodyWriter.Close()
 	if err != nil {
-		fmt.Println("error post to file upload url")
 		return err
 	}
+
+	req, err := http.NewRequest("POST", targetUrl, body)
+	req.Header.Set("Content-Type", contentType)
+
+	data := []byte(credentials)
+	authHash := base64.StdEncoding.EncodeToString(data)
+	req.Header.Add("Authorization", "Basic "+authHash)
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
 	defer resp.Body.Close()
-	respBody, err := ioutil.ReadAll(resp.Body)
+
 	if err != nil {
-		fmt.Println("error reading resp body")
 		return err
 	}
 
-	fmt.Println(resp.Status)
-	fmt.Println(string(respBody))
 	return nil
+}
+
+func fileMd5Hash(filePath string) (string, error) {
+	var returnMD5String string
+	file, err := os.Open(filePath)
+	if err != nil {
+		return returnMD5String, err
+	}
+	defer file.Close()
+
+	hash := md5.New()
+	_, err = io.Copy(hash, file)
+	if err != nil {
+		return returnMD5String, err
+	}
+
+	hashInBytes := hash.Sum(nil)[:16]
+
+	returnMD5String = hex.EncodeToString(hashInBytes)
+
+	return returnMD5String, nil
+
 }
