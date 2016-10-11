@@ -357,6 +357,10 @@ func (handler *FilesystemTracker) processEvent(event Event, pathName, fullPath s
 	// todo fix this to handle the two rename events to be one event
 	case "notify.Rename":
 		fmt.Printf("Rename attempted %v\n", event)
+
+// todo working on rename!!!!!!!
+//
+
 		//if event.IsDirectory {
 		//	// check to see if this folder currently exists. If it does, it is the destination
 		//	info, err := os.Stat(fullPath)
