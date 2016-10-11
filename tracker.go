@@ -64,6 +64,13 @@ func NewDirectory() *Directory {
 	return &Directory{contents: make(map[string]os.FileInfo)}
 }
 
+// NewDirectory - creates and returns a new Directory
+func NewDirectoryFromFileInfo(info *os.FileInfo) *Directory {
+	//directory :=  &Directory(info)
+	//directory.contents = make(map[string]os.FileInfo)
+	return &Directory{*info, make(map[string]os.FileInfo)}
+}
+
 func (handler *FilesystemTracker) init(directory string) {
 	fmt.Println("FilesystemTracker:init")
 	handler.fsLock.Lock()
@@ -235,31 +242,37 @@ func (handler *FilesystemTracker) ListFolders() (folderList []string) {
 	return
 }
 
+func extractPaths(handler *FilesystemTracker, ei *notify.EventInfo) (path, fullPath string) {
+	directoryLength := len(handler.directory)
+	fullPath = string((*ei).Path())
+
+	path = fullPath
+	if len(fullPath) >= directoryLength && handler.directory == fullPath[:directoryLength] {
+		if len(fullPath) == directoryLength {
+			path = "."
+		} else {
+			// update the path to not have this prefix
+			path = fullPath[directoryLength+1:]
+		}
+	}
+
+	return
+}
+
 // Monitor the filesystem looking for changes to files we are keeping track of.
 func (handler *FilesystemTracker) monitorLoop(c chan notify.EventInfo) {
-	directoryLength := len(handler.directory)
-
 	for {
 		ei := <-c
 
-		fmt.Println("We have an event")
-		fullPath := string(ei.Path())
+		fmt.Printf("*****We have an event: %v\nwith Sys: %v\npath: %v\nevent: %v\n", ei, ei.Sys(), ei.Path(), ei.Event())
 
-		path := fullPath
-		if len(fullPath) >= directoryLength && handler.directory == fullPath[:directoryLength] {
-			if len(fullPath) == directoryLength {
-				path = "."
-			} else {
-				// update the path to not have this prefix
-				path = fullPath[directoryLength+1:]
-			}
-		}
+		path, fullPath := extractPaths(handler, &ei)
 		event := Event{Name: ei.Event().String(), Message: path}
 		log.Printf("Event captured name: %s location: %s, ei.Path(): %s", event.Name, event.Message, ei.Path())
 
 		isDirectory := handler.checkIfDirectory(event, path, fullPath)
 		event.IsDirectory = isDirectory
-		handler.processEvent(event, path)
+		handler.processEvent(event, path, fullPath)
 	}
 }
 
@@ -290,13 +303,13 @@ func (handler *FilesystemTracker) checkIfDirectory(event Event, path, fullPath s
 	return isDirectory
 }
 
-func (handler *FilesystemTracker) processEvent(event Event, pathName string) {
+func (handler *FilesystemTracker) processEvent(event Event, pathName, fullPath string) {
 	fmt.Println("FilesystemTracker:processEvent")
 	handler.fsLock.Lock()
 	fmt.Println("FilesystemTracker:/processEvent")
 	defer fmt.Println("FilesystemTracker://processEvent")
 
-	log.Printf("handleFilsystemEvent name: %s pathName: %s serverMap: %v\n", event.Name, pathName, serverMap)
+	fmt.Printf("*********************************************************\nhandleFilsystemEvent name: %s pathName: %s\n*********************************************************\n", event.Name, pathName)
 
 	currentValue, exists := handler.contents[pathName]
 
@@ -309,10 +322,18 @@ func (handler *FilesystemTracker) processEvent(event Event, pathName string) {
 		}
 
 		updatedValue, exists := handler.contents[pathName]
+
+		handler.fsLock.Unlock()
+		fmt.Println("FilesystemTracker:/+processEvent")
+
 		if handler.watcher != nil {
 			(*handler.watcher).FolderCreated(pathName)
 		}
-		fmt.Printf("notify.Create: Updated  value for %s: %v (%t)\n", pathName, updatedValue, exists)
+		fmt.Printf("notify.Create: Updated value for %s: %v (%t)\n", pathName, updatedValue, exists)
+
+		// sendEvent to manager
+		SendEvent(event)
+		return
 
 	case "notify.Remove":
 		// clean out the entry in the DirTreeMap for this folder
@@ -327,36 +348,59 @@ func (handler *FilesystemTracker) processEvent(event Event, pathName string) {
 			fmt.Println("In the notify.Remove section but did not see a watcher")
 		}
 
-		fmt.Printf("notify.Remove: Updated  value for %s: %v (%t)\n", pathName, updatedValue, exists)
+		handler.fsLock.Unlock()
+		fmt.Println("FilesystemTracker:/+processEvent")
+		SendEvent(event)
+
+		fmt.Printf("notify.Remove: Updated value for %s: %v (%t)\n", pathName, updatedValue, exists)
 
 	// todo fix this to handle the two rename events to be one event
-	//case "notify.Rename":
-	//	fmt.Println("Rename attempted but not yet supported")
-	//currentValue, exists := handler.contents[pathName]
-	//var iNode uint64
-	//if exists {
-	//	sysInterface := currentValue.Sys()
-	//	if sysInterface != nil {
-	//		foo := sysInterface.(*syscall.Stat_t)
-	//		iNode = foo.Ino
-	//	}
-	//
-	//	// At this point, the item is a directory and this is the original location
-	//	destinationPath, exists := handler.renamesInProgress[iNode]
-	//	if exists {
-	//		handler.contents[destinationPath] = currentValue
-	//		delete(handler.contents, pathName)
-	//
-	//		fmt.Printf("Renamed: %s to: %s", pathName, destinationPath)
-	//	} else {
-	//		fmt.Printf("Could not find rename in progress for iNode: %d\n%v\n", iNode, handler.renamesInProgress)
-	//	}
-	//
-	//} else {
-	//	fmt.Printf("Could not find %s in handler.contents\n%v\n", pathName, handler.contents)
-	//}
+	case "notify.Rename":
+		fmt.Printf("Rename attempted %v\n", event)
+		//if event.IsDirectory {
+		//	// check to see if this folder currently exists. If it does, it is the destination
+		//	info, err := os.Stat(fullPath)
+		//	if err == nil {
+		//		dir := NewDirectoryFromFileInfo(&info)
+		//		handler.contents[pathName] = *dir
+		//
+		//		if handler.watcher != nil {
+		//			(*handler.watcher).FolderCreated(pathName)
+		//		}
+		//		fmt.Printf("notify.Create: Updated value for %s: %v \n", pathName, dir)
+		//	}
+		//}
+		//
+		//
+		//currentValue, exists := handler.contents[pathName]
+		//var iNode uint64
+		//if exists {
+		//	sysInterface := currentValue.Sys()
+		//	if sysInterface != nil {
+		//		foo := sysInterface.(*syscall.Stat_t)
+		//		iNode = foo.Ino
+		//	}
+		//
+		//	// At this point, the item is a directory and this is the original location
+		//	destinationPath, exists := handler.renamesInProgress[iNode]
+		//	if exists {
+		//		handler.contents[destinationPath] = currentValue
+		//		delete(handler.contents, pathName)
+		//
+		//		fmt.Printf("Renamed: %s to: %s", pathName, destinationPath)
+		//	} else {
+		//		fmt.Printf("Could not find rename in progress for iNode: %d\n%v\n", iNode, handler.renamesInProgress)
+		//	}
+		//
+		//} else {
+		//	fmt.Printf("Could not find %s in handler.contents\n%v\n", pathName, handler.contents)
+		//}
 	default:
-		fmt.Printf("%s: %s not known, skipping\n", event.Name, pathName)
+		handler.fsLock.Unlock()
+		fmt.Println("FilesystemTracker:/+processEvent")
+		// do not send the event if we do not recognize it
+		//SendEvent(event)
+		fmt.Printf("%s: %s not known, skipping (%v)\n", event.Name, pathName, event)
 	}
 
 	currentValue, exists = handler.contents[pathName]
@@ -366,7 +410,7 @@ func (handler *FilesystemTracker) processEvent(event Event, pathName string) {
 	fmt.Println("FilesystemTracker:/+processEvent")
 
 	// sendEvent to manager
-	SendEvent(event)
+	//SendEvent(event)
 }
 
 // Scan the files and folders inside of the directory we are watching and add them to the contents. This function
