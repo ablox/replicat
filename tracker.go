@@ -332,7 +332,7 @@ func (handler *FilesystemTracker) processEvent(event Event, pathName, fullPath s
 		fmt.Printf("notify.Create: Updated value for %s: %v (%t)\n", pathName, updatedValue, exists)
 
 		// sendEvent to manager
-		SendEvent(event)
+		SendEvent(event, "")
 		return
 
 	case "notify.Remove":
@@ -350,7 +350,7 @@ func (handler *FilesystemTracker) processEvent(event Event, pathName, fullPath s
 
 		handler.fsLock.Unlock()
 		fmt.Println("FilesystemTracker:/+processEvent")
-		SendEvent(event)
+		SendEvent(event, "")
 
 		fmt.Printf("notify.Remove: Updated value for %s: %v (%t)\n", pathName, updatedValue, exists)
 
@@ -395,6 +395,9 @@ func (handler *FilesystemTracker) processEvent(event Event, pathName, fullPath s
 		//} else {
 		//	fmt.Printf("Could not find %s in handler.contents\n%v\n", pathName, handler.contents)
 		//}
+	case "notify.Write":
+		fmt.Println("File updated %v\n", event)
+		SendEvent(event, fullPath)
 	default:
 		handler.fsLock.Unlock()
 		fmt.Println("FilesystemTracker:/+processEvent")
