@@ -103,7 +103,7 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprint(w, handler.Header)
 
 		hash := r.Form.Get("HASH")
-		myHash, err := fileMd5Hash(globalSettings.Directory + "/" + handler.Filename)
+		myHash, _ := fileMd5Hash(globalSettings.Directory + "/" + handler.Filename)
 		if hash != myHash {
 			f, err := os.OpenFile(globalSettings.Directory+"/"+handler.Filename, os.O_WRONLY|os.O_CREATE, 0666)
 
