@@ -49,7 +49,7 @@ type FilesystemTracker struct {
 	setup             bool
 	watcher           *ChangeHandler
 	fsEventsChannel   chan notify.EventInfo
-	renamesInProgress map[uint64]string // map from inode to source/destination of items being moved
+	renamesInProgress map[uint64]renameInformation // map from inode to source/destination of items being moved
 	fsLock            sync.RWMutex
 }
 
@@ -66,9 +66,15 @@ func NewDirectory() *Directory {
 
 // NewDirectory - creates and returns a new Directory
 func NewDirectoryFromFileInfo(info *os.FileInfo) *Directory {
-	//directory :=  &Directory(info)
-	//directory.contents = make(map[string]os.FileInfo)
 	return &Directory{*info, make(map[string]os.FileInfo)}
+}
+
+func (handler *FilesystemTracker) print() {
+	fmt.Println("~~~~~~~~~~~~~~~~~~~~~~~")
+	fmt.Printf("~~~~%s Tracker report setup(%v)\n", handler.directory, handler.setup)
+	fmt.Printf("~~~~contents: %v\n", handler.contents)
+	fmt.Printf("~~~~renames in progress: %v\n", handler.renamesInProgress)
+	fmt.Println("~~~~~~~~~~~~~~~~~~~~~~~")
 }
 
 func (handler *FilesystemTracker) init(directory string) {
@@ -103,6 +109,8 @@ func (handler *FilesystemTracker) init(directory string) {
 	if err != nil {
 		panic(err)
 	}
+
+	handler.renamesInProgress = make(map[uint64]renameInformation, 0)
 
 	handler.setup = true
 }
@@ -303,45 +311,131 @@ func (handler *FilesystemTracker) checkIfDirectory(event Event, path, fullPath s
 	return isDirectory
 }
 
+type renameInformation struct {
+	iNode           uint64
+	sourceDirectory *Directory
+	sourcePath      string
+	sourceSet       bool
+	destinationStat os.FileInfo
+	destinationPath string
+	destinationSet  bool
+}
+
+func getiNodeFromStat(stat os.FileInfo) uint64 {
+	if stat == nil {
+		return 0
+	}
+
+	sysInterface := stat.Sys()
+	if sysInterface != nil {
+		foo := sysInterface.(*syscall.Stat_t)
+		return foo.Ino
+	}
+	return 0
+}
+
 func (handler *FilesystemTracker) handleRename(event Event, pathName, fullPath string) {
-	if event.IsDirectory {
-		// check to see if this folder currently exists. If it does, it is the destination
-		info, err := os.Stat(fullPath)
-		if err == nil {
-			dir := NewDirectoryFromFileInfo(&info)
-			handler.contents[pathName] = *dir
+	fmt.Printf("FilesystemTracker:handleRename: pathname: %s fullPath: %s\n", pathName, fullPath)
+	// Either the path should exist in the filesystem or it should exist in the stored tree. Find it.
 
-			if handler.watcher != nil {
-				(*handler.watcher).FolderCreated(pathName)
-			}
-			fmt.Printf("notify.Create: Updated value for %s: %v \n", pathName, dir)
-		}
+	// check to see if this folder currently exists. If it does, it is the destination
+	tmpDestinationStat, err := os.Stat(fullPath)
+	tmpDestinationSet := false
+	if err == nil {
+		tmpDestinationSet = true
 	}
 
+	// Check to see if we have source information for this folder, if we do, it is the source.
+	tmpSourceDirectory, tmpSourceSet := handler.contents[pathName]
 
-	currentValue, exists := handler.contents[pathName]
+	//todo can it be possible to get real values in error? i.e. can I move to an existing folder and pick up its information accidentally?
 	var iNode uint64
-	if exists {
-		sysInterface := currentValue.Sys()
-		if sysInterface != nil {
-			foo := sysInterface.(*syscall.Stat_t)
-			iNode = foo.Ino
-		}
 
-		// At this point, the item is a directory and this is the original location
-		destinationPath, exists := handler.renamesInProgress[iNode]
-		if exists {
-			handler.contents[destinationPath] = currentValue
-			delete(handler.contents, pathName)
-
-			fmt.Printf("Renamed: %s to: %s", pathName, destinationPath)
-		} else {
-			fmt.Printf("Could not find rename in progress for iNode: %d\n%v\n", iNode, handler.renamesInProgress)
-		}
-
-	} else {
-		fmt.Printf("Could not find %s in handler.contents\n%v\n", pathName, handler.contents)
+	if tmpDestinationSet {
+		iNode = getiNodeFromStat(tmpDestinationStat)
+	} else if tmpSourceSet {
+		iNode = getiNodeFromStat(tmpSourceDirectory)
 	}
+
+	inProgress := handler.renamesInProgress[iNode]
+	fmt.Printf("^^^^^^^retrieving under iNode: %d saved transfer is: %v\n", iNode, inProgress)
+
+	startedWithSourceSet := inProgress.sourceSet
+
+	if !inProgress.sourceSet && tmpSourceSet {
+		inProgress.sourceDirectory = &tmpSourceDirectory
+		inProgress.sourcePath = fullPath
+		inProgress.sourceSet = true
+		fmt.Printf("^^^^^^^Source found, deleting pathName '%s' from contents. Current transfer is: %v\n", pathName, inProgress)
+		delete(handler.contents, pathName)
+	}
+	if !inProgress.destinationSet && tmpDestinationSet {
+		inProgress.destinationStat = tmpDestinationStat
+		inProgress.destinationPath = fullPath
+		inProgress.destinationSet = true
+	}
+
+	fmt.Printf("^^^^^^^Current transfer is: %v\n", inProgress)
+
+	if inProgress.destinationSet {
+		relativeDestination := inProgress.destinationPath[len(handler.directory)+1:]
+		if inProgress.sourceSet {
+			fmt.Printf("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nEnforcing move from %s to %s\n^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n", inProgress.sourcePath, inProgress.destinationPath)
+			relativeSource := inProgress.sourcePath[len(handler.directory)+1:]
+
+			fmt.Printf("moving from source: %s (%s) to destination: %s (%s)\n", inProgress.sourcePath, relativeSource, inProgress.destinationPath, relativeDestination)
+
+			if startedWithSourceSet {
+
+			} else {
+				handler.contents[relativeDestination] = handler.contents[relativeSource]
+				delete(handler.contents, relativeSource)
+			}
+			delete(handler.renamesInProgress, iNode)
+		} else {
+			fmt.Printf("^^^^^^^Move from outside to: %s (%s) iNode is: %d\n", inProgress.destinationPath, relativeDestination, iNode)
+			handler.contents[relativeDestination] = *NewDirectoryFromFileInfo(&inProgress.destinationStat)
+			handler.renamesInProgress[iNode] = inProgress
+		}
+	} else {
+		//todo schedule this for destruction
+		fmt.Printf("^^^^^^^We have source but no destination - saving under iNode: %d Current transfer is: %v\n", iNode, inProgress)
+		handler.renamesInProgress[iNode] = inProgress
+	}
+	//if err == nil {
+	//	inProgress
+	//	dir := NewDirectoryFromFileInfo(&info)
+	//	handler.contents[pathName] = *dir
+	//
+	//	if handler.watcher != nil {
+	//		(*handler.watcher).FolderCreated(pathName)
+	//	}
+	//	fmt.Printf("notify.Create: Updated value for %s: %v \n", pathName, dir)
+	//}
+
+	//currentValue, exists := handler.contents[pathName]
+	//var iNode uint64
+	//if exists {
+	//	sysInterface := currentValue.Sys()
+	//	if sysInterface != nil {
+	//		foo := sysInterface.(*syscall.Stat_t)
+	//		iNode = foo.Ino
+	//	}
+	//
+	//	// At this point, the item is a directory and this is the original location
+	//	destinationPath, exists := handler.renamesInProgress[iNode]
+	//	if exists {
+	//		handler.contents[destinationPath] = currentValue
+	//		delete(handler.contents, pathName)
+	//
+	//		fmt.Printf("Renamed: %s to: %s", pathName, destinationPath)
+	//	} else {
+	//		fmt.Printf("Could not find rename in progress for iNode: %d\n%v\n", iNode, handler.renamesInProgress)
+	//	}
+	//
+	//} else {
+	//	fmt.Printf("Could not find %s in handler.contents\n%v\n", pathName, handler.contents)
+	//}
 
 }
 
