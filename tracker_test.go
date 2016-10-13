@@ -45,13 +45,18 @@ func TestEmptyDirectoryMovesInOutAround(t *testing.T) {
 	var loggerInterface ChangeHandler = logger
 	tracker.watchDirectory(&loggerInterface)
 
+	tracker.print()
 	folderName := "happy"
+	//originalFolderName := folderName
 	targetMonitoredPath := monitoredFolder + "/" + folderName
 	targetOutsidePath := outsideFolder + "/" + folderName
 
 	fmt.Printf("making folder: %s going to rename it to: %s\n", targetOutsidePath, targetMonitoredPath)
 	os.Mkdir(targetOutsidePath, os.ModeDir+os.ModePerm)
+	fmt.Println("QASI: 4")
+	fmt.Printf("About to move file \nfrom: %s\nto  : %s\n", targetOutsidePath, targetMonitoredPath)
 	os.Rename(targetOutsidePath, targetMonitoredPath)
+	fmt.Println("QASI: 5")
 	stats, _ := os.Stat(targetMonitoredPath)
 	fmt.Printf("stats for: %s\n%v\n", targetMonitoredPath, stats)
 
@@ -62,26 +67,45 @@ func TestEmptyDirectoryMovesInOutAround(t *testing.T) {
 	}
 
 	if !waitFor(t, tracker, folderName, true, helper) {
-			t.Fatalf("%s not found in contents\ncontents: %v\n", folderName, tracker.contents)
+		t.Fatalf("%s not found in contents\ncontents: %v\n", folderName, tracker.contents)
 	}
 
-	folderName = folderName + "b"
-	moveSourcePath := targetMonitoredPath
-	moveDestinationPath := monitoredFolder + "/" + folderName
-	os.Rename(moveSourcePath, moveDestinationPath)
+	tracker.print()
+	fmt.Println("QASI: 7")
 
-	if !waitFor(t, tracker, folderName, true, helper) {
-		t.Fatalf("%s not renamed from contents\ncontents: %v\n", folderName, tracker.contents)
-	}
-
-	moveSourcePath = moveDestinationPath
-	moveDestinationPath = targetOutsidePath
-
-	os.Rename(moveSourcePath, moveDestinationPath)
-
-	if !waitFor(t, tracker, folderName, false, helper) {
-			t.Fatalf("%s not cleared from contents\ncontents: %v\n", folderName, tracker.contents)
-	}
+	//	folderName = folderName + "b"
+	//	moveSourcePath := targetMonitoredPath
+	//	moveDestinationPath := monitoredFolder + "/" + folderName
+	//	fmt.Printf("About to move file \nfrom: %s\nto  : %s\n", moveSourcePath, moveDestinationPath)
+	//fmt.Println("QASI: 8")
+	//	os.Rename(moveSourcePath, moveDestinationPath)
+	//fmt.Println("QASI: 9")
+	//
+	//	if !waitFor(t, tracker, originalFolderName, false, helper) {
+	//		t.Fatalf("Still finding originalFolderName %s after rename timeout \ncontents: %v\n", originalFolderName, tracker.contents)
+	//	}
+	//fmt.Println("QASI: 10")
+	//
+	//	if !waitFor(t, tracker, folderName, true, helper) {
+	//		t.Fatalf("%s not found after renamte timout\ncontents: %v\n", folderName, tracker.contents)
+	//	}
+	//fmt.Println("QASI: 11")
+	//tracker.print()
+	//
+	//	moveSourcePath = moveDestinationPath
+	//	moveDestinationPath = targetOutsidePath
+	//
+	//	fmt.Printf("About to move file \nfrom: %s\nto  : %s\n", moveSourcePath, moveDestinationPath)
+	//	os.Rename(moveSourcePath, moveDestinationPath)
+	//fmt.Println("QASI: 13")
+	//
+	//	if !waitFor(t, tracker, folderName, false, helper) {
+	//		fmt.Printf("Tracker contents: %v\n", tracker.contents)
+	//		t.Fatalf("%s not cleared from contents\ncontents: %v\n", folderName, tracker.contents)
+	//	}
+	//
+	//tracker.print()
+	//fmt.Println("QASI: 14")
 
 }
 
@@ -200,14 +224,14 @@ type countingChangeHandler struct {
 	FoldersDeleted int
 }
 
-func (handler *countingChangeHandler) FolderCreated(name string) (error) {
+func (handler *countingChangeHandler) FolderCreated(name string) error {
 	handler.FoldersCreated++
 
 	fmt.Printf("countingChangeHandler:FolderCreated: %s (%d)\n", name, handler.FoldersCreated)
 	return nil
 }
 
-func (handler *countingChangeHandler) FolderDeleted(name string) (error) {
+func (handler *countingChangeHandler) FolderDeleted(name string) error {
 	handler.FoldersDeleted++
 
 	fmt.Printf("countingChangeHandler:FolderDeleted: %s (%d)\n", name, handler.FoldersDeleted)
