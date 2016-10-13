@@ -64,7 +64,7 @@ func NewDirectory() *Directory {
 	return &Directory{contents: make(map[string]os.FileInfo)}
 }
 
-// NewDirectory - creates and returns a new Directory
+// NewDirectoryFromFileInfo - creates and returns a new Directory based on a fileinfo structure
 func NewDirectoryFromFileInfo(info *os.FileInfo) *Directory {
 	return &Directory{*info, make(map[string]os.FileInfo)}
 }
