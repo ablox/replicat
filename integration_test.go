@@ -6,8 +6,8 @@ import (
 	"log"
 	"os"
 	"os/exec"
-	"testing"
 	"path/filepath"
+	"testing"
 	"time"
 )
 
