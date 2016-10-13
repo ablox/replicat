@@ -32,36 +32,32 @@ func waitFor(t *testing.T, tracker *FilesystemTracker, helper func(t *testing.T,
 }
 
 func TestEmptyDirectoryMoveIn(t *testing.T) {
-	tmpFolder, _ := ioutil.TempDir("", "blank")
-	defer os.RemoveAll(tmpFolder)
+	monitoredFolder, _ := ioutil.TempDir("", "monitored")
+	outsideFolder, _ := ioutil.TempDir("", "outside")
+	defer os.RemoveAll(monitoredFolder)
+	defer os.RemoveAll(outsideFolder)
 
 	tracker := new(FilesystemTracker)
-	tracker.init(tmpFolder)
+	tracker.init(monitoredFolder)
 	defer tracker.cleanup()
 
 	logger := &LogOnlyChangeHandler{}
 	var loggerInterface ChangeHandler = logger
 	tracker.watchDirectory(&loggerInterface)
 
-	baseTmpPath := os.TempDir()
-
 	folderName := "happy"
-	happyIn := baseTmpPath + folderName
-	happyOut := tmpFolder + "/" + folderName
+	targetMonitoredPath := monitoredFolder + "/" + folderName
+	targetOutsidePath := outsideFolder + "/" + folderName
 
-	defer os.Remove(happyIn)
-	defer os.Remove(happyOut)
-
-
-	fmt.Printf("making folder: %s going to rename it to: %s\n", happyOut, happyIn)
-	os.Mkdir(happyOut, os.ModeDir+os.ModePerm)
-	os.Rename(happyOut, happyIn)
-	stats, _ := os.Stat(happyIn)
-	fmt.Printf("stats for: %s\n%v\n", happyIn, stats)
-
+	fmt.Printf("making folder: %s going to rename it to: %s\n", targetOutsidePath, targetMonitoredPath)
+	os.Mkdir(targetOutsidePath, os.ModeDir+os.ModePerm)
+	os.Rename(targetOutsidePath, targetMonitoredPath)
+	stats, _ := os.Stat(targetMonitoredPath)
+	fmt.Printf("stats for: %s\n%v\n", targetMonitoredPath, stats)
 
 	helper := func(t *testing.T, tracker *FilesystemTracker) bool {
 		_, exists := tracker.contents[folderName]
+		fmt.Printf("Checking the value of exists: %v\n", exists)
 		return exists
 	}
 
@@ -69,16 +65,17 @@ func TestEmptyDirectoryMoveIn(t *testing.T) {
 			t.Fatalf("%s not found in contents\ncontents: %v\n", folderName, tracker.contents)
 	}
 
-	fmt.Printf("making folder: %s going to rename it to: %s\n", happyIn, happyOut)
-	os.Mkdir(happyIn, os.ModeDir+os.ModePerm)
-	os.Rename(happyIn, happyOut)
-
-	stats, _ = os.Stat(happyOut)
-	fmt.Printf("stats for: %s\n%v\n", happyOut, stats)
+	os.Rename(targetMonitoredPath, targetOutsidePath)
+	helper = func(t *testing.T, tracker *FilesystemTracker) bool {
+		_, exists := tracker.contents[folderName]
+		fmt.Printf("Checking the value of exists: %v\n", exists)
+		return exists
+	}
 
 	if !waitFor(t, tracker, helper) {
-			t.Fatalf("%s not found in contents\ncontents: %v\n", folderName, tracker.contents)
+			t.Fatalf("%s not cleared from contents\ncontents: %v\n", folderName, tracker.contents)
 	}
+
 }
 
 func TestDirectoryCreation(t *testing.T) {
