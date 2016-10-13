@@ -38,7 +38,6 @@ func TestEmptyDirectoryMoveIn(t *testing.T) {
 	fmt.Printf("making folder: %s going to rename it to: %s\n", happyOut, happyIn)
 	os.Mkdir(happyOut, os.ModeDir+os.ModePerm)
 	os.Rename(happyOut, happyIn)
-	panic("AAAAJDFJSDFJSDFJSDKFJSKDJFKSJDFKJSDKFJ")
 	stats, _ := os.Stat(happyIn)
 	fmt.Printf("stats for: %s\n%v\n", happyIn, stats)
 
