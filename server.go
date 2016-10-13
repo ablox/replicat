@@ -83,7 +83,7 @@ func sendEvent(event *Event, fullPath string, address string, credentials string
 	fmt.Println("response Body:", string(body))
 
 	if event.Name == "notify.Write" {
-		fmt.Println("source: notify.Write => %v", fullPath)
+		fmt.Printf("source: notify.Write => %s\n", fullPath)
 		url := "http://" + address + "/upload/"
 		postFile(event.Message, fullPath, url, credentials)
 	}
@@ -321,7 +321,7 @@ func postFile(filename string, fullPath string, targetUrl string, credentials st
 
 	myHash, err := fileMd5Hash(fullPath)
 	if err != nil {
-		fmt.Println("failed to calculate MD5 Hash for %s", fullPath)
+		fmt.Printf("failed to calculate MD5 Hash for %s\n", fullPath)
 		return err
 	}
 
