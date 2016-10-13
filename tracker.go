@@ -490,12 +490,12 @@ func (handler *FilesystemTracker) processEvent(event Event, pathName, fullPath s
 
 		fmt.Printf("notify.Remove: Updated value for %s: %v (%t)\n", pathName, updatedValue, exists)
 		return
-	// todo fix this to handle the two rename events to be one event
 	case "notify.Rename":
+		// todo fix this to handle the two rename events to be one event
 		fmt.Printf("Rename attempted %v\n", event)
 		handler.handleRename(event, pathName, fullPath)
 	case "notify.Write":
-		fmt.Println("File updated %v\n", event)
+		fmt.Printf("File updated %v\n", event)
 		SendEvent(event, fullPath)
 	default:
 		fmt.Println("FilesystemTracker:/+processEvent")
@@ -503,9 +503,6 @@ func (handler *FilesystemTracker) processEvent(event Event, pathName, fullPath s
 		//SendEvent(event)
 		fmt.Printf("%s: %s not known, skipping (%v)\n", event.Name, pathName, event)
 	}
-
-	//currentValue, exists = handler.contents[pathName]
-	//fmt.Printf("After: %s: Existing value for %s: %v (%v)\n", event.Name, pathName, currentValue, exists)
 
 	handler.fsLock.Unlock()
 	fmt.Println("FilesystemTracker:/+processEvent")
