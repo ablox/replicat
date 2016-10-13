@@ -15,10 +15,10 @@ import (
 
 type filesystemTrackerHelper func(t *testing.T, tracker *FilesystemTracker) bool
 
-func waitFor(t *testing.T, tracker *FilesystemTracker, helper func(t *testing.T, tracker *FilesystemTracker) bool) bool {
+func waitFor(t *testing.T, tracker *FilesystemTracker, folder string, waitingFor bool, helper func(t *testing.T, tracker *FilesystemTracker, folder string) bool) bool {
 	roundTrips := 0
 	for {
-		if helper(t, tracker) {
+		if waitingFor == helper(t, tracker, folder) {
 			return true
 		}
 
@@ -31,7 +31,7 @@ func waitFor(t *testing.T, tracker *FilesystemTracker, helper func(t *testing.T,
 	}
 }
 
-func TestEmptyDirectoryMoveIn(t *testing.T) {
+func TestEmptyDirectoryMovesInOutAround(t *testing.T) {
 	monitoredFolder, _ := ioutil.TempDir("", "monitored")
 	outsideFolder, _ := ioutil.TempDir("", "outside")
 	defer os.RemoveAll(monitoredFolder)
@@ -55,24 +55,31 @@ func TestEmptyDirectoryMoveIn(t *testing.T) {
 	stats, _ := os.Stat(targetMonitoredPath)
 	fmt.Printf("stats for: %s\n%v\n", targetMonitoredPath, stats)
 
-	helper := func(t *testing.T, tracker *FilesystemTracker) bool {
-		_, exists := tracker.contents[folderName]
+	helper := func(t *testing.T, tracker *FilesystemTracker, folder string) bool {
+		_, exists := tracker.contents[folder]
 		fmt.Printf("Checking the value of exists: %v\n", exists)
 		return exists
 	}
 
-	if !waitFor(t, tracker, helper) {
+	if !waitFor(t, tracker, folderName, true, helper) {
 			t.Fatalf("%s not found in contents\ncontents: %v\n", folderName, tracker.contents)
 	}
 
-	os.Rename(targetMonitoredPath, targetOutsidePath)
-	helper = func(t *testing.T, tracker *FilesystemTracker) bool {
-		_, exists := tracker.contents[folderName]
-		fmt.Printf("Checking the value of exists: %v\n", exists)
-		return exists
+	folderName = folderName + "b"
+	moveSourcePath := targetMonitoredPath
+	moveDestinationPath := monitoredFolder + "/" + folderName
+	os.Rename(moveSourcePath, moveDestinationPath)
+
+	if !waitFor(t, tracker, folderName, true, helper) {
+		t.Fatalf("%s not renamed from contents\ncontents: %v\n", folderName, tracker.contents)
 	}
 
-	if !waitFor(t, tracker, helper) {
+	moveSourcePath = moveDestinationPath
+	moveDestinationPath = targetOutsidePath
+
+	os.Rename(moveSourcePath, moveDestinationPath)
+
+	if !waitFor(t, tracker, folderName, false, helper) {
 			t.Fatalf("%s not cleared from contents\ncontents: %v\n", folderName, tracker.contents)
 	}
 
