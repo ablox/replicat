@@ -400,10 +400,6 @@ func (handler *FilesystemTracker) processEvent(event Event, pathName, fullPath s
 	case "notify.Rename":
 		fmt.Printf("Rename attempted %v\n", event)
 		handler.handleRename(event, pathName, fullPath)
-
-// todo working on rename!!!!!!!
-//
-
 	case "notify.Write":
 		fmt.Println("File updated %v\n", event)
 		SendEvent(event, fullPath)
