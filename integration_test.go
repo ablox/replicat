@@ -6,14 +6,13 @@ import (
 	"log"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"testing"
+	"path/filepath"
 	"time"
 )
 
-func testMain(m *testing.M) {
-	m.Run()
-	//go buildApps()
+func TestIntegration(t *testing.T) {
+	//buildApps()
 	startWebcat()
 	dirA := startReplicat("nodeA")
 	dirB := startReplicat("nodeB")
@@ -51,8 +50,6 @@ func startReplicat(name string) string {
 	}
 
 	go func() {
-		err := os.Chdir("../replicat")
-		printError(err)
 		cmd := exec.Command("go", "run", "main.go", "--directory", dir, "--name", name)
 		output, err := cmd.CombinedOutput()
 		printError(err)
@@ -64,12 +61,12 @@ func startReplicat(name string) string {
 
 func buildApps() {
 	os.Chdir("../webcat")
-	cmd := exec.Command("go build -o webcat github.com/ablox/webcat")
+	cmd := exec.Command("/usr/local/bin/go build -o webcat github.com/ablox/webcat")
 	output, err := cmd.CombinedOutput()
 	printError(err)
 	printOutput(output)
 	os.Chdir("../replicat")
-	cmd = exec.Command("go build -o replicat github.com/ablox/replicat")
+	cmd = exec.Command("/usr/local/bin/go build -o replicat github.com/ablox/replicat")
 	output, err = cmd.CombinedOutput()
 	printError(err)
 	printOutput(output)
