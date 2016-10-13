@@ -13,6 +13,24 @@ import (
 	"time"
 )
 
+type filesystemTrackerHelper func(t *testing.T, tracker *FilesystemTracker) bool
+
+func waitFor(t *testing.T, tracker *FilesystemTracker, helper func(t *testing.T, tracker *FilesystemTracker) bool) bool {
+	roundTrips := 0
+	for {
+		if helper(t, tracker) {
+			return true
+		}
+
+		if roundTrips > 50 {
+			return false
+		}
+		roundTrips++
+
+		time.Sleep(50 * time.Millisecond)
+	}
+}
+
 func TestEmptyDirectoryMoveIn(t *testing.T) {
 	tmpFolder, _ := ioutil.TempDir("", "blank")
 	defer os.RemoveAll(tmpFolder)
@@ -41,19 +59,14 @@ func TestEmptyDirectoryMoveIn(t *testing.T) {
 	stats, _ := os.Stat(happyIn)
 	fmt.Printf("stats for: %s\n%v\n", happyIn, stats)
 
-	roundTrips := 0
-	for {
+
+	helper := func(t *testing.T, tracker *FilesystemTracker) bool {
 		_, exists := tracker.contents[folderName]
-		if exists {
-			return
-		}
+		return exists
+	}
 
-		if roundTrips > 50 {
+	if !waitFor(t, tracker, helper) {
 			t.Fatalf("%s not found in contents\ncontents: %v\n", folderName, tracker.contents)
-		}
-		roundTrips++
-
-		time.Sleep(50 * time.Millisecond)
 	}
 
 	fmt.Printf("making folder: %s going to rename it to: %s\n", happyIn, happyOut)
@@ -63,19 +76,8 @@ func TestEmptyDirectoryMoveIn(t *testing.T) {
 	stats, _ = os.Stat(happyOut)
 	fmt.Printf("stats for: %s\n%v\n", happyOut, stats)
 
-	roundTrips = 0
-	for {
-		_, exists := tracker.contents[folderName]
-		if exists {
-			return
-		}
-
-		if roundTrips > 50 {
+	if !waitFor(t, tracker, helper) {
 			t.Fatalf("%s not found in contents\ncontents: %v\n", folderName, tracker.contents)
-		}
-		roundTrips++
-
-		time.Sleep(50 * time.Millisecond)
 	}
 }
 
