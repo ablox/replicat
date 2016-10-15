@@ -68,7 +68,6 @@ func TestEmptyDirectoryMovesInOutAround(t *testing.T) {
 		t.Fatalf("%s not found in contents\ncontents: %v\n", folderName, tracker.contents)
 	}
 
-
 	fmt.Println("QASI: 6")
 	tracker.print()
 	if len(tracker.renamesInProgress) > 0 {
@@ -76,22 +75,22 @@ func TestEmptyDirectoryMovesInOutAround(t *testing.T) {
 	}
 	fmt.Println("QASI: 7")
 
-		folderName = folderName + "b"
-		moveSourcePath := targetMonitoredPath
-		moveDestinationPath := monitoredFolder + "/" + folderName
-		fmt.Printf("About to move file \nfrom: %s\nto  : %s\n", moveSourcePath, moveDestinationPath)
+	folderName = folderName + "b"
+	moveSourcePath := targetMonitoredPath
+	moveDestinationPath := monitoredFolder + "/" + folderName
+	fmt.Printf("About to move file \nfrom: %s\nto  : %s\n", moveSourcePath, moveDestinationPath)
 	fmt.Println("QASI: 8")
-		os.Rename(moveSourcePath, moveDestinationPath)
+	os.Rename(moveSourcePath, moveDestinationPath)
 	fmt.Println("QASI: 9")
 
-		if !WaitFor(tracker, originalFolderName, false, helper) {
-			t.Fatalf("Still finding originalFolderName %s after rename timeout \ncontents: %v\n", originalFolderName, tracker.contents)
-		}
+	if !WaitFor(tracker, originalFolderName, false, helper) {
+		t.Fatalf("Still finding originalFolderName %s after rename timeout \ncontents: %v\n", originalFolderName, tracker.contents)
+	}
 	fmt.Println("QASI: 10")
 
-		if !WaitFor(tracker, folderName, true, helper) {
-			t.Fatalf("%s not found after renamte timout\ncontents: %v\n", folderName, tracker.contents)
-		}
+	if !WaitFor(tracker, folderName, true, helper) {
+		t.Fatalf("%s not found after renamte timout\ncontents: %v\n", folderName, tracker.contents)
+	}
 	fmt.Println("QASI: 11")
 	tracker.print()
 	if len(tracker.renamesInProgress) > 0 {
@@ -102,19 +101,17 @@ func TestEmptyDirectoryMovesInOutAround(t *testing.T) {
 	// check to make sure that there are no invalid directories
 	tracker.validate()
 
+	moveSourcePath = moveDestinationPath
+	moveDestinationPath = targetOutsidePath
 
-
-		moveSourcePath = moveDestinationPath
-		moveDestinationPath = targetOutsidePath
-
-		fmt.Printf("About to move file \nfrom: %s\nto  : %s\n", moveSourcePath, moveDestinationPath)
-		os.Rename(moveSourcePath, moveDestinationPath)
+	fmt.Printf("About to move file \nfrom: %s\nto  : %s\n", moveSourcePath, moveDestinationPath)
+	os.Rename(moveSourcePath, moveDestinationPath)
 	fmt.Println("QASI: 13")
 
-		if !WaitFor(tracker, folderName, false, helper) {
-			fmt.Printf("Tracker contents: %v\n", tracker.contents)
-			t.Fatalf("%s not cleared from contents\ncontents: %v\n", folderName, tracker.contents)
-		}
+	if !WaitFor(tracker, folderName, false, helper) {
+		fmt.Printf("Tracker contents: %v\n", tracker.contents)
+		t.Fatalf("%s not cleared from contents\ncontents: %v\n", folderName, tracker.contents)
+	}
 
 	tracker.print()
 	fmt.Println("QASI: 14")
