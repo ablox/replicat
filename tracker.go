@@ -369,9 +369,12 @@ func getiNodeFromStat(stat os.FileInfo) uint64 {
 }
 
 const (
+	// TRACKER_RENAME_TIMEOUT - the amount of time to sleep while waiting for the second event in a rename process
 	TRACKER_RENAME_TIMEOUT = time.Millisecond * 25
 )
 
+// WaitFor - a helper function that will politely wait until the helper argument function evaluates to the value of waitingFor.
+// this is great for waiting for the tracker to catch up to the filesystem in tests, for example.
 func WaitFor(tracker *FilesystemTracker, folder string, waitingFor bool, helper func(tracker *FilesystemTracker, folder string) bool) bool {
 	roundTrips := 0
 	for {
@@ -427,7 +430,7 @@ func trackerTestEmptyDirectoryMovesInOutAround() {
 
 	tracker.print()
 	if len(tracker.renamesInProgress) > 0 {
-		panic(fmt.Sprintf("6 tracker has renames in progress still"))
+		panic(fmt.Sprint("6 tracker has renames in progress still"))
 	}
 
 	// check to make sure that there are no invalid directories
@@ -448,7 +451,7 @@ func trackerTestEmptyDirectoryMovesInOutAround() {
 	}
 	tracker.print()
 	if len(tracker.renamesInProgress) > 0 {
-		panic(fmt.Sprintf("11 tracker has renames in progress still"))
+		panic(fmt.Sprint("11 tracker has renames in progress still"))
 	}
 
 	// check to make sure that there are no invalid directories
@@ -581,7 +584,7 @@ func (handler *FilesystemTracker) processEvent(event Event, pathName, fullPath s
 
 	switch event.Name {
 	case "notify.Create":
-		fmt.Printf("processEvent: About to assign from one path to the next. Original: %s Map: %s\n", currentValue, handler.contents)
+		fmt.Printf("processEvent: About to assign from one path to the next. Original: %v Map: %v\n", currentValue, handler.contents)
 		// make sure there is an entry in the DirTreeMap for this folder. Since and empty list will always be returned, we can use that
 		if !exists {
 			handler.contents[pathName] = Directory{}
