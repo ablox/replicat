@@ -73,14 +73,22 @@ func NewDirectoryFromFileInfo(info *os.FileInfo) *Directory {
 }
 
 func (handler *FilesystemTracker) print() {
+	fmt.Println("FilesystemTracker:print")
+	handler.fsLock.RLock()
+	fmt.Println("FilesystemTracker:/print")
 	fmt.Println("~~~~~~~~~~~~~~~~~~~~~~~")
 	fmt.Printf("~~~~%s Tracker report setup(%v)\n", handler.directory, handler.setup)
 	fmt.Printf("~~~~contents: %v\n", handler.contents)
 	fmt.Printf("~~~~renames in progress: %v\n", handler.renamesInProgress)
 	fmt.Println("~~~~~~~~~~~~~~~~~~~~~~~")
+	handler.fsLock.RUnlock()
+	fmt.Println("FilesystemTracker://print")
+
 }
 
 func (handler *FilesystemTracker) validate() {
+	handler.fsLock.RLock()
+	defer handler.fsLock.RUnlock()
 	fmt.Println("~~~~~~~~~~~~~~~~~~~~~~~")
 	fmt.Printf("~~~~%s Tracker validation starting on %d folders\n", handler.directory, len(handler.contents))
 
@@ -551,7 +559,7 @@ func (handler *FilesystemTracker) handleRename(event Event, pathName, fullPath s
 		relativeSource := inProgress.sourcePath[len(handler.directory)+1:]
 
 		fmt.Printf("moving from source: %s (%s) to destination: %s (%s)\n", inProgress.sourcePath, relativeSource, inProgress.destinationPath, relativeDestination)
-		handler.print()
+		//handler.print()
 
 		if startedWithSourceSet {
 			handler.contents[relativeDestination] = *NewDirectoryFromFileInfo(&inProgress.destinationStat)
