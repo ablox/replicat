@@ -5,6 +5,7 @@ package main
 import (
 	"fmt"
 	"github.com/rjeczalik/notify"
+	"io/ioutil"
 	"log"
 	"os"
 	"path/filepath"
@@ -12,7 +13,6 @@ import (
 	"sync"
 	"syscall"
 	"time"
-	"io/ioutil"
 )
 
 // ChangeHandler - Listener for tracking changes that happen to a storage system
@@ -59,12 +59,12 @@ type FilesystemTracker struct {
 type Directory struct {
 	os.FileInfo
 	contents map[string]os.FileInfo
-	setup bool
+	setup    bool
 }
 
 // NewDirectory - creates and returns a new Directory
 func NewDirectory() *Directory {
-	return &Directory{contents: make(map[string]os.FileInfo), setup:true}
+	return &Directory{contents: make(map[string]os.FileInfo), setup: true}
 }
 
 // NewDirectoryFromFileInfo - creates and returns a new Directory based on a fileinfo structure
@@ -371,8 +371,6 @@ func WaitFor(tracker *FilesystemTracker, folder string, waitingFor bool, helper 
 	}
 }
 
-
-
 func trackerTestEmptyDirectoryMovesInOutAround() {
 	monitoredFolder, _ := ioutil.TempDir("", "monitored")
 	outsideFolder, _ := ioutil.TempDir("", "outside")
@@ -412,7 +410,6 @@ func trackerTestEmptyDirectoryMovesInOutAround() {
 		panic(fmt.Sprintf("%s not found in contents\ncontents: %v\n", folderName, tracker.contents))
 	}
 
-
 	fmt.Println("QASI: 6")
 	tracker.print()
 	if len(tracker.renamesInProgress) > 0 {
@@ -420,22 +417,22 @@ func trackerTestEmptyDirectoryMovesInOutAround() {
 	}
 	fmt.Println("QASI: 7")
 
-		folderName = folderName + "b"
-		moveSourcePath := targetMonitoredPath
-		moveDestinationPath := monitoredFolder + "/" + folderName
-		fmt.Printf("About to move file \nfrom: %s\nto  : %s\n", moveSourcePath, moveDestinationPath)
+	folderName = folderName + "b"
+	moveSourcePath := targetMonitoredPath
+	moveDestinationPath := monitoredFolder + "/" + folderName
+	fmt.Printf("About to move file \nfrom: %s\nto  : %s\n", moveSourcePath, moveDestinationPath)
 	fmt.Println("QASI: 8")
-		os.Rename(moveSourcePath, moveDestinationPath)
+	os.Rename(moveSourcePath, moveDestinationPath)
 	fmt.Println("QASI: 9")
 
-		if !WaitFor(tracker, originalFolderName, false, helper) {
-			panic(fmt.Sprintf("Still finding originalFolderName %s after rename timeout \ncontents: %v\n", originalFolderName, tracker.contents))
-		}
+	if !WaitFor(tracker, originalFolderName, false, helper) {
+		panic(fmt.Sprintf("Still finding originalFolderName %s after rename timeout \ncontents: %v\n", originalFolderName, tracker.contents))
+	}
 	fmt.Println("QASI: 10")
 
-		if !WaitFor(tracker, folderName, true, helper) {
-			panic(fmt.Sprintf("%s not found after renamte timout\ncontents: %v\n", folderName, tracker.contents))
-		}
+	if !WaitFor(tracker, folderName, true, helper) {
+		panic(fmt.Sprintf("%s not found after renamte timout\ncontents: %v\n", folderName, tracker.contents))
+	}
 	fmt.Println("QASI: 11")
 	tracker.print()
 	if len(tracker.renamesInProgress) > 0 {
@@ -446,28 +443,22 @@ func trackerTestEmptyDirectoryMovesInOutAround() {
 	// check to make sure that there are no invalid directories
 	tracker.validate()
 
+	moveSourcePath = moveDestinationPath
+	moveDestinationPath = targetOutsidePath
 
-
-		moveSourcePath = moveDestinationPath
-		moveDestinationPath = targetOutsidePath
-
-		fmt.Printf("About to move file \nfrom: %s\nto  : %s\n", moveSourcePath, moveDestinationPath)
-		os.Rename(moveSourcePath, moveDestinationPath)
+	fmt.Printf("About to move file \nfrom: %s\nto  : %s\n", moveSourcePath, moveDestinationPath)
+	os.Rename(moveSourcePath, moveDestinationPath)
 	fmt.Println("QASI: 13")
 
-		if !WaitFor(tracker, folderName, false, helper) {
-			fmt.Printf("Tracker contents: %v\n", tracker.contents)
-			panic(fmt.Sprintf("%s not cleared from contents\ncontents: %v\n", folderName, tracker.contents))
-		}
+	if !WaitFor(tracker, folderName, false, helper) {
+		fmt.Printf("Tracker contents: %v\n", tracker.contents)
+		panic(fmt.Sprintf("%s not cleared from contents\ncontents: %v\n", folderName, tracker.contents))
+	}
 
 	tracker.print()
 	fmt.Println("QASI: 14")
 
 }
-
-
-
-
 
 // completeRenameIfAbandoned - if there is a rename that was started with a source
 // but has been left pending for more than TRACKER_RENAME_TIMEOUT, complete it (i.e. move the folder away)
@@ -570,14 +561,13 @@ func (handler *FilesystemTracker) handleRename(event Event, pathName, fullPath s
 		}
 		//}
 		//else {
-			// Store this as in progress.
+		// Store this as in progress.
 
-
-			//fmt.Printf("^^^^^^^Move from outside to: %s (%s) iNode is: %d\n", inProgress.destinationPath, relativeDestination, iNode)
-			//handler.contents[relativeDestination] = *NewDirectoryFromFileInfo(&inProgress.destinationStat)
-			// we are going to assume this is complete and not remember it in progress. We might want to remember the move so that we can
-			// transfer some metadata later.
-			// We might also want to race through the folders to see if we can find any records that match this iNode.
+		//fmt.Printf("^^^^^^^Move from outside to: %s (%s) iNode is: %d\n", inProgress.destinationPath, relativeDestination, iNode)
+		//handler.contents[relativeDestination] = *NewDirectoryFromFileInfo(&inProgress.destinationStat)
+		// we are going to assume this is complete and not remember it in progress. We might want to remember the move so that we can
+		// transfer some metadata later.
+		// We might also want to race through the folders to see if we can find any records that match this iNode.
 		//}
 		// if there is an in progress record for it, remove it
 		delete(handler.renamesInProgress, iNode)
