@@ -73,17 +73,26 @@ func NewDirectoryFromFileInfo(info *os.FileInfo) *Directory {
 }
 
 func (handler *FilesystemTracker) print() {
-	fmt.Println("FilesystemTracker:print")
-	handler.fsLock.RLock()
-	fmt.Println("FilesystemTracker:/print")
+	handler.printLockable(false)
+}
+
+func (handler *FilesystemTracker) printLockable(lock bool) {
+	if lock {
+		fmt.Println("FilesystemTracker:print")
+		handler.fsLock.RLock()
+		fmt.Println("FilesystemTracker:/print")
+	}
+
 	fmt.Println("~~~~~~~~~~~~~~~~~~~~~~~")
 	fmt.Printf("~~~~%s Tracker report setup(%v)\n", handler.directory, handler.setup)
 	fmt.Printf("~~~~contents: %v\n", handler.contents)
 	fmt.Printf("~~~~renames in progress: %v\n", handler.renamesInProgress)
 	fmt.Println("~~~~~~~~~~~~~~~~~~~~~~~")
-	handler.fsLock.RUnlock()
-	fmt.Println("FilesystemTracker://print")
 
+	if lock {
+		handler.fsLock.RUnlock()
+		fmt.Println("FilesystemTracker://print")
+	}
 }
 
 func (handler *FilesystemTracker) validate() {
@@ -425,6 +434,9 @@ func trackerTestEmptyDirectoryMovesInOutAround() {
 	}
 	fmt.Println("QASI: 7")
 
+	// check to make sure that there are no invalid directories
+	tracker.validate()
+
 	folderName = folderName + "b"
 	moveSourcePath := targetMonitoredPath
 	moveDestinationPath := monitoredFolder + "/" + folderName
@@ -531,11 +543,12 @@ func (handler *FilesystemTracker) handleRename(event Event, pathName, fullPath s
 		iNode = getiNodeFromStat(tmpSourceDirectory)
 	}
 
-	inProgress := handler.renamesInProgress[iNode]
-	fmt.Printf("^^^^^^^retrieving under iNode: %d saved transfer is: %v\n", iNode, inProgress)
+	inProgress, found := handler.renamesInProgress[iNode]
+	fmt.Printf("^^^^^^^retrieving under iNode: %d (found %v) saved transfer inProgress: %v\n", iNode, found, inProgress)
 
 	startedWithSourceSet := inProgress.sourceSet
 
+	fmt.Printf("^^^^^^^tmpSourceSet: %v (started: %v) tmpDestinationSet: %v\n", tmpSourceSet, startedWithSourceSet, tmpDestinationSet)
 	if !inProgress.sourceSet && tmpSourceSet {
 		inProgress.sourceDirectory = &tmpSourceDirectory
 		inProgress.sourcePath = fullPath
@@ -550,26 +563,40 @@ func (handler *FilesystemTracker) handleRename(event Event, pathName, fullPath s
 		inProgress.destinationSet = true
 	}
 
-	fmt.Printf("^^^^^^^Current transfer is: %v\n", inProgress)
+	fmt.Printf("^^^^^^^Current transfer is: %#v\n", inProgress)
 
 	if inProgress.destinationSet && inProgress.sourceSet {
 		relativeDestination := inProgress.destinationPath[len(handler.directory)+1:]
-		//if inProgress.sourceSet {
-		fmt.Printf("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nEnforcing move from %s to %s\n^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n", inProgress.sourcePath, inProgress.destinationPath)
 		relativeSource := inProgress.sourcePath[len(handler.directory)+1:]
-
+		fmt.Printf("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nEnforcing move from %s to %s\n^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n", inProgress.sourcePath, inProgress.destinationPath)
 		fmt.Printf("moving from source: %s (%s) to destination: %s (%s)\n", inProgress.sourcePath, relativeSource, inProgress.destinationPath, relativeDestination)
-		//handler.print()
+		handler.print()
 
-		if startedWithSourceSet {
-			handler.contents[relativeDestination] = *NewDirectoryFromFileInfo(&inProgress.destinationStat)
-		} else {
-			handler.contents[relativeDestination] = handler.contents[relativeSource]
-			delete(handler.contents, relativeSource)
-		}
+		fmt.Println("Move - before")
+		handler.contents[relativeDestination] = *NewDirectoryFromFileInfo(&inProgress.destinationStat)
+		fmt.Printf("Move - 3 : result contents: %v\n", handler.contents[relativeDestination])
+		handler.print()
+		delete(handler.contents, relativeSource)
+		fmt.Printf("Move - 5 : result contents: %v\n", handler.contents[relativeDestination])
+		fmt.Println("after the move")
+		handler.print()
+
+		//fmt.Println("Move - before")
+		//if startedWithSourceSet {
+		//fmt.Println("Move - 1 ")
+		//	handler.contents[relativeDestination] = *NewDirectoryFromFileInfo(&inProgress.destinationStat)
+		//fmt.Printf("Move - 2 : result contents: %v\n", handler.contents[relativeDestination])
+		//} else {
+		//fmt.Printf("Move - 3 : result contents: %v\n", handler.contents[relativeDestination])
+		//handler.print()
+		//	handler.contents[relativeDestination] = handler.contents[relativeSource]
+		//fmt.Printf("Move - 4 : result contents: %v\n", handler.contents[relativeDestination])
+		//	delete(handler.contents, relativeSource)
+		//fmt.Printf("Move - 5 : result contents: %v\n", handler.contents[relativeDestination])
 		//}
-		//else {
-		// Store this as in progress.
+		//fmt.Printf("Move - 6 : result contents: %v\n", handler.contents[relativeDestination])
+		//fmt.Println("after the move")
+		//handler.print()
 
 		//fmt.Printf("^^^^^^^Move from outside to: %s (%s) iNode is: %d\n", inProgress.destinationPath, relativeDestination, iNode)
 		//handler.contents[relativeDestination] = *NewDirectoryFromFileInfo(&inProgress.destinationStat)
@@ -581,7 +608,8 @@ func (handler *FilesystemTracker) handleRename(event Event, pathName, fullPath s
 		delete(handler.renamesInProgress, iNode)
 	} else {
 		//todo schedule this for destruction
-		fmt.Printf("^^^^^^^We have source but no destination - schedule and save under iNode: %d Current transfer is: %v\n", iNode, inProgress)
+		fmt.Printf("^^^^^^^We do not have both a source and destination - schedule and save under iNode: %d Current transfer is: %#v\n", iNode, inProgress)
+		inProgress.iNode = iNode
 		handler.renamesInProgress[iNode] = inProgress
 		go handler.completeRenameIfAbandoned(iNode)
 	}
