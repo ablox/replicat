@@ -13,7 +13,6 @@ import (
 	"time"
 )
 
-
 func TestEmptyDirectoryMovesInOutAround(t *testing.T) {
 	trackerTestEmptyDirectoryMovesInOutAround()
 }
