@@ -33,6 +33,9 @@ var serverMap = make(map[string]*ReplicatServer)
 var serverMapLock sync.RWMutex
 
 func bootstrapAndServe() {
+
+	trackerTestEmptyDirectoryMovesInOutAround()
+
 	http.Handle("/event/", httpauth.SimpleBasicAuth("replicat", "isthecat")(http.HandlerFunc(eventHandler)))
 	http.Handle("/tree/", httpauth.SimpleBasicAuth("replicat", "isthecat")(http.HandlerFunc(folderTreeHandler)))
 	http.Handle("/config/", httpauth.SimpleBasicAuth("replicat", "isthecat")(http.HandlerFunc(configHandler)))
