@@ -410,10 +410,8 @@ func trackerTestEmptyDirectoryMovesInOutAround() {
 
 	fmt.Printf("making folder: %s going to rename it to: %s\n", targetOutsidePath, targetMonitoredPath)
 	os.Mkdir(targetOutsidePath, os.ModeDir+os.ModePerm)
-	fmt.Println("QASI: 4")
 	fmt.Printf("About to move file \nfrom: %s\nto  : %s\n", targetOutsidePath, targetMonitoredPath)
 	os.Rename(targetOutsidePath, targetMonitoredPath)
-	fmt.Println("QASI: 5")
 	stats, _ := os.Stat(targetMonitoredPath)
 	fmt.Printf("stats for: %s\n%v\n", targetMonitoredPath, stats)
 
@@ -427,12 +425,10 @@ func trackerTestEmptyDirectoryMovesInOutAround() {
 		panic(fmt.Sprintf("%s not found in contents\ncontents: %v\n", folderName, tracker.contents))
 	}
 
-	fmt.Println("QASI: 6")
 	tracker.print()
 	if len(tracker.renamesInProgress) > 0 {
 		panic(fmt.Sprintf("6 tracker has renames in progress still"))
 	}
-	fmt.Println("QASI: 7")
 
 	// check to make sure that there are no invalid directories
 	tracker.validate()
@@ -441,24 +437,19 @@ func trackerTestEmptyDirectoryMovesInOutAround() {
 	moveSourcePath := targetMonitoredPath
 	moveDestinationPath := monitoredFolder + "/" + folderName
 	fmt.Printf("About to move file \nfrom: %s\nto  : %s\n", moveSourcePath, moveDestinationPath)
-	fmt.Println("QASI: 8")
 	os.Rename(moveSourcePath, moveDestinationPath)
-	fmt.Println("QASI: 9")
 
 	if !WaitFor(tracker, originalFolderName, false, helper) {
 		panic(fmt.Sprintf("Still finding originalFolderName %s after rename timeout \ncontents: %v\n", originalFolderName, tracker.contents))
 	}
-	fmt.Println("QASI: 10")
 
 	if !WaitFor(tracker, folderName, true, helper) {
 		panic(fmt.Sprintf("%s not found after renamte timout\ncontents: %v\n", folderName, tracker.contents))
 	}
-	fmt.Println("QASI: 11")
 	tracker.print()
 	if len(tracker.renamesInProgress) > 0 {
 		panic(fmt.Sprintf("11 tracker has renames in progress still"))
 	}
-	fmt.Println("QASI: 12")
 
 	// check to make sure that there are no invalid directories
 	tracker.validate()
@@ -468,16 +459,12 @@ func trackerTestEmptyDirectoryMovesInOutAround() {
 
 	fmt.Printf("About to move file \nfrom: %s\nto  : %s\n", moveSourcePath, moveDestinationPath)
 	os.Rename(moveSourcePath, moveDestinationPath)
-	fmt.Println("QASI: 13")
 
 	if !WaitFor(tracker, folderName, false, helper) {
 		fmt.Printf("Tracker contents: %v\n", tracker.contents)
 		panic(fmt.Sprintf("%s not cleared from contents\ncontents: %v\n", folderName, tracker.contents))
 	}
-
 	tracker.print()
-	fmt.Println("QASI: 14")
-
 }
 
 // completeRenameIfAbandoned - if there is a rename that was started with a source
@@ -518,7 +505,6 @@ func (handler *FilesystemTracker) completeRenameIfAbandoned(iNode uint64) {
 }
 
 func (handler *FilesystemTracker) handleRename(event Event, pathName, fullPath string) {
-	//todo add locking
 	fmt.Printf("FilesystemTracker:handleRename: pathname: %s fullPath: %s\n", pathName, fullPath)
 	// Either the path should exist in the filesystem or it should exist in the stored tree. Find it.
 
@@ -538,17 +524,18 @@ func (handler *FilesystemTracker) handleRename(event Event, pathName, fullPath s
 	if tmpDestinationSet {
 		iNode = getiNodeFromStat(tmpDestinationStat)
 	} else if tmpSourceSet && tmpSourceDirectory.setup {
-		fmt.Printf("About to get iNodefromStat. Handler: %#v\n", handler)
-		fmt.Printf("tmpSourceDirectory: %#v\n", tmpSourceDirectory)
+		//fmt.Printf("About to get iNodefromStat. Handler: %#v\n", handler)
+		//fmt.Printf("tmpSourceDirectory: %#v\n", tmpSourceDirectory)
 		iNode = getiNodeFromStat(tmpSourceDirectory)
 	}
 
-	inProgress, found := handler.renamesInProgress[iNode]
-	fmt.Printf("^^^^^^^retrieving under iNode: %d (found %v) saved transfer inProgress: %v\n", iNode, found, inProgress)
+	inProgress, _ := handler.renamesInProgress[iNode]
+	//inProgress, found := handler.renamesInProgress[iNode]
+	//fmt.Printf("^^^^^^^retrieving under iNode: %d (found %v) saved transfer inProgress: %v\n", iNode, found, inProgress)
 
-	startedWithSourceSet := inProgress.sourceSet
+	//startedWithSourceSet := inProgress.sourceSet
+	//fmt.Printf("^^^^^^^tmpSourceSet: %v (started: %v) tmpDestinationSet: %v\n", tmpSourceSet, startedWithSourceSet, tmpDestinationSet)
 
-	fmt.Printf("^^^^^^^tmpSourceSet: %v (started: %v) tmpDestinationSet: %v\n", tmpSourceSet, startedWithSourceSet, tmpDestinationSet)
 	if !inProgress.sourceSet && tmpSourceSet {
 		inProgress.sourceDirectory = &tmpSourceDirectory
 		inProgress.sourcePath = fullPath
@@ -568,43 +555,10 @@ func (handler *FilesystemTracker) handleRename(event Event, pathName, fullPath s
 	if inProgress.destinationSet && inProgress.sourceSet {
 		relativeDestination := inProgress.destinationPath[len(handler.directory)+1:]
 		relativeSource := inProgress.sourcePath[len(handler.directory)+1:]
-		fmt.Printf("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nEnforcing move from %s to %s\n^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n", inProgress.sourcePath, inProgress.destinationPath)
 		fmt.Printf("moving from source: %s (%s) to destination: %s (%s)\n", inProgress.sourcePath, relativeSource, inProgress.destinationPath, relativeDestination)
-		handler.print()
 
-		fmt.Println("Move - before")
 		handler.contents[relativeDestination] = *NewDirectoryFromFileInfo(&inProgress.destinationStat)
-		fmt.Printf("Move - 3 : result contents: %v\n", handler.contents[relativeDestination])
-		handler.print()
 		delete(handler.contents, relativeSource)
-		fmt.Printf("Move - 5 : result contents: %v\n", handler.contents[relativeDestination])
-		fmt.Println("after the move")
-		handler.print()
-
-		//fmt.Println("Move - before")
-		//if startedWithSourceSet {
-		//fmt.Println("Move - 1 ")
-		//	handler.contents[relativeDestination] = *NewDirectoryFromFileInfo(&inProgress.destinationStat)
-		//fmt.Printf("Move - 2 : result contents: %v\n", handler.contents[relativeDestination])
-		//} else {
-		//fmt.Printf("Move - 3 : result contents: %v\n", handler.contents[relativeDestination])
-		//handler.print()
-		//	handler.contents[relativeDestination] = handler.contents[relativeSource]
-		//fmt.Printf("Move - 4 : result contents: %v\n", handler.contents[relativeDestination])
-		//	delete(handler.contents, relativeSource)
-		//fmt.Printf("Move - 5 : result contents: %v\n", handler.contents[relativeDestination])
-		//}
-		//fmt.Printf("Move - 6 : result contents: %v\n", handler.contents[relativeDestination])
-		//fmt.Println("after the move")
-		//handler.print()
-
-		//fmt.Printf("^^^^^^^Move from outside to: %s (%s) iNode is: %d\n", inProgress.destinationPath, relativeDestination, iNode)
-		//handler.contents[relativeDestination] = *NewDirectoryFromFileInfo(&inProgress.destinationStat)
-		// we are going to assume this is complete and not remember it in progress. We might want to remember the move so that we can
-		// transfer some metadata later.
-		// We might also want to race through the folders to see if we can find any records that match this iNode.
-		//}
-		// if there is an in progress record for it, remove it
 		delete(handler.renamesInProgress, iNode)
 	} else {
 		//todo schedule this for destruction
@@ -613,41 +567,6 @@ func (handler *FilesystemTracker) handleRename(event Event, pathName, fullPath s
 		handler.renamesInProgress[iNode] = inProgress
 		go handler.completeRenameIfAbandoned(iNode)
 	}
-	//if err == nil {
-	//	inProgress
-	//	dir := NewDirectoryFromFileInfo(&info)
-	//	handler.contents[pathName] = *dir
-	//
-	//	if handler.watcher != nil {
-	//		(*handler.watcher).FolderCreated(pathName)
-	//	}
-	//	fmt.Printf("notify.Create: Updated value for %s: %v \n", pathName, dir)
-	//}
-
-	//currentValue, exists := handler.contents[pathName]
-	//var iNode uint64
-	//if exists {
-	//	sysInterface := currentValue.Sys()
-	//	if sysInterface != nil {
-	//		foo := sysInterface.(*syscall.Stat_t)
-	//		iNode = foo.Ino
-	//	}
-	//
-	//	// At this point, the item is a directory and this is the original location
-	//	destinationPath, exists := handler.renamesInProgress[iNode]
-	//	if exists {
-	//		handler.contents[destinationPath] = currentValue
-	//		delete(handler.contents, pathName)
-	//
-	//		fmt.Printf("Renamed: %s to: %s", pathName, destinationPath)
-	//	} else {
-	//		fmt.Printf("Could not find rename in progress for iNode: %d\n%v\n", iNode, handler.renamesInProgress)
-	//	}
-	//
-	//} else {
-	//	fmt.Printf("Could not find %s in handler.contents\n%v\n", pathName, handler.contents)
-	//}
-
 }
 
 func (handler *FilesystemTracker) processEvent(event Event, pathName, fullPath string) {
