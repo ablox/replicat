@@ -408,8 +408,8 @@ func trackerTestEmptyDirectoryMovesInOutAround() {
 	tracker.print()
 	folderName := "happy"
 	originalFolderName := folderName
-	targetMonitoredPath := monitoredFolder + "/" + folderName
-	targetOutsidePath := outsideFolder + "/" + folderName
+	targetMonitoredPath := filepath.Join(monitoredFolder, folderName)
+	targetOutsidePath := filepath.Join(outsideFolder, folderName)
 
 	fmt.Printf("making folder: %s going to rename it to: %s\n", targetOutsidePath, targetMonitoredPath)
 	os.Mkdir(targetOutsidePath, os.ModeDir+os.ModePerm)
