@@ -587,7 +587,13 @@ func (handler *FilesystemTracker) processEvent(event Event, pathName, fullPath s
 		fmt.Printf("processEvent: About to assign from one path to the next. Original: %v Map: %v\n", currentValue, handler.contents)
 		// make sure there is an entry in the DirTreeMap for this folder. Since and empty list will always be returned, we can use that
 		if !exists {
-			handler.contents[pathName] = Directory{}
+			info, err := os.Stat(fullPath)
+			if err != nil {
+				panic(fmt.Sprintf("Could not get stats on directory %s", fullPath))
+			}
+			directory := NewDirectory()
+			directory.FileInfo = info
+			handler.contents[pathName] = *directory
 		}
 
 		updatedValue, exists := handler.contents[pathName]
