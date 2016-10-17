@@ -3,40 +3,138 @@
 	"ignore": "test",
 	"package": [
 		{
+			"path": "C",
+			"revision": ""
+		},
+		{
+			"path": "_v",
+			"revision": ""
+		},
+		{
 			"checksumSHA1": "AP+4+IcVArsZumhjeAHQJ60VL6U=",
 			"path": "bazil.org/fuse",
 			"revision": "371fbbdaa8987b715bdd21d6adc4c9b20155f748",
 			"revisionTime": "2016-08-11T21:22:31Z"
 		},
 		{
-			"checksumSHA1": "Gp8s2Js69bsjFUcWqYyTTaMoW+U=",
+			"path": "bufio",
+			"revision": ""
+		},
+		{
+			"path": "bytes",
+			"revision": ""
+		},
+		{
+			"path": "crypto/aes",
+			"revision": ""
+		},
+		{
+			"path": "crypto/cipher",
+			"revision": ""
+		},
+		{
+			"path": "crypto/hmac",
+			"revision": ""
+		},
+		{
+			"path": "crypto/md5",
+			"revision": ""
+		},
+		{
+			"path": "crypto/rand",
+			"revision": ""
+		},
+		{
+			"path": "crypto/sha1",
+			"revision": ""
+		},
+		{
+			"path": "crypto/sha256",
+			"revision": ""
+		},
+		{
+			"path": "crypto/subtle",
+			"revision": ""
+		},
+		{
+			"path": "crypto/tls",
+			"revision": ""
+		},
+		{
+			"path": "encoding/base64",
+			"revision": ""
+		},
+		{
+			"path": "encoding/hex",
+			"revision": ""
+		},
+		{
+			"path": "encoding/json",
+			"revision": ""
+		},
+		{
+			"path": "encoding/xml",
+			"revision": ""
+		},
+		{
+			"path": "errors",
+			"revision": ""
+		},
+		{
+			"path": "flag",
+			"revision": ""
+		},
+		{
+			"path": "fmt",
+			"revision": ""
+		},
+		{
+			"checksumSHA1": "tp//SEvlHnNlENC92D883RAuZL8=",
+			"path": "github.com/ablox/replicat",
+			"revision": "ce69f054634496d931d544c09b54771f5bde3a3d",
+			"revisionTime": "2016-10-16T08:13:05Z"
+		},
+		{
+			"checksumSHA1": "BfEO33iOn7WG/+yNXETj2ze64rs=",
 			"path": "github.com/codegangsta/cli",
-			"revision": "168c95418e66e019fe17b8f4f5c45aa62ff80e23",
-			"revisionTime": "2016-08-01T03:09:57Z"
+			"revision": "55f715e28c46073d0e217e2ce8eb46b0b45e3db6",
+			"revisionTime": "2016-10-06T03:53:53Z"
 		},
 		{
-			"checksumSHA1": "xgjI2W3RGiQwNlxsOW2V9fJ9kaM=",
+			"checksumSHA1": "nmc2qcdbg17Ny8tHeEDQuphV6jA=",
 			"path": "github.com/fsnotify/fsnotify",
-			"revision": "a8a77c9133d2d6fd8334f3260d06f60e8d80a5fb",
-			"revisionTime": "2016-06-29T01:11:04Z"
+			"revision": "bd2828f9f176e52d7222e565abb2d338d3f3c103",
+			"revisionTime": "2016-10-13T01:22:19Z"
 		},
 		{
-			"checksumSHA1": "DTWZiw8Sy5OUWRHY/PM7ACsBC7o=",
+			"checksumSHA1": "gC4yFu+0Iqb71rzQZVbGSKqsK6U=",
+			"path": "github.com/goji/httpauth",
+			"revision": "2da839ab0f4df05a6db5eb277995589dadbd4fb9",
+			"revisionTime": "2016-06-01T13:53:02Z"
+		},
+		{
+			"checksumSHA1": "B09OeQwHjGjbkGqw5jMcPA4RIcE=",
 			"path": "github.com/minio/minio-go",
-			"revision": "0ccd6fa0920954d6d4adfaa79515fe48703d2718",
-			"revisionTime": "2016-08-13T05:27:05Z"
+			"revision": "c040578255dbb1a1f41cbdc5bd944de4140b4149",
+			"revisionTime": "2016-10-10T18:05:01Z"
 		},
 		{
-			"checksumSHA1": "3802XVIEL/ao6ePBy7rsYCZfmrQ=",
+			"checksumSHA1": "qTxOBp3GVxCC70ykb7Hxg6UgWwA=",
+			"path": "github.com/minio/minio-go/pkg/policy",
+			"revision": "c040578255dbb1a1f41cbdc5bd944de4140b4149",
+			"revisionTime": "2016-10-10T18:05:01Z"
+		},
+		{
+			"checksumSHA1": "A8QOw1aWwc+RtjGozY0XeS5varo=",
 			"path": "github.com/minio/minio-go/pkg/set",
-			"revision": "0ccd6fa0920954d6d4adfaa79515fe48703d2718",
-			"revisionTime": "2016-08-13T05:27:05Z"
+			"revision": "c040578255dbb1a1f41cbdc5bd944de4140b4149",
+			"revisionTime": "2016-10-10T18:05:01Z"
 		},
 		{
-			"checksumSHA1": "P4KP6ThMtIb6HWQygXLrZtr1WSQ=",
+			"checksumSHA1": "61ID3R2dqolSaQVn4ufk3oYo35E=",
 			"path": "github.com/pubnub/go/messaging",
-			"revision": "30d99c8e5d4a10b270a3d473e3ab5df8da469cf5",
-			"revisionTime": "2016-06-08T01:25:06Z"
+			"revision": "e98f2505968ab5fc4f9cb53e2f7efe23db112dd0",
+			"revisionTime": "2016-09-08T15:57:02Z"
 		},
 		{
 			"checksumSHA1": "/abwKdBJAuQjcFK+AXfdmmbTIp8=",
@@ -45,16 +143,140 @@
 			"revisionTime": "2016-08-20T12:36:22Z"
 		},
 		{
-			"checksumSHA1": "jm802xmRmtkUSVCED5SiDwIe0Jo=",
+			"checksumSHA1": "rEIS5EfbhPRBasakArGCeOWwY8c=",
 			"path": "github.com/urfave/cli",
-			"revision": "168c95418e66e019fe17b8f4f5c45aa62ff80e23",
-			"revisionTime": "2016-08-01T03:09:57Z"
+			"revision": "55f715e28c46073d0e217e2ce8eb46b0b45e3db6",
+			"revisionTime": "2016-10-06T03:53:53Z"
 		},
 		{
-			"checksumSHA1": "8fD/im5Kwvy3JgmxulDTambmE8w=",
+			"checksumSHA1": "e6tx+mrbPNlzXbr1VErnBPY+vmQ=",
 			"path": "golang.org/x/sys/unix",
-			"revision": "a646d33e2ee3172a661fc09bca23bb4889a41bc8",
-			"revisionTime": "2016-07-15T05:43:45Z"
+			"revision": "002cbb5f952456d0c50e0d2aff17ea5eca716979",
+			"revisionTime": "2016-10-16T18:36:00Z"
+		},
+		{
+			"path": "hash",
+			"revision": ""
+		},
+		{
+			"path": "io",
+			"revision": ""
+		},
+		{
+			"path": "io/ioutil",
+			"revision": ""
+		},
+		{
+			"path": "log",
+			"revision": ""
+		},
+		{
+			"path": "math",
+			"revision": ""
+		},
+		{
+			"path": "math/rand",
+			"revision": ""
+		},
+		{
+			"path": "mime",
+			"revision": ""
+		},
+		{
+			"path": "mime/multipart",
+			"revision": ""
+		},
+		{
+			"path": "net",
+			"revision": ""
+		},
+		{
+			"path": "net/http",
+			"revision": ""
+		},
+		{
+			"path": "net/http/httputil",
+			"revision": ""
+		},
+		{
+			"path": "net/url",
+			"revision": ""
+		},
+		{
+			"path": "os",
+			"revision": ""
+		},
+		{
+			"path": "os/exec",
+			"revision": ""
+		},
+		{
+			"path": "path",
+			"revision": ""
+		},
+		{
+			"path": "path/filepath",
+			"revision": ""
+		},
+		{
+			"path": "reflect",
+			"revision": ""
+		},
+		{
+			"path": "regexp",
+			"revision": ""
+		},
+		{
+			"path": "runtime",
+			"revision": ""
+		},
+		{
+			"path": "sort",
+			"revision": ""
+		},
+		{
+			"path": "strconv",
+			"revision": ""
+		},
+		{
+			"path": "strings",
+			"revision": ""
+		},
+		{
+			"path": "sync",
+			"revision": ""
+		},
+		{
+			"path": "sync/atomic",
+			"revision": ""
+		},
+		{
+			"path": "syscall",
+			"revision": ""
+		},
+		{
+			"path": "testing",
+			"revision": ""
+		},
+		{
+			"path": "text/tabwriter",
+			"revision": ""
+		},
+		{
+			"path": "text/template",
+			"revision": ""
+		},
+		{
+			"path": "time",
+			"revision": ""
+		},
+		{
+			"path": "unicode/utf8",
+			"revision": ""
+		},
+		{
+			"path": "unsafe",
+			"revision": ""
 		}
 	],
 	"rootPath": "github.com/ablox/replicat"
