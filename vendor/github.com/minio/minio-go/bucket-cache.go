@@ -25,7 +25,7 @@ import (
 	"sync"
 )
 
-// bucketLocationCache - Provides simple mechansim to hold bucket
+// bucketLocationCache - Provides simple mechanism to hold bucket
 // locations in memory.
 type bucketLocationCache struct {
 	// mutex is used for handling the concurrent
@@ -66,8 +66,21 @@ func (r *bucketLocationCache) Delete(bucketName string) {
 	delete(r.items, bucketName)
 }
 
-// getBucketLocation - Get location for the bucketName from location map cache.
+// GetBucketLocation - get location for the bucket name from location cache, if not
+// fetch freshly by making a new request.
+func (c Client) GetBucketLocation(bucketName string) (string, error) {
+	if err := isValidBucketName(bucketName); err != nil {
+		return "", err
+	}
+	return c.getBucketLocation(bucketName)
+}
+
+// getBucketLocation - Get location for the bucketName from location map cache, if not
+// fetch freshly by making a new request.
 func (c Client) getBucketLocation(bucketName string) (string, error) {
+	if err := isValidBucketName(bucketName); err != nil {
+		return "", err
+	}
 	if location, ok := c.bucketLocCache.Get(bucketName); ok {
 		return location, nil
 	}
