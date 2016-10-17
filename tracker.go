@@ -33,13 +33,13 @@ type LogOnlyChangeHandler struct {
 }
 
 // FolderCreated - track a new folder being created
-func (handler *LogOnlyChangeHandler) FolderCreated(name string) (err error) {
+func (handler *LogOnlyChangeHandler) FolderCreated(name string) error {
 	fmt.Printf("LogOnlyChangeHandler:FolderCreated: %s\n", name)
 	return nil
 }
 
 // FolderDeleted - track a new folder being deleted
-func (handler *LogOnlyChangeHandler) FolderDeleted(name string) (err error) {
+func (handler *LogOnlyChangeHandler) FolderDeleted(name string) error {
 	fmt.Printf("LogOnlyChangeHandler:FolderDeleted: %s\n", name)
 	return nil
 }
@@ -240,7 +240,7 @@ func (handler *FilesystemTracker) CreatePath(relativePath string, isDirectory bo
 }
 
 // DeleteFolder - This storage handler should remove the specified path
-func (handler *FilesystemTracker) DeleteFolder(name string) (err error) {
+func (handler *FilesystemTracker) DeleteFolder(name string) error {
 	fmt.Println("FilesystemTracker:DeleteFolder")
 	handler.fsLock.Lock()
 	defer handler.fsLock.Unlock()
