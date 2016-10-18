@@ -17,6 +17,10 @@ func TestEmptyDirectoryMovesInOutAround(t *testing.T) {
 	trackerTestEmptyDirectoryMovesInOutAround()
 }
 
+func TestNewFileAndRenameFileInside(t *testing.T) {
+	trackerTestSmallFileMovesInOutAround()
+}
+
 func TestDirectoryCreation(t *testing.T) {
 	tmpFolder, err := ioutil.TempDir("", "blank")
 	defer os.RemoveAll(tmpFolder)
