@@ -72,7 +72,7 @@ func NewDirectoryFromFileInfo(info *os.FileInfo) *Directory {
 	return &Directory{*info, make(map[string]os.FileInfo), true}
 }
 
-func (handler *FilesystemTracker) print() {
+func (handler *FilesystemTracker) printTracker() {
 	handler.printLockable(false)
 }
 
@@ -405,7 +405,7 @@ func trackerTestEmptyDirectoryMovesInOutAround() {
 	var loggerInterface ChangeHandler = logger
 	tracker.watchDirectory(&loggerInterface)
 
-	tracker.print()
+	tracker.printTracker()
 	folderName := "happy"
 	originalFolderName := folderName
 	targetMonitoredPath := filepath.Join(monitoredFolder, folderName)
@@ -428,7 +428,7 @@ func trackerTestEmptyDirectoryMovesInOutAround() {
 		panic(fmt.Sprintf("%s not found in contents\ncontents: %v\n", folderName, tracker.contents))
 	}
 
-	tracker.print()
+	tracker.printTracker()
 	if len(tracker.renamesInProgress) > 0 {
 		panic(fmt.Sprint("6 tracker has renames in progress still"))
 	}
@@ -449,7 +449,7 @@ func trackerTestEmptyDirectoryMovesInOutAround() {
 	if !WaitFor(tracker, folderName, true, helper) {
 		panic(fmt.Sprintf("%s not found after renamte timout\ncontents: %v\n", folderName, tracker.contents))
 	}
-	tracker.print()
+	tracker.printTracker()
 	if len(tracker.renamesInProgress) > 0 {
 		panic(fmt.Sprint("11 tracker has renames in progress still"))
 	}
@@ -467,7 +467,217 @@ func trackerTestEmptyDirectoryMovesInOutAround() {
 		fmt.Printf("Tracker contents: %v\n", tracker.contents)
 		panic(fmt.Sprintf("%s not cleared from contents\ncontents: %v\n", folderName, tracker.contents))
 	}
-	tracker.print()
+	tracker.printTracker()
+}
+
+func trackerTestSmallFileCreationAndRename() {
+	monitoredFolder, _ := ioutil.TempDir("", "monitored")
+	outsideFolder, _ := ioutil.TempDir("", "outside")
+	defer os.RemoveAll(monitoredFolder)
+	defer os.RemoveAll(outsideFolder)
+
+	tracker := new(FilesystemTracker)
+	tracker.init(monitoredFolder)
+	defer tracker.cleanup()
+
+	logger := &LogOnlyChangeHandler{}
+	var loggerInterface ChangeHandler = logger
+	tracker.watchDirectory(&loggerInterface)
+
+	tracker.printTracker()
+
+	fileName := "happy.txt"
+	secondFilename := "behappy.txt"
+	targetMonitoredPath := filepath.Join(monitoredFolder, fileName)
+	secondMonitoredPath := filepath.Join(monitoredFolder, secondFilename)
+
+	fmt.Printf("making file: %s\n", targetMonitoredPath)
+	file, err := os.Create(targetMonitoredPath)
+	if err != nil {
+		panic(err)
+	}
+
+	sampleFileContents := "This is the content of the file\n"
+	n, err := file.WriteString(sampleFileContents)
+	if err != nil {
+		panic(err)
+	}
+	if n != len(sampleFileContents) {
+		panic(fmt.Sprintf("Contents of file not correct length n: %d len: %d\n", n, len(sampleFileContents)))
+	}
+
+	err = file.Close()
+	if err != nil {
+		panic(err)
+	}
+
+	helper := func(tracker *FilesystemTracker, folder string) bool {
+		dir, filename := filepath.Split(folder)
+		directory, exists := tracker.contents[dir]
+		if !exists {
+			return false
+		}
+
+		fmt.Printf("directory is: %#v\nfilename: %s\n", directory, filename)
+
+		return true
+	}
+
+	if !WaitFor(tracker, fileName, true, helper) {
+		panic(fmt.Sprintf("%s not found in contents\ncontents: %v\n", fileName, tracker.contents))
+	}
+
+	tracker.printTracker()
+
+
+
+
+	fmt.Printf("Moving file \nfrom: %s\n  to: %s\n", targetMonitoredPath, secondMonitoredPath)
+	os.Rename(targetMonitoredPath, secondMonitoredPath)
+
+	stats, _ := os.Stat(targetMonitoredPath)
+	fmt.Printf("stats for: %s\n%v\n", targetMonitoredPath, stats)
+
+	//if len(tracker.renamesInProgress) > 0 {
+	//	panic(fmt.Sprint("6 tracker has renames in progress still"))
+	//}
+	//
+	//// check to make sure that there are no invalid directories
+	//tracker.validate()
+	//
+	//fileName = fileName + "b"
+	//moveSourcePath := targetMonitoredPath
+	//moveDestinationPath := monitoredFolder + "/" + fileName
+	//fmt.Printf("About to move file \nfrom: %s\nto  : %s\n", moveSourcePath, moveDestinationPath)
+	//os.Rename(moveSourcePath, moveDestinationPath)
+	//
+	//if !WaitFor(tracker, originalFolderName, false, helper) {
+	//	panic(fmt.Sprintf("Still finding originalFolderName %s after rename timeout \ncontents: %v\n", originalFolderName, tracker.contents))
+	//}
+	//
+	//if !WaitFor(tracker, fileName, true, helper) {
+	//	panic(fmt.Sprintf("%s not found after renamte timout\ncontents: %v\n", fileName, tracker.contents))
+	//}
+	//tracker.printTracker()
+	//if len(tracker.renamesInProgress) > 0 {
+	//	panic(fmt.Sprint("11 tracker has renames in progress still"))
+	//}
+	//
+	//// check to make sure that there are no invalid directories
+	//tracker.validate()
+	//
+	//moveSourcePath = moveDestinationPath
+	//moveDestinationPath = targetOutsidePath
+	//
+	//fmt.Printf("About to move file \nfrom: %s\nto  : %s\n", moveSourcePath, moveDestinationPath)
+	//os.Rename(moveSourcePath, moveDestinationPath)
+	//
+	//if !WaitFor(tracker, fileName, false, helper) {
+	//	fmt.Printf("Tracker contents: %v\n", tracker.contents)
+	//	panic(fmt.Sprintf("%s not cleared from contents\ncontents: %v\n", fileName, tracker.contents))
+	//}
+	//tracker.printTracker()
+}
+
+func trackerTestSmallFileMovesInOutAround() {
+	monitoredFolder, _ := ioutil.TempDir("", "monitored")
+	outsideFolder, _ := ioutil.TempDir("", "outside")
+	defer os.RemoveAll(monitoredFolder)
+	defer os.RemoveAll(outsideFolder)
+
+	tracker := new(FilesystemTracker)
+	tracker.init(monitoredFolder)
+	defer tracker.cleanup()
+
+	logger := &LogOnlyChangeHandler{}
+	var loggerInterface ChangeHandler = logger
+	tracker.watchDirectory(&loggerInterface)
+
+	tracker.printTracker()
+
+	fileName := "happy"
+	//originalFolderName := fileName
+	targetMonitoredPath := filepath.Join(monitoredFolder, fileName)
+	targetOutsidePath := filepath.Join(outsideFolder, fileName)
+
+	fmt.Printf("making file: %s\n", targetOutsidePath)
+	file, err := os.Create(fileName)
+	if err != nil {
+		panic(err)
+	}
+
+	sampleFileContents := "This is the content of the file\n"
+	n, err := file.WriteString(sampleFileContents)
+	if err != nil {
+		panic(err)
+	}
+	if n != len(sampleFileContents) {
+		panic(fmt.Sprintf("Contents of file not correct length n: %d len: %d\n", n, len(sampleFileContents)))
+	}
+
+	err = file.Close()
+	if err != nil {
+		panic(err)
+	}
+
+	fmt.Printf("making file: %s going to rename it to: %s\n", targetOutsidePath, targetMonitoredPath)
+	os.Rename(targetOutsidePath, targetMonitoredPath)
+
+	stats, _ := os.Stat(targetMonitoredPath)
+	fmt.Printf("stats for: %s\n%v\n", targetMonitoredPath, stats)
+
+	fmt.Println("Hit the end of this test.....needs more! Files are currently being treated as directories.....stop stat....\n\n\n\n\n\n\n")
+
+	//helper := func(tracker *FilesystemTracker, folder string) bool {
+	//	_, exists := tracker.contents[folder]
+	//	fmt.Printf("Checking the value of exists: %v\n", exists)
+	//	return exists
+	//}
+	//
+	//if !WaitFor(tracker, fileName, true, helper) {
+	//	panic(fmt.Sprintf("%s not found in contents\ncontents: %v\n", fileName, tracker.contents))
+	//}
+	//
+	//tracker.printTracker()
+	//if len(tracker.renamesInProgress) > 0 {
+	//	panic(fmt.Sprint("6 tracker has renames in progress still"))
+	//}
+	//
+	//// check to make sure that there are no invalid directories
+	//tracker.validate()
+	//
+	//fileName = fileName + "b"
+	//moveSourcePath := targetMonitoredPath
+	//moveDestinationPath := monitoredFolder + "/" + fileName
+	//fmt.Printf("About to move file \nfrom: %s\nto  : %s\n", moveSourcePath, moveDestinationPath)
+	//os.Rename(moveSourcePath, moveDestinationPath)
+	//
+	//if !WaitFor(tracker, originalFolderName, false, helper) {
+	//	panic(fmt.Sprintf("Still finding originalFolderName %s after rename timeout \ncontents: %v\n", originalFolderName, tracker.contents))
+	//}
+	//
+	//if !WaitFor(tracker, fileName, true, helper) {
+	//	panic(fmt.Sprintf("%s not found after renamte timout\ncontents: %v\n", fileName, tracker.contents))
+	//}
+	//tracker.printTracker()
+	//if len(tracker.renamesInProgress) > 0 {
+	//	panic(fmt.Sprint("11 tracker has renames in progress still"))
+	//}
+	//
+	//// check to make sure that there are no invalid directories
+	//tracker.validate()
+	//
+	//moveSourcePath = moveDestinationPath
+	//moveDestinationPath = targetOutsidePath
+	//
+	//fmt.Printf("About to move file \nfrom: %s\nto  : %s\n", moveSourcePath, moveDestinationPath)
+	//os.Rename(moveSourcePath, moveDestinationPath)
+	//
+	//if !WaitFor(tracker, fileName, false, helper) {
+	//	fmt.Printf("Tracker contents: %v\n", tracker.contents)
+	//	panic(fmt.Sprintf("%s not cleared from contents\ncontents: %v\n", fileName, tracker.contents))
+	//}
+	//tracker.printTracker()
 }
 
 // completeRenameIfAbandoned - if there is a rename that was started with a source
@@ -488,6 +698,10 @@ func (handler *FilesystemTracker) completeRenameIfAbandoned(iNode uint64) {
 		fmt.Printf("File at: %s (iNode %d) appears to have been moved away. Removing it\n", relativePath, iNode)
 		delete(handler.contents, relativePath)
 	} else {
+
+		//this code failed because of an slice index out of bounds error. It is a reasonable copy with both sides and
+		//yet it was initialized blank. The first event was for the copy and it should have existed. Ahh, it is a file
+
 		relativePath := inProgress.destinationPath[len(handler.directory)+1:]
 		handler.contents[relativePath] = *NewDirectoryFromFileInfo(&inProgress.destinationStat)
 		// find the source if the destination is an iNode in our system
