@@ -413,7 +413,7 @@ func trackerTestEmptyDirectoryMovesInOutAround() {
 
 	fmt.Printf("making folder: %s going to rename it to: %s\n", targetOutsidePath, targetMonitoredPath)
 	os.Mkdir(targetOutsidePath, os.ModeDir+os.ModePerm)
-	fmt.Printf("About to move file \nfrom: %s\nto  : %s\n", targetOutsidePath, targetMonitoredPath)
+	fmt.Printf("About to move file \nfrom: %s\n  to: %s\n", targetOutsidePath, targetMonitoredPath)
 	os.Rename(targetOutsidePath, targetMonitoredPath)
 	stats, _ := os.Stat(targetMonitoredPath)
 	fmt.Printf("stats for: %s\n%v\n", targetMonitoredPath, stats)
@@ -439,7 +439,7 @@ func trackerTestEmptyDirectoryMovesInOutAround() {
 	folderName = folderName + "b"
 	moveSourcePath := targetMonitoredPath
 	moveDestinationPath := monitoredFolder + "/" + folderName
-	fmt.Printf("About to move file \nfrom: %s\nto  : %s\n", moveSourcePath, moveDestinationPath)
+	fmt.Printf("About to move file \nfrom: %s\n  to: %s\n", moveSourcePath, moveDestinationPath)
 	os.Rename(moveSourcePath, moveDestinationPath)
 
 	if !WaitFor(tracker, originalFolderName, false, helper) {
@@ -460,7 +460,7 @@ func trackerTestEmptyDirectoryMovesInOutAround() {
 	moveSourcePath = moveDestinationPath
 	moveDestinationPath = targetOutsidePath
 
-	fmt.Printf("About to move file \nfrom: %s\nto  : %s\n", moveSourcePath, moveDestinationPath)
+	fmt.Printf("About to move file \nfrom: %s\n  to: %s\n", moveSourcePath, moveDestinationPath)
 	os.Rename(moveSourcePath, moveDestinationPath)
 
 	if !WaitFor(tracker, folderName, false, helper) {
@@ -548,7 +548,7 @@ func trackerTestSmallFileCreationAndRename() {
 	//fileName = fileName + "b"
 	//moveSourcePath := targetMonitoredPath
 	//moveDestinationPath := monitoredFolder + "/" + fileName
-	//fmt.Printf("About to move file \nfrom: %s\nto  : %s\n", moveSourcePath, moveDestinationPath)
+	//fmt.Printf("About to move file \nfrom: %s\n  to: %s\n", moveSourcePath, moveDestinationPath)
 	//os.Rename(moveSourcePath, moveDestinationPath)
 	//
 	//if !WaitFor(tracker, originalFolderName, false, helper) {
@@ -569,7 +569,7 @@ func trackerTestSmallFileCreationAndRename() {
 	//moveSourcePath = moveDestinationPath
 	//moveDestinationPath = targetOutsidePath
 	//
-	//fmt.Printf("About to move file \nfrom: %s\nto  : %s\n", moveSourcePath, moveDestinationPath)
+	//fmt.Printf("About to move file \nfrom: %s\n  to: %s\n", moveSourcePath, moveDestinationPath)
 	//os.Rename(moveSourcePath, moveDestinationPath)
 	//
 	//if !WaitFor(tracker, fileName, false, helper) {
@@ -649,7 +649,7 @@ func trackerTestSmallFileMovesInOutAround() {
 	//fileName = fileName + "b"
 	//moveSourcePath := targetMonitoredPath
 	//moveDestinationPath := monitoredFolder + "/" + fileName
-	//fmt.Printf("About to move file \nfrom: %s\nto  : %s\n", moveSourcePath, moveDestinationPath)
+	//fmt.Printf("About to move file \nfrom: %s\n  to: %s\n", moveSourcePath, moveDestinationPath)
 	//os.Rename(moveSourcePath, moveDestinationPath)
 	//
 	//if !WaitFor(tracker, originalFolderName, false, helper) {
@@ -670,7 +670,7 @@ func trackerTestSmallFileMovesInOutAround() {
 	//moveSourcePath = moveDestinationPath
 	//moveDestinationPath = targetOutsidePath
 	//
-	//fmt.Printf("About to move file \nfrom: %s\nto  : %s\n", moveSourcePath, moveDestinationPath)
+	//fmt.Printf("About to move file \nfrom: %s\n  to: %s\n", moveSourcePath, moveDestinationPath)
 	//os.Rename(moveSourcePath, moveDestinationPath)
 	//
 	//if !WaitFor(tracker, fileName, false, helper) {
