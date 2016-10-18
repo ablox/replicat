@@ -34,9 +34,9 @@ var serverMapLock sync.RWMutex
 
 func bootstrapAndServe() {
 	// testing code to enable debugger use
-	trackerTestSmallFileCreationAndRename()
-	trackerTestSmallFileMovesInOutAround()
-	return
+	//trackerTestSmallFileCreationAndRename()
+	//trackerTestSmallFileMovesInOutAround()
+	//return
 
 	http.Handle("/event/", httpauth.SimpleBasicAuth("replicat", "isthecat")(http.HandlerFunc(eventHandler)))
 	http.Handle("/tree/", httpauth.SimpleBasicAuth("replicat", "isthecat")(http.HandlerFunc(folderTreeHandler)))
