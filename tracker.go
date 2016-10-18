@@ -626,7 +626,7 @@ func trackerTestSmallFileMovesInOutAround() {
 	stats, _ := os.Stat(targetMonitoredPath)
 	fmt.Printf("stats for: %s\n%v\n", targetMonitoredPath, stats)
 
-	fmt.Println("Hit the end of this test.....needs more! Files are currently being treated as directories.....stop stat....\n\n\n\n\n\n\n")
+	fmt.Println("Hit the end of this test.....needs more! Files are currently being treated as directories.....stop stat....\n\n\n\n\n\n\ngaaak")
 
 	//helper := func(tracker *FilesystemTracker, folder string) bool {
 	//	_, exists := tracker.contents[folder]
