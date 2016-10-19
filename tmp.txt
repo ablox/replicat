@@ -1,0 +1,14 @@
+bootstrap.go
+cli.go
+dirtreemap.go
+integration_test.go
+LICENSE
+main.go
+main_test.go
+README.md
+replicat.iml
+server.go
+tmp.txt
+tracker.go
+tracker_test.go
+vendor
