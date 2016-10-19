@@ -698,6 +698,9 @@ func (handler *FilesystemTracker) completeRenameIfAbandoned(iNode uint64) {
 		fmt.Printf("File at: %s (iNode %d) appears to have been moved away. Removing it\n", relativePath, iNode)
 		delete(handler.contents, relativePath)
 	} else {
+		fmt.Printf("directory: %s src: %s dest: %s\n", handler.directory, inProgress.sourcePath, inProgress.destinationPath)
+		fmt.Printf("inProgress: %v\n", handler.renamesInProgress)
+		fmt.Printf("this inProgress: %v\n", inProgress)
 
 		//this code failed because of an slice index out of bounds error. It is a reasonable copy with both sides and
 		//yet it was initialized blank. The first event was for the copy and it should have existed. Ahh, it is a file
@@ -770,6 +773,8 @@ func (handler *FilesystemTracker) handleRename(event Event, pathName, fullPath s
 	fmt.Printf("^^^^^^^Current transfer is: %#v\n", inProgress)
 
 	if inProgress.destinationSet && inProgress.sourceSet {
+		fmt.Printf("directory: %s src: %s dest: %s\n", handler.directory, inProgress.sourcePath, inProgress.destinationPath)
+
 		relativeDestination := inProgress.destinationPath[len(handler.directory)+1:]
 		relativeSource := inProgress.sourcePath[len(handler.directory)+1:]
 		fmt.Printf("moving from source: %s (%s) to destination: %s (%s)\n", inProgress.sourcePath, relativeSource, inProgress.destinationPath, relativeDestination)
@@ -851,7 +856,6 @@ func (handler *FilesystemTracker) processEvent(event Event, pathName, fullPath s
 		fmt.Printf("File updated %v\n", event)
 		SendEvent(event, fullPath)
 	default:
-		fmt.Println("FilesystemTracker:/+processEvent")
 		// do not send the event if we do not recognize it
 		//SendEvent(event)
 		fmt.Printf("%s: %s not known, skipping (%v)\n", event.Name, pathName, event)
