@@ -47,7 +47,7 @@ func (handler *LogOnlyChangeHandler) FolderDeleted(name string) error {
 // FilesystemTracker - Track a filesystem and keep it in sync
 type FilesystemTracker struct {
 	directory         string
-	contents          map[string]Directory
+	contents          map[string]Entry
 	setup             bool
 	watcher           *ChangeHandler
 	fsEventsChannel   chan notify.EventInfo
@@ -56,20 +56,20 @@ type FilesystemTracker struct {
 }
 
 // Directory - struct
-type Directory struct {
+type Entry struct {
 	os.FileInfo
-	contents map[string]os.FileInfo
 	setup    bool
+	hash	string
 }
 
 // NewDirectory - creates and returns a new Directory
-func NewDirectory() *Directory {
-	return &Directory{contents: make(map[string]os.FileInfo), setup: true}
+func NewDirectory() *Entry {
+	return &Entry{setup: true}
 }
 
 // NewDirectoryFromFileInfo - creates and returns a new Directory based on a fileinfo structure
-func NewDirectoryFromFileInfo(info *os.FileInfo) *Directory {
-	return &Directory{*info, make(map[string]os.FileInfo), true}
+func NewDirectoryFromFileInfo(info *os.FileInfo) *Entry {
+	return &Entry{*info, true, ""}
 }
 
 func (handler *FilesystemTracker) printTracker() {
@@ -229,7 +229,7 @@ func (handler *FilesystemTracker) CreatePath(relativePath string, isDirectory bo
 	fmt.Printf("CreatePath: '%s' (%v)\n", relativePath, exists)
 
 	if !exists {
-		directory := Directory{}
+		directory := Entry{}
 		directory.FileInfo, err = os.Stat(absolutePath)
 		handler.contents[relativePath] = directory
 	} else {
@@ -346,7 +346,7 @@ func (handler *FilesystemTracker) checkIfDirectory(event Event, path, fullPath s
 
 type renameInformation struct {
 	iNode           uint64
-	sourceDirectory *Directory
+	sourceDirectory *Entry
 	sourcePath      string
 	sourceSet       bool
 	destinationStat os.FileInfo
@@ -487,9 +487,9 @@ func trackerTestSmallFileCreationAndRename() {
 	tracker.printTracker()
 
 	fileName := "happy.txt"
-	secondFilename := "behappy.txt"
+	//secondFilename := "behappy.txt"
 	targetMonitoredPath := filepath.Join(monitoredFolder, fileName)
-	secondMonitoredPath := filepath.Join(monitoredFolder, secondFilename)
+	//secondMonitoredPath := filepath.Join(monitoredFolder, secondFilename)
 
 	fmt.Printf("making file: %s\n", targetMonitoredPath)
 	file, err := os.Create(targetMonitoredPath)
@@ -511,32 +511,40 @@ func trackerTestSmallFileCreationAndRename() {
 		panic(err)
 	}
 
-	helper := func(tracker *FilesystemTracker, folder string) bool {
-		dir, filename := filepath.Split(folder)
-		directory, exists := tracker.contents[dir]
-		if !exists {
-			return false
-		}
 
-		fmt.Printf("directory is: %#v\nfilename: %s\n", directory, filename)
+	fmt.Println("YOLO.....Not enough here!")
 
-		return true
-	}
+	//helper := func(tracker *FilesystemTracker, folder string) bool {
+	//	dir, filename := filepath.Split(folder)
+	//	directory, exists := tracker.contents[dir]
+	//	if !exists {
+	//		return false
+	//	}
+	//
+	//	fmt.Printf("directory is: %#v\nfilename: %s\n", directory, filename)
+	//
+	//	return true
+	//}
+	//
+	//if !WaitFor(tracker, fileName, true, helper) {
+	//	panic(fmt.Sprintf("%s not found in contents\ncontents: %v\n", fileName, tracker.contents))
+	//}
+	//
+	//tracker.printTracker()
+	//
+	//
+	//
+	//
+	//fmt.Printf("Moving file \nfrom: %s\n  to: %s\n", targetMonitoredPath, secondMonitoredPath)
+	//os.Rename(targetMonitoredPath, secondMonitoredPath)
+	//
+	//stats, _ := os.Stat(targetMonitoredPath)
+	//fmt.Printf("stats for: %s\n%v\n", targetMonitoredPath, stats)
 
-	if !WaitFor(tracker, fileName, true, helper) {
-		panic(fmt.Sprintf("%s not found in contents\ncontents: %v\n", fileName, tracker.contents))
-	}
-
-	tracker.printTracker()
 
 
 
 
-	fmt.Printf("Moving file \nfrom: %s\n  to: %s\n", targetMonitoredPath, secondMonitoredPath)
-	os.Rename(targetMonitoredPath, secondMonitoredPath)
-
-	stats, _ := os.Stat(targetMonitoredPath)
-	fmt.Printf("stats for: %s\n%v\n", targetMonitoredPath, stats)
 
 	//if len(tracker.renamesInProgress) > 0 {
 	//	panic(fmt.Sprint("6 tracker has renames in progress still"))
@@ -704,6 +712,10 @@ func (handler *FilesystemTracker) completeRenameIfAbandoned(iNode uint64) {
 
 		//this code failed because of an slice index out of bounds error. It is a reasonable copy with both sides and
 		//yet it was initialized blank. The first event was for the copy and it should have existed. Ahh, it is a file
+
+		if len(inProgress.destinationPath) < len(handler.directory)+1 {
+			fmt.Print("About to pop.....")
+		}
 
 		relativePath := inProgress.destinationPath[len(handler.directory)+1:]
 		handler.contents[relativePath] = *NewDirectoryFromFileInfo(&inProgress.destinationStat)
@@ -873,7 +885,7 @@ func (handler *FilesystemTracker) processEvent(event Event, pathName, fullPath s
 func (handler *FilesystemTracker) scanFolders() error {
 	pendingPaths := make([]string, 0, 100)
 	pendingPaths = append(pendingPaths, handler.directory)
-	handler.contents = make(map[string]Directory)
+	handler.contents = make(map[string]Entry)
 
 	for len(pendingPaths) > 0 {
 		currentPath := pendingPaths[0]
@@ -888,12 +900,15 @@ func (handler *FilesystemTracker) scanFolders() error {
 
 		dirEntries, err := f.Readdir(-1)
 		for _, entry := range dirEntries {
+
+			//todo fix this This function
 			if entry.IsDir() {
 				newDirectory := filepath.Join(currentPath, entry.Name())
 				pendingPaths = append(pendingPaths, newDirectory)
 			} else {
-				directory.contents[entry.Name()] = entry
+				//directory.contents[entry.Name()] = entry
 			}
+			panic("This function is not completed yet.")
 		}
 
 		f.Close()
