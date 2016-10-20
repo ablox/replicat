@@ -699,7 +699,7 @@ func (handler *FilesystemTracker) completeRenameIfAbandoned(iNode uint64) {
 		relativePath := inProgress.sourcePath[len(handler.directory)+1:]
 		fmt.Printf("File at: %s (iNode %d) appears to have been moved away. Removing it\n", relativePath, iNode)
 		delete(handler.contents, relativePath)
-	} else {
+	} else if inProgress.destinationSet {
 		fmt.Printf("directory: %s src: %s dest: %s\n", handler.directory, inProgress.sourcePath, inProgress.destinationPath)
 		fmt.Printf("inProgress: %v\n", handler.renamesInProgress)
 		fmt.Printf("this inProgress: %v\n", inProgress)
@@ -725,6 +725,8 @@ func (handler *FilesystemTracker) completeRenameIfAbandoned(iNode uint64) {
 		//		return
 		//	}
 		//}
+	} else {
+		fmt.Printf("FilesystemTracker:completeRenameIfAbandoned In progress item that appears to be not set. iNode %d, inProgress: %#v\n", iNode, inProgress)
 	}
 
 	delete(handler.renamesInProgress, iNode)
