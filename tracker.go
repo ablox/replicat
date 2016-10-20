@@ -58,8 +58,8 @@ type FilesystemTracker struct {
 // Directory - struct
 type Entry struct {
 	os.FileInfo
-	setup    bool
-	hash	string
+	setup bool
+	hash  string
 }
 
 // NewDirectory - creates and returns a new Directory
@@ -511,7 +511,6 @@ func trackerTestSmallFileCreationAndRename() {
 		panic(err)
 	}
 
-
 	fmt.Println("YOLO.....Not enough here!")
 
 	//helper := func(tracker *FilesystemTracker, folder string) bool {
@@ -540,11 +539,6 @@ func trackerTestSmallFileCreationAndRename() {
 	//
 	//stats, _ := os.Stat(targetMonitoredPath)
 	//fmt.Printf("stats for: %s\n%v\n", targetMonitoredPath, stats)
-
-
-
-
-
 
 	//if len(tracker.renamesInProgress) > 0 {
 	//	panic(fmt.Sprint("6 tracker has renames in progress still"))
