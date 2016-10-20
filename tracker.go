@@ -55,7 +55,7 @@ type FilesystemTracker struct {
 	fsLock            sync.RWMutex
 }
 
-// Entry - contains the data for a file 
+// Entry - contains the data for a file
 type Entry struct {
 	os.FileInfo
 	setup bool
