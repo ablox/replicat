@@ -894,6 +894,11 @@ func (handler *FilesystemTracker) scanFolders() error {
 
 		dirEntries, err := f.Readdir(-1)
 		for _, entry := range dirEntries {
+			// Determine the relative path for this file or folder
+			relativePath := filepath.Join(currentPath, entry.Name())
+			relativePath = relativePath[len(handler.directory):]
+			currentEntry := Entry{entry, true, ""}
+			handler.contents[relativePath] = currentEntry
 
 			//todo fix this This function
 			if entry.IsDir() {
@@ -902,7 +907,7 @@ func (handler *FilesystemTracker) scanFolders() error {
 			} else {
 				//directory.contents[entry.Name()] = entry
 			}
-			panic("This function is not completed yet.")
+			//panic("This function is not completed yet.")
 		}
 
 		f.Close()
