@@ -28,7 +28,7 @@ func TestDirectoryCreation(t *testing.T) {
 	tracker.init(tmpFolder)
 	defer tracker.cleanup()
 
-	testDirectory := tmpFolder + "/" + "newbie"
+	testDirectory := tmpFolder + "/newbie"
 	before, err := os.Stat(testDirectory)
 
 	os.Mkdir(testDirectory, os.ModeDir+os.ModePerm)
