@@ -131,7 +131,6 @@ func TestFileChangeTrackerAutoCreateFolderAndCleanup(t *testing.T) {
 	tracker.cleanup()
 }
 
-
 func TestFileChangeTrackerAddFolders(t *testing.T) {
 	logHandler := countingChangeHandler{}
 	var c ChangeHandler = &logHandler
