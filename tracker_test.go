@@ -131,24 +131,6 @@ func TestFileChangeTrackerAutoCreateFolderAndCleanup(t *testing.T) {
 	tracker.cleanup()
 }
 
-type countingChangeHandler struct {
-	FoldersCreated int
-	FoldersDeleted int
-}
-
-func (handler *countingChangeHandler) FolderCreated(name string) error {
-	handler.FoldersCreated++
-
-	fmt.Printf("countingChangeHandler:FolderCreated: %s (%d)\n", name, handler.FoldersCreated)
-	return nil
-}
-
-func (handler *countingChangeHandler) FolderDeleted(name string) error {
-	handler.FoldersDeleted++
-
-	fmt.Printf("countingChangeHandler:FolderDeleted: %s (%d)\n", name, handler.FoldersDeleted)
-	return nil
-}
 
 func TestFileChangeTrackerAddFolders(t *testing.T) {
 	logHandler := countingChangeHandler{}
@@ -205,6 +187,8 @@ func TestFileChangeTrackerAddFolders(t *testing.T) {
 
 	expectedCreated := numberOfSubFolders + 1
 	expectedDeleted := 2
+
+	tracker.printTracker()
 
 	// wait for the final tally to come through.
 	cycleCount = 0

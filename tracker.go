@@ -44,6 +44,26 @@ func (handler *LogOnlyChangeHandler) FolderDeleted(name string) error {
 	return nil
 }
 
+// countingChangeHandler - counds the folders created and deleted. Used for testing.
+type countingChangeHandler struct {
+	FoldersCreated int
+	FoldersDeleted int
+}
+
+func (handler *countingChangeHandler) FolderCreated(name string) error {
+	handler.FoldersCreated++
+
+	fmt.Printf("countingChangeHandler:FolderCreated: %s (%d)\n", name, handler.FoldersCreated)
+	return nil
+}
+
+func (handler *countingChangeHandler) FolderDeleted(name string) error {
+	handler.FoldersDeleted++
+
+	fmt.Printf("countingChangeHandler:FolderDeleted: %s (%d)\n", name, handler.FoldersDeleted)
+	return nil
+}
+
 // FilesystemTracker - Track a filesystem and keep it in sync
 type FilesystemTracker struct {
 	directory         string
@@ -469,6 +489,97 @@ func trackerTestEmptyDirectoryMovesInOutAround() {
 	}
 	tracker.printTracker()
 }
+
+func trackerTestFileChangeTrackerAddFolders() {
+	logHandler := countingChangeHandler{}
+	var c ChangeHandler = &logHandler
+
+	tmpFolder, err := ioutil.TempDir("", "blank")
+	defer os.RemoveAll(tmpFolder)
+
+	fmt.Println("TestFileChangeTrackerAddFolders: About to call watchDirectory")
+	tracker := new(FilesystemTracker)
+	tracker.init(tmpFolder)
+	defer tracker.cleanup()
+
+	tracker.watchDirectory(&c)
+	fmt.Println("TestFileChangeTrackerAddFolders: Done - About to call watchDirectory")
+
+	numberOfSubFolders := 10
+
+	for i := 0; i < numberOfSubFolders; i++ {
+		path := fmt.Sprintf("%s/a%d", tmpFolder, i)
+
+		err = os.Mkdir(path, os.ModeDir+os.ModePerm)
+		if err != nil {
+			panic(err)
+		}
+	}
+	fmt.Printf("done with creating %d different subfolders. :)\n", numberOfSubFolders)
+
+
+	// todo - convert to waitfor
+	cycleCount := 0
+	for {
+		cycleCount++
+		folderList := tracker.ListFolders()
+		if len(folderList) < numberOfSubFolders {
+			//fmt.Printf("did not get all folders. Current: %v\n", folderList)
+			if cycleCount > 20 {
+				panic(fmt.Sprintf("Did not find enough folders. Got bored of waiting. What was found: %v\n", folderList))
+			}
+			time.Sleep(time.Millisecond * 50)
+		} else {
+			fmt.Println("We have all of our ducks in a row")
+			break
+		}
+	}
+
+	folder1 := fmt.Sprintf("%s/a0", tmpFolder)
+	folder2 := fmt.Sprintf("%s/a1", tmpFolder)
+	fmt.Printf("about to delete two folders \n%s\n%s\n", folder1, folder2)
+	// Delete two folders
+	fmt.Println(tracker.ListFolders())
+	os.Remove(folder1)
+	os.Remove(folder2)
+	fmt.Printf("deleted two folders \n%s\n%s\n", folder1, folder2)
+
+	expectedCreated := numberOfSubFolders + 1
+	expectedDeleted := 2
+
+	tracker.printTracker()
+
+	// wait for the final tally to come through.
+	cycleCount = 0
+	for {
+		cycleCount++
+
+		if logHandler.FoldersCreated != expectedCreated || logHandler.FoldersDeleted != expectedDeleted {
+			if cycleCount > 20 {
+				tracker.printTracker()
+				panic(fmt.Sprintf("Kept finding bad data. Got bored of waiting. What was found: %v\n", tracker.ListFolders()))
+				break
+			}
+			time.Sleep(time.Millisecond * 50)
+		} else {
+			fmt.Println("We have all of our ducks in a row again. Yay!")
+			break
+		}
+	}
+
+	if logHandler.FoldersCreated != expectedCreated || logHandler.FoldersDeleted != expectedDeleted {
+		panic(fmt.Sprintf("Expected/Found created: (%d/%d) deleted: (%d/%d)\n", expectedCreated, logHandler.FoldersCreated, expectedDeleted, logHandler.FoldersDeleted))
+	}
+
+	rootDirectory, exists := tracker.contents["."]
+	if !exists {
+		fmt.Println("root directory fileinfo is nil")
+	} else {
+		fmt.Printf("Root directory %v\n", rootDirectory)
+		fmt.Printf("Root directory named: %s and has size %d\n", rootDirectory.Name(), rootDirectory.Size())
+	}
+}
+
 
 func trackerTestSmallFileCreationAndRename() {
 	monitoredFolder, _ := ioutil.TempDir("", "monitored")
