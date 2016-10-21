@@ -619,8 +619,6 @@ func trackerTestSmallFileCreationAndRename() {
 		panic(err)
 	}
 
-	fmt.Println("YOLO.....Not enough here!")
-
 	helper := func(tracker *FilesystemTracker, path string) bool {
 		entry, exists := tracker.contents[path]
 		if !exists {
