@@ -487,9 +487,9 @@ func trackerTestSmallFileCreationAndRename() {
 	tracker.printTracker()
 
 	fileName := "happy.txt"
-	//secondFilename := "behappy.txt"
+	secondFilename := "behappy.txt"
 	targetMonitoredPath := filepath.Join(monitoredFolder, fileName)
-	//secondMonitoredPath := filepath.Join(monitoredFolder, secondFilename)
+	secondMonitoredPath := filepath.Join(monitoredFolder, secondFilename)
 
 	fmt.Printf("making file: %s\n", targetMonitoredPath)
 	file, err := os.Create(targetMonitoredPath)
@@ -513,72 +513,46 @@ func trackerTestSmallFileCreationAndRename() {
 
 	fmt.Println("YOLO.....Not enough here!")
 
-	//helper := func(tracker *FilesystemTracker, folder string) bool {
-	//	dir, filename := filepath.Split(folder)
-	//	directory, exists := tracker.contents[dir]
-	//	if !exists {
-	//		return false
-	//	}
-	//
-	//	fmt.Printf("directory is: %#v\nfilename: %s\n", directory, filename)
-	//
-	//	return true
-	//}
-	//
-	//if !WaitFor(tracker, fileName, true, helper) {
-	//	panic(fmt.Sprintf("%s not found in contents\ncontents: %v\n", fileName, tracker.contents))
-	//}
-	//
-	//tracker.printTracker()
-	//
-	//
-	//
-	//
-	//fmt.Printf("Moving file \nfrom: %s\n  to: %s\n", targetMonitoredPath, secondMonitoredPath)
-	//os.Rename(targetMonitoredPath, secondMonitoredPath)
-	//
-	//stats, _ := os.Stat(targetMonitoredPath)
-	//fmt.Printf("stats for: %s\n%v\n", targetMonitoredPath, stats)
+	helper := func(tracker *FilesystemTracker, path string) bool {
+		entry, exists := tracker.contents[path]
+		if !exists {
+			return false
+		}
 
-	//if len(tracker.renamesInProgress) > 0 {
-	//	panic(fmt.Sprint("6 tracker has renames in progress still"))
-	//}
-	//
-	//// check to make sure that there are no invalid directories
-	//tracker.validate()
-	//
-	//fileName = fileName + "b"
-	//moveSourcePath := targetMonitoredPath
-	//moveDestinationPath := monitoredFolder + "/" + fileName
-	//fmt.Printf("About to move file \nfrom: %s\n  to: %s\n", moveSourcePath, moveDestinationPath)
-	//os.Rename(moveSourcePath, moveDestinationPath)
-	//
-	//if !WaitFor(tracker, originalFolderName, false, helper) {
-	//	panic(fmt.Sprintf("Still finding originalFolderName %s after rename timeout \ncontents: %v\n", originalFolderName, tracker.contents))
-	//}
-	//
-	//if !WaitFor(tracker, fileName, true, helper) {
-	//	panic(fmt.Sprintf("%s not found after renamte timout\ncontents: %v\n", fileName, tracker.contents))
-	//}
-	//tracker.printTracker()
-	//if len(tracker.renamesInProgress) > 0 {
-	//	panic(fmt.Sprint("11 tracker has renames in progress still"))
-	//}
-	//
-	//// check to make sure that there are no invalid directories
-	//tracker.validate()
-	//
-	//moveSourcePath = moveDestinationPath
-	//moveDestinationPath = targetOutsidePath
-	//
-	//fmt.Printf("About to move file \nfrom: %s\n  to: %s\n", moveSourcePath, moveDestinationPath)
-	//os.Rename(moveSourcePath, moveDestinationPath)
-	//
-	//if !WaitFor(tracker, fileName, false, helper) {
-	//	fmt.Printf("Tracker contents: %v\n", tracker.contents)
-	//	panic(fmt.Sprintf("%s not cleared from contents\ncontents: %v\n", fileName, tracker.contents))
-	//}
-	//tracker.printTracker()
+		fmt.Printf("entry is: %#v\npath: %s\n", entry, path)
+
+		return true
+	}
+
+	if !WaitFor(tracker, fileName, true, helper) {
+		panic(fmt.Sprintf("%s not found in contents\ncontents: %v\n", fileName, tracker.contents))
+	}
+
+	tracker.printTracker()
+
+	fmt.Printf("Moving file \nfrom: %s\n  to: %s\n", targetMonitoredPath, secondMonitoredPath)
+	os.Rename(targetMonitoredPath, secondMonitoredPath)
+
+	stats, err := os.Stat(secondMonitoredPath)
+	if err != nil {
+		panic(fmt.Sprintf("failed to move file: %v", err))
+	}
+	fmt.Printf("stats for: %s\n%v\n", targetMonitoredPath, stats)
+
+	if !WaitFor(tracker, fileName, false, helper) {
+		panic(fmt.Sprintf("%s found in contents\ncontents: %v\n", fileName, tracker.contents))
+	}
+
+	if !WaitFor(tracker, secondFilename, true, helper) {
+		panic(fmt.Sprintf("%s not found in contents\ncontents: %v\n", secondFilename, tracker.contents))
+	}
+
+	if len(tracker.renamesInProgress) > 0 {
+		panic(fmt.Sprint("6 tracker has renames in progress still"))
+	}
+
+	// check to make sure that there are no invalid directories
+	tracker.validate()
 }
 
 func trackerTestSmallFileMovesInOutAround() {
