@@ -248,7 +248,6 @@ func addPaths(newPaths []string) {
 	for _, newPathName := range newPaths {
 		fmt.Printf("pathname is: %s\n", newPathName)
 		err := os.Mkdir(newPathName, os.ModeDir+os.ModePerm)
-		//todo figure out how to catch a path exists error.
 		if err != nil && !os.IsExist(err) {
 			panic(err)
 		}
