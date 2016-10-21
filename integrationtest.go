@@ -11,7 +11,7 @@ import (
 	"time"
 )
 
-func TestIntegration(t *testing.T) {
+func testIntegration(t *testing.T) {
 	//buildApps()
 	startWebcat()
 	dirA := startReplicat("nodeA")
