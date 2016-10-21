@@ -517,7 +517,6 @@ func trackerTestFileChangeTrackerAddFolders() {
 	}
 	fmt.Printf("done with creating %d different subfolders. :)\n", numberOfSubFolders)
 
-
 	// todo - convert to waitfor
 	cycleCount := 0
 	for {
@@ -579,7 +578,6 @@ func trackerTestFileChangeTrackerAddFolders() {
 		fmt.Printf("Root directory named: %s and has size %d\n", rootDirectory.Name(), rootDirectory.Size())
 	}
 }
-
 
 func trackerTestSmallFileCreationAndRename() {
 	monitoredFolder, _ := ioutil.TempDir("", "monitored")
