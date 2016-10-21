@@ -557,7 +557,6 @@ func trackerTestFileChangeTrackerAddFolders() {
 			if cycleCount > 20 {
 				tracker.printTracker()
 				panic(fmt.Sprintf("Kept finding bad data. Got bored of waiting. What was found: %v\n", tracker.ListFolders()))
-				break
 			}
 			time.Sleep(time.Millisecond * 50)
 		} else {

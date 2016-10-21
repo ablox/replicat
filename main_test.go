@@ -10,7 +10,7 @@ import (
 	"testing"
 )
 
-func TestDirectoryScan(t *testing.T) {
+func testDirectoryScan(t *testing.T) {
 	tmpFolder, err := ioutil.TempDir("", "blank")
 	defer os.RemoveAll(tmpFolder)
 	globalSettings.Directory = tmpFolder
