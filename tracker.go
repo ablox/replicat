@@ -13,6 +13,7 @@ import (
 	"sync"
 	"syscall"
 	"time"
+	"reflect"
 )
 
 // ChangeHandler - Listener for tracking changes that happen to a storage system
@@ -709,58 +710,118 @@ func trackerTestSmallFileMovesInOutAround() {
 	fmt.Printf("stats for: %s\n%v\n", targetMonitoredPath, stats)
 
 	fmt.Println("Hit the end of this test.....needs more! Files are currently being treated as directories.....stop stat....\n\n\n\n\n\n\ngaaak")
-
-	//helper := func(tracker *FilesystemTracker, folder string) bool {
-	//	_, exists := tracker.contents[folder]
-	//	fmt.Printf("Checking the value of exists: %v\n", exists)
-	//	return exists
-	//}
-	//
-	//if !WaitFor(tracker, fileName, true, helper) {
-	//	panic(fmt.Sprintf("%s not found in contents\ncontents: %v\n", fileName, tracker.contents))
-	//}
-	//
-	//tracker.printTracker()
-	//if len(tracker.renamesInProgress) > 0 {
-	//	panic(fmt.Sprint("6 tracker has renames in progress still"))
-	//}
-	//
-	//// check to make sure that there are no invalid directories
-	//tracker.validate()
-	//
-	//fileName = fileName + "b"
-	//moveSourcePath := targetMonitoredPath
-	//moveDestinationPath := monitoredFolder + "/" + fileName
-	//fmt.Printf("About to move file \nfrom: %s\n  to: %s\n", moveSourcePath, moveDestinationPath)
-	//os.Rename(moveSourcePath, moveDestinationPath)
-	//
-	//if !WaitFor(tracker, originalFolderName, false, helper) {
-	//	panic(fmt.Sprintf("Still finding originalFolderName %s after rename timeout \ncontents: %v\n", originalFolderName, tracker.contents))
-	//}
-	//
-	//if !WaitFor(tracker, fileName, true, helper) {
-	//	panic(fmt.Sprintf("%s not found after renamte timout\ncontents: %v\n", fileName, tracker.contents))
-	//}
-	//tracker.printTracker()
-	//if len(tracker.renamesInProgress) > 0 {
-	//	panic(fmt.Sprint("11 tracker has renames in progress still"))
-	//}
-	//
-	//// check to make sure that there are no invalid directories
-	//tracker.validate()
-	//
-	//moveSourcePath = moveDestinationPath
-	//moveDestinationPath = targetOutsidePath
-	//
-	//fmt.Printf("About to move file \nfrom: %s\n  to: %s\n", moveSourcePath, moveDestinationPath)
-	//os.Rename(moveSourcePath, moveDestinationPath)
-	//
-	//if !WaitFor(tracker, fileName, false, helper) {
-	//	fmt.Printf("Tracker contents: %v\n", tracker.contents)
-	//	panic(fmt.Sprintf("%s not cleared from contents\ncontents: %v\n", fileName, tracker.contents))
-	//}
-	//tracker.printTracker()
 }
+
+func trackerTestDirectoryCreation() {
+	tmpFolder, err := ioutil.TempDir("", "blank")
+	defer os.RemoveAll(tmpFolder)
+
+	tracker := new(FilesystemTracker)
+	tracker.init(tmpFolder)
+	defer tracker.cleanup()
+
+	testDirectory := tmpFolder + "/newbie"
+	before, err := os.Stat(testDirectory)
+
+	os.Mkdir(testDirectory, os.ModeDir+os.ModePerm)
+
+	after, err := os.Stat(testDirectory)
+
+	if err != nil {
+		panic("GACK, directory should exist")
+	}
+
+	err = os.Remove(testDirectory)
+
+	_, err = os.Stat(testDirectory)
+
+	if !os.IsNotExist(err) {
+		panic("The folder still exists.....oopps")
+	}
+
+	fmt.Printf("TestDirectoryCreation\nbefore: %v\nafter: %v\n", before, after)
+
+}
+
+func trackerTestDirectoryStorage() {
+	tmpFolder, err := ioutil.TempDir("", "blank")
+	defer os.RemoveAll(tmpFolder)
+
+	tracker := new(FilesystemTracker)
+	tracker.init(tmpFolder)
+	defer tracker.cleanup()
+
+	empty := make([]string, 0)
+	empty = append(empty, ".")
+
+	folderList := tracker.ListFolders()
+
+	if reflect.DeepEqual(empty, folderList) == false {
+		panic(fmt.Sprintf("expected empty folder, found something: %v\n", folderList))
+	}
+
+	folderTemplate := []string{"A", "B", "C"}
+
+	for _, folder := range folderTemplate {
+		err := tracker.CreatePath(folder, true)
+		if err != nil {
+			panic(err)
+		}
+	}
+
+	folderList = tracker.ListFolders()
+
+	expectedFolderList := append(folderTemplate, ".")
+	sort.Strings(expectedFolderList)
+	sort.Strings(folderList)
+
+	if reflect.DeepEqual(expectedFolderList, folderList) == false {
+		panic(fmt.Sprintf("Found: %v\nExpected: %v\n", folderList, expectedFolderList))
+	}
+
+	err = tracker.DeleteFolder(folderTemplate[0])
+	if err != nil {
+		panic(err)
+	}
+
+	folderList = tracker.ListFolders()
+	sort.Strings(folderList)
+
+	folderTemplate = folderTemplate[1:]
+
+	expectedFolderList = append(folderTemplate, ".")
+	sort.Strings(expectedFolderList)
+
+	if reflect.DeepEqual(folderList, expectedFolderList) == false {
+		panic(fmt.Sprintf("Found: %v\nExpected: %v\n", folderList, expectedFolderList))
+	}
+
+}
+
+func trackerTestFileChangeTrackerAutoCreateFolderAndCleanup() {
+	tracker := new(FilesystemTracker)
+
+	tmpFolder, err := ioutil.TempDir("", "blank")
+	defer os.RemoveAll(tmpFolder)
+
+	tmpFolder = tmpFolder + "R"
+	defer os.RemoveAll(tmpFolder)
+
+	logger := &LogOnlyChangeHandler{}
+	var loggerInterface ChangeHandler = logger
+
+	tracker.init(tmpFolder)
+	tracker.watchDirectory(&loggerInterface)
+
+	// verify the folder was created
+	_, err = filepath.EvalSymlinks(tmpFolder)
+	if err != nil {
+		panic(err)
+	}
+
+	tracker.cleanup()
+}
+
 
 // completeRenameIfAbandoned - if there is a rename that was started with a source
 // but has been left pending for more than TRACKER_RENAME_TIMEOUT, complete it (i.e. move the folder away)
