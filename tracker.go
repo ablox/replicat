@@ -543,7 +543,7 @@ func trackerTestFileChangeTrackerAddFolders() {
 	os.Remove(folder2)
 	fmt.Printf("deleted two folders \n%s\n%s\n", folder1, folder2)
 
-	expectedCreated := numberOfSubFolders + 1
+	expectedCreated := numberOfSubFolders
 	expectedDeleted := 2
 
 	tracker.printTracker()
@@ -556,7 +556,7 @@ func trackerTestFileChangeTrackerAddFolders() {
 		if logHandler.FoldersCreated != expectedCreated || logHandler.FoldersDeleted != expectedDeleted {
 			if cycleCount > 20 {
 				tracker.printTracker()
-				panic(fmt.Sprintf("Kept finding bad data. Got bored of waiting. What was found: %v\n", tracker.ListFolders()))
+				panic(fmt.Sprintf("Expected/Found created: (%d/%d) deleted: (%d/%d)\n", expectedCreated, logHandler.FoldersCreated, expectedDeleted, logHandler.FoldersDeleted))
 			}
 			time.Sleep(time.Millisecond * 50)
 		} else {
@@ -920,13 +920,11 @@ func (handler *FilesystemTracker) processEvent(event Event, pathName, fullPath s
 		return
 
 	case "notify.Remove":
-		// clean out the entry in the DirTreeMap for this folder
+		_, exists := handler.contents[pathName]
+
 		delete(handler.contents, pathName)
 
-		//todo FIXME: uhm, we just deleted this and now we are checking it? Uhm, ....
-		updatedValue, exists := handler.contents[pathName]
-
-		if handler.watcher != nil {
+		if handler.watcher != nil && exists {
 			(*handler.watcher).FolderDeleted(pathName)
 		} else {
 			fmt.Println("In the notify.Remove section but did not see a watcher")
@@ -936,7 +934,7 @@ func (handler *FilesystemTracker) processEvent(event Event, pathName, fullPath s
 		fmt.Println("FilesystemTracker:/+processEvent")
 		SendEvent(event, "")
 
-		fmt.Printf("notify.Remove: Updated value for %s: %v (%t)\n", pathName, updatedValue, exists)
+		fmt.Printf("notify.Remove: %s (%t)\n", pathName, exists)
 		return
 	case "notify.Rename":
 		// todo fix this to handle the two rename events to be one event
