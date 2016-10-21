@@ -685,7 +685,7 @@ func trackerTestSmallFileMovesInOutAround() {
 	targetOutsidePath := filepath.Join(outsideFolder, fileName)
 
 	fmt.Printf("making file: %s\n", targetOutsidePath)
-	file, err := os.Create(fileName)
+	file, err := os.Create(targetOutsidePath)
 	if err != nil {
 		panic(err)
 	}
