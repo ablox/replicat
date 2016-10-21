@@ -57,7 +57,7 @@ func sendEvent(event *Event, fullPath string, address string, credentials string
 	url := "http://" + address + "/event/"
 	fmt.Printf("target url: %s\n", url)
 
-	// Set the event source (server name)
+	// Set the event source  (server name)
 	event.Source = globalSettings.Name
 
 	jsonStr, _ := json.Marshal(event)
