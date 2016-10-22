@@ -309,7 +309,7 @@ func extractPaths(handler *FilesystemTracker, ei *notify.EventInfo) (path, fullP
 	path = fullPath
 	if len(fullPath) >= directoryLength && handler.directory == fullPath[:directoryLength] {
 		if len(fullPath) == directoryLength {
-			path = "."
+			return "", ""
 		} else {
 			// update the path to not have this prefix
 			path = fullPath[directoryLength+1:]
@@ -327,6 +327,12 @@ func (handler *FilesystemTracker) monitorLoop(c chan notify.EventInfo) {
 		fmt.Printf("*****We have an event: %v\nwith Sys: %v\npath: %v\nevent: %v\n", ei, ei.Sys(), ei.Path(), ei.Event())
 
 		path, fullPath := extractPaths(handler, &ei)
+		// Skip empty paths
+		if path == "" {
+			fmt.Println("blank path. Ignore!")
+			continue
+		}
+
 		event := Event{Name: ei.Event().String(), Message: path}
 		log.Printf("Event captured name: %s location: %s, ei.Path(): %s", event.Name, event.Message, ei.Path())
 
