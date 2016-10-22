@@ -310,10 +310,10 @@ func extractPaths(handler *FilesystemTracker, ei *notify.EventInfo) (path, fullP
 	if len(fullPath) >= directoryLength && handler.directory == fullPath[:directoryLength] {
 		if len(fullPath) == directoryLength {
 			return "", ""
-		} else {
-			// update the path to not have this prefix
-			path = fullPath[directoryLength+1:]
 		}
+
+		// update the path to not have this prefix
+		path = fullPath[directoryLength+1:]
 	}
 
 	return
