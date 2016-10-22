@@ -102,9 +102,17 @@ func (handler *FilesystemTracker) printLockable(lock bool) {
 		fmt.Println("FilesystemTracker:/print")
 	}
 
+
+	folders := make([]string, 0, len(handler.contents))
+	for dir, _ := range handler.contents {
+		folders = append(folders, dir)
+	}
+	sort.Strings(folders)
+
 	fmt.Println("~~~~~~~~~~~~~~~~~~~~~~~")
 	fmt.Printf("~~~~%s Tracker report setup(%v)\n", handler.directory, handler.setup)
 	fmt.Printf("~~~~contents: %v\n", handler.contents)
+	fmt.Printf("~~~~folders: %v\n", folders)
 	fmt.Printf("~~~~renames in progress: %v\n", handler.renamesInProgress)
 	fmt.Println("~~~~~~~~~~~~~~~~~~~~~~~")
 
