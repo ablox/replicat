@@ -668,24 +668,6 @@ func (handler *FilesystemTracker) scanFolders() error {
 	return nil
 }
 
-// FileInfoSlice attaches the methods of Interface to []os.FileInfo, sorting in increasing order.
-type FileInfoSlice []os.FileInfo
-
-func (p FileInfoSlice) Len() int           { return len(p) }
-func (p FileInfoSlice) Less(i, j int) bool { return p[i].Name() < p[j].Name() }
-func (p FileInfoSlice) Swap(i, j int)      { p[i], p[j] = p[j], p[i] }
-
-// Sort is a convenience method.
-//func (p FileInfoSlice) Sort() { Sort(p) }
-
-// Strings sorts a slice of strings in increasing order.
-//func fileInfos(a []os.FileInfo) { Sort(FileInfoSlice(a)) }
-
-// sample code for monitoring the filesystem
-//listOfFileInfo, err := scanDirectoryContents()
-//if err != nil {
-//	   log.Fatal(err)
-//}
 //
 //dotCount := 0
 //sleepSeconds := time.Duration(25 + rand.Intn(10))
