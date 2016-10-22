@@ -279,7 +279,6 @@ func trackerTestSmallFileMovesInOutAround() {
 	tracker.printTracker()
 
 	fileName := "happy"
-	//originalFolderName := fileName
 	targetMonitoredPath := filepath.Join(monitoredFolder, fileName)
 	targetOutsidePath := filepath.Join(outsideFolder, fileName)
 
@@ -313,7 +312,7 @@ func trackerTestSmallFileMovesInOutAround() {
 }
 
 func trackerTestDirectoryCreation() {
-	tmpFolder, err := ioutil.TempDir("", "blank")
+	tmpFolder, _ := ioutil.TempDir("", "blank")
 	defer os.RemoveAll(tmpFolder)
 
 	tracker := new(FilesystemTracker)
@@ -340,7 +339,53 @@ func trackerTestDirectoryCreation() {
 	}
 
 	fmt.Printf("TestDirectoryCreation\nbefore: %v\nafter: %v\n", before, after)
+}
 
+func trackerTestNestedDirectoryCreation() {
+	// create monitored a/b/c/d/e/f
+	logHandler := countingChangeHandler{}
+	var c ChangeHandler = &logHandler
+
+	// check to see if they are all in the contents
+	tmpFolder, _ := ioutil.TempDir("", "blank")
+	defer os.RemoveAll(tmpFolder)
+
+	tracker := new(FilesystemTracker)
+	tracker.init(tmpFolder)
+	tracker.watchDirectory(&c)
+	defer tracker.cleanup()
+
+	nestedRelativePath := "a/b/c/d/e/f"
+	fullPath := tmpFolder + "/" + nestedRelativePath
+
+	os.MkdirAll(fullPath, os.ModeDir+os.ModePerm)
+
+	expectedCreated := 6
+	expectedDeleted := 0
+
+	// wait for the final tally to come through.
+	cycleCount := 0
+	for {
+		cycleCount++
+
+		if logHandler.FoldersCreated == expectedCreated && logHandler.FoldersDeleted == expectedDeleted {
+			fmt.Println("We have all of our ducks in a row again. Yay!")
+			break
+		}
+
+		fmt.Printf("We have made another round: Expected/Found created: (%d/%d) deleted: (%d/%d)\n", expectedCreated, logHandler.FoldersCreated, expectedDeleted, logHandler.FoldersDeleted)
+		if cycleCount > 20 {
+			tracker.printTracker()
+			panic(fmt.Sprintf("Expected/Found created: (%d/%d) deleted: (%d/%d)\n", expectedCreated, logHandler.FoldersCreated, expectedDeleted, logHandler.FoldersDeleted))
+		}
+		time.Sleep(time.Millisecond * 50)
+	}
+
+	if logHandler.FoldersCreated != expectedCreated || logHandler.FoldersDeleted != expectedDeleted {
+		panic(fmt.Sprintf("Expected/Found created: (%d/%d) deleted: (%d/%d)\n", expectedCreated, logHandler.FoldersCreated, expectedDeleted, logHandler.FoldersDeleted))
+	}
+
+	tracker.printTracker()
 }
 
 func trackerTestDirectoryStorage() {

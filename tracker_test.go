@@ -20,6 +20,10 @@ func TestDirectoryCreation(t *testing.T) {
 	trackerTestDirectoryCreation()
 }
 
+func TestNestedDirectoryCreation(t *testing.T) {
+	trackerTestNestedDirectoryCreation()
+}
+
 func TestDirectoryStorage(t *testing.T) {
 	trackerTestDirectoryStorage()
 }
