@@ -356,11 +356,17 @@ func trackerTestNestedDirectoryCreation() {
 	defer tracker.cleanup()
 
 	os.Mkdir(tmpFolder + "/a", os.ModeDir+os.ModePerm)
+	time.Sleep(10*time.Millisecond)
 	os.Mkdir(tmpFolder + "/a/b", os.ModeDir+os.ModePerm)
+	time.Sleep(10*time.Millisecond)
 	os.Mkdir(tmpFolder + "/a/b/c", os.ModeDir+os.ModePerm)
+	time.Sleep(10*time.Millisecond)
 	os.Mkdir(tmpFolder + "/a/b/c/d", os.ModeDir+os.ModePerm)
+	time.Sleep(10*time.Millisecond)
 	os.Mkdir(tmpFolder + "/a/b/c/d/e", os.ModeDir+os.ModePerm)
+	time.Sleep(10*time.Millisecond)
 	os.Mkdir(tmpFolder + "/a/b/c/d/e/f", os.ModeDir+os.ModePerm)
+	time.Sleep(10*time.Millisecond)
 
 	expectedCreated := 6
 	expectedDeleted := 0
