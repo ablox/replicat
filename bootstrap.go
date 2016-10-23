@@ -33,13 +33,15 @@ var serverMap = make(map[string]*ReplicatServer)
 var serverMapLock sync.RWMutex
 
 func bootstrapAndServe() {
-	//trackerTestFileChangeTrackerAddFolders()
-	//trackerTestEmptyDirectoryMovesInOutAround()
-	//trackerTestSmallFileCreationAndRename()
-	//trackerTestSmallFileMovesInOutAround()
-	//trackerTestEmptyDirectoryMovesInOutAround()
-	//trackerTestDirectoryCreation()
-	//trackerTestDirectoryStorage()
+	trackerTestEmptyDirectoryMovesInOutAround()
+	trackerTestFileChangeTrackerAddFolders()
+	trackerTestSmallFileCreationAndRename()
+	trackerTestSmallFileMovesInOutAround()
+	trackerTestDirectoryCreation()
+	trackerTestNestedDirectoryCreation()
+	trackerTestDirectoryStorage()
+	trackerTestFileChangeTrackerAutoCreateFolderAndCleanup()
+	//trackerTestNestedFastDirectoryCreation()
 
 	// testing code to enable debugger use
 	http.Handle("/event/", httpauth.SimpleBasicAuth("replicat", "isthecat")(http.HandlerFunc(eventHandler)))

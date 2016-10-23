@@ -104,7 +104,7 @@ func (handler *FilesystemTracker) printLockable(lock bool) {
 
 
 	folders := make([]string, 0, len(handler.contents))
-	for dir, _ := range handler.contents {
+	for dir := range handler.contents {
 		folders = append(folders, dir)
 	}
 	sort.Strings(folders)
