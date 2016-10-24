@@ -324,16 +324,18 @@ func trackerTestSmallFileCreationAndUpdate() {
 		panic(err)
 	}
 
-	defer file.Close()
-
 	_, err = file.WriteString("And we have a second line!!!!\n")
 	if err != nil {
 		panic(err)
 	}
 
-	time.Sleep(1 * time.Second)
+	fmt.Println("we just wrote the second line...")
+	file.Close()
+	fmt.Println("file closed...")
+
+	time.Sleep(50 * time.Millisecond)
 	if logger.FilesCreated != 1 || logger.FilesUpdated != 2 {
-		panic(fmt.Sprintf("Expected 1 created 2 updated. Actual Values: %#v", logger))
+		panic(fmt.Sprintf("Expected created 1 updated 2. Actual Values: \n%#v", logger))
 	}
 
 }
