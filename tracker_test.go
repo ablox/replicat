@@ -9,7 +9,7 @@ import (
 )
 
 func causeFailOnPanic(t *testing.T) {
-	// recover from panic if one occured. Set err to nil otherwise.
+	// recover from panic if one occurred. Set err to nil otherwise.
 	rec := recover()
 	if rec != nil {
 		debug.PrintStack()
