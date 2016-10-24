@@ -262,6 +262,82 @@ func trackerTestSmallFileCreationAndRename() {
 	tracker.validate()
 }
 
+func trackerTestSmallFileCreationAndUpdate() {
+	monitoredFolder, _ := ioutil.TempDir("", "monitored")
+	defer os.RemoveAll(monitoredFolder)
+
+	tracker := new(FilesystemTracker)
+	tracker.init(monitoredFolder)
+	defer tracker.cleanup()
+
+	logger := &countingChangeHandler{}
+	var loggerInterface ChangeHandler = logger
+	tracker.watchDirectory(&loggerInterface)
+
+	tracker.printTracker()
+
+	fileName := "happy.txt"
+	targetMonitoredPath := filepath.Join(monitoredFolder, fileName)
+
+	fmt.Printf("making file: %s\n", targetMonitoredPath)
+	file, err := os.Create(targetMonitoredPath)
+	if err != nil {
+		panic(err)
+	}
+
+	sampleFileContents := "This is the content of the file\n"
+	n, err := file.WriteString(sampleFileContents)
+	if err != nil {
+		panic(err)
+	}
+	if n != len(sampleFileContents) {
+		panic(fmt.Sprintf("Contents of file not correct length n: %d len: %d\n", n, len(sampleFileContents)))
+	}
+
+	err = file.Close()
+	if err != nil {
+		panic(err)
+	}
+
+	helper := func(tracker *FilesystemTracker, path string) bool {
+		entry, exists := tracker.contents[path]
+		if !exists {
+			return false
+		}
+
+		fmt.Printf("entry is: %#v\npath: %s\n", entry, path)
+
+		return true
+	}
+
+	if !WaitFor(tracker, fileName, true, helper) {
+		panic(fmt.Sprintf("%s not found in contents\ncontents: %v\n", fileName, tracker.contents))
+	}
+
+	tracker.printTracker()
+	tracker.validate()
+
+	// Open the file and make a change to make sure the write event is tracked and sent
+	fmt.Printf("opening file to modify: %s\n", targetMonitoredPath)
+	file, err = os.OpenFile(targetMonitoredPath, os.O_APPEND|os.O_WRONLY, 0600)
+	if err != nil {
+		panic(err)
+	}
+
+	defer file.Close()
+
+	_, err = file.WriteString("And we have a second line!!!!\n")
+	if err != nil {
+		panic(err)
+	}
+
+	time.Sleep(1 * time.Second)
+	if logger.FilesCreated != 1 || logger.FilesUpdated != 2 {
+		panic(fmt.Sprintf("Expected 1 created 2 updated. Actual Values: %#v", logger))
+	}
+
+}
+
 func trackerTestSmallFileMovesInOutAround() {
 	monitoredFolder, _ := ioutil.TempDir("", "monitored")
 	outsideFolder, _ := ioutil.TempDir("", "outside")
@@ -355,18 +431,18 @@ func trackerTestNestedDirectoryCreation() {
 	tracker.watchDirectory(&c)
 	defer tracker.cleanup()
 
-	os.Mkdir(tmpFolder + "/a", os.ModeDir+os.ModePerm)
-	time.Sleep(10*time.Millisecond)
-	os.Mkdir(tmpFolder + "/a/b", os.ModeDir+os.ModePerm)
-	time.Sleep(10*time.Millisecond)
-	os.Mkdir(tmpFolder + "/a/b/c", os.ModeDir+os.ModePerm)
-	time.Sleep(10*time.Millisecond)
-	os.Mkdir(tmpFolder + "/a/b/c/d", os.ModeDir+os.ModePerm)
-	time.Sleep(10*time.Millisecond)
-	os.Mkdir(tmpFolder + "/a/b/c/d/e", os.ModeDir+os.ModePerm)
-	time.Sleep(10*time.Millisecond)
-	os.Mkdir(tmpFolder + "/a/b/c/d/e/f", os.ModeDir+os.ModePerm)
-	time.Sleep(10*time.Millisecond)
+	os.Mkdir(tmpFolder+"/a", os.ModeDir+os.ModePerm)
+	time.Sleep(10 * time.Millisecond)
+	os.Mkdir(tmpFolder+"/a/b", os.ModeDir+os.ModePerm)
+	time.Sleep(10 * time.Millisecond)
+	os.Mkdir(tmpFolder+"/a/b/c", os.ModeDir+os.ModePerm)
+	time.Sleep(10 * time.Millisecond)
+	os.Mkdir(tmpFolder+"/a/b/c/d", os.ModeDir+os.ModePerm)
+	time.Sleep(10 * time.Millisecond)
+	os.Mkdir(tmpFolder+"/a/b/c/d/e", os.ModeDir+os.ModePerm)
+	time.Sleep(10 * time.Millisecond)
+	os.Mkdir(tmpFolder+"/a/b/c/d/e/f", os.ModeDir+os.ModePerm)
+	time.Sleep(10 * time.Millisecond)
 
 	expectedCreated := 6
 	expectedDeleted := 0

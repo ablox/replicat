@@ -18,6 +18,10 @@ import (
 type ChangeHandler interface {
 	FolderCreated(name string) (err error)
 	FolderDeleted(name string) (err error)
+	FolderUpdated(name string) (err error)
+	FileCreated(name string) (err error)
+	FileDeleted(name string) (err error)
+	FileUpdated(name string) (err error)
 }
 
 // StorageTracker - Listener that allows you to tell the tracker what has happened elsewhere so it can mirror the changes
@@ -43,10 +47,38 @@ func (handler *LogOnlyChangeHandler) FolderDeleted(name string) error {
 	return nil
 }
 
+// FolderUpdated - track a folder being updated
+func (handler *LogOnlyChangeHandler) FolderUpdated(name string) error {
+	fmt.Printf("LogOnlyChangeHandler:FolderUpdated: %s\n", name)
+	return nil
+}
+
+// FileCreated - track a new folder being created
+func (handler *LogOnlyChangeHandler) FileCreated(name string) error {
+	fmt.Printf("LogOnlyChangeHandler:FileCreated: %s\n", name)
+	return nil
+}
+
+// FileDeleted - track a new folder being deleted
+func (handler *LogOnlyChangeHandler) FileDeleted(name string) error {
+	fmt.Printf("LogOnlyChangeHandler:FileDeleted: %s\n", name)
+	return nil
+}
+
+// FileUpdated - track a folder being updated
+func (handler *LogOnlyChangeHandler) FileUpdated(name string) error {
+	fmt.Printf("LogOnlyChangeHandler:FileUpdated: %s\n", name)
+	return nil
+}
+
 // countingChangeHandler - counds the folders created and deleted. Used for testing.
 type countingChangeHandler struct {
 	FoldersCreated int
 	FoldersDeleted int
+	FoldersUpdated int
+	FilesCreated   int
+	FilesUpdated   int
+	FilesDeleted   int
 }
 
 func (handler *countingChangeHandler) FolderCreated(name string) error {
@@ -60,6 +92,34 @@ func (handler *countingChangeHandler) FolderDeleted(name string) error {
 	handler.FoldersDeleted++
 
 	fmt.Printf("countingChangeHandler:FolderDeleted: %s (%d)\n", name, handler.FoldersDeleted)
+	return nil
+}
+
+func (handler *countingChangeHandler) FolderUpdated(name string) error {
+	handler.FoldersUpdated++
+
+	fmt.Printf("countingChangeHandler:FolderUpdated: %s (%d)\n", name, handler.FoldersUpdated)
+	return nil
+}
+
+func (handler *countingChangeHandler) FileCreated(name string) error {
+	handler.FilesCreated++
+
+	fmt.Printf("countingChangeHandler:FileCreated: %s (%d)\n", name, handler.FilesCreated)
+	return nil
+}
+
+func (handler *countingChangeHandler) FileDeleted(name string) error {
+	handler.FilesDeleted++
+
+	fmt.Printf("countingChangeHandler:FileDeleted: %s (%d)\n", name, handler.FilesDeleted)
+	return nil
+}
+
+func (handler *countingChangeHandler) FileUpdated(name string) error {
+	handler.FilesUpdated++
+
+	fmt.Printf("countingChangeHandler:FileUpdated: %s (%d)\n", name, handler.FilesUpdated)
 	return nil
 }
 
@@ -101,7 +161,6 @@ func (handler *FilesystemTracker) printLockable(lock bool) {
 		handler.fsLock.RLock()
 		fmt.Println("FilesystemTracker:/print")
 	}
-
 
 	folders := make([]string, 0, len(handler.contents))
 	for dir := range handler.contents {
@@ -571,6 +630,14 @@ func (handler *FilesystemTracker) processEvent(event Event, pathName, fullPath s
 		fmt.Println("FilesystemTracker:/+processEvent")
 
 		if handler.watcher != nil {
+			if event.IsDirectory {
+				(*handler.watcher).FolderCreated(pathName)
+			} else {
+				(*handler.watcher).FileCreated(pathName)
+			}
+		}
+
+		if handler.watcher != nil {
 			(*handler.watcher).FolderCreated(pathName)
 		}
 		fmt.Printf("notify.Create: Updated value for %s: %v (%t)\n", pathName, updatedValue, exists)
@@ -597,11 +664,18 @@ func (handler *FilesystemTracker) processEvent(event Event, pathName, fullPath s
 		fmt.Printf("notify.Remove: %s (%t)\n", pathName, exists)
 		return
 	case "notify.Rename":
-		// todo fix this to handle the two rename events to be one event
 		fmt.Printf("Rename attempted %v\n", event)
 		handler.handleRename(event, pathName, fullPath)
 	case "notify.Write":
 		fmt.Printf("File updated %v\n", event)
+		if handler.watcher != nil {
+			if event.IsDirectory {
+				(*handler.watcher).FolderUpdated(pathName)
+			} else {
+				(*handler.watcher).FileUpdated(pathName)
+			}
+		}
+
 		SendEvent(event, fullPath)
 	default:
 		// do not send the event if we do not recognize it

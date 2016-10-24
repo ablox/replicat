@@ -36,12 +36,13 @@ func bootstrapAndServe() {
 	trackerTestEmptyDirectoryMovesInOutAround()
 	trackerTestFileChangeTrackerAddFolders()
 	trackerTestSmallFileCreationAndRename()
+	trackerTestSmallFileCreationAndUpdate()
 	trackerTestSmallFileMovesInOutAround()
 	trackerTestDirectoryCreation()
 	trackerTestNestedDirectoryCreation()
 	trackerTestDirectoryStorage()
 	trackerTestFileChangeTrackerAutoCreateFolderAndCleanup()
-	//trackerTestNestedFastDirectoryCreation()
+	trackerTestNestedFastDirectoryCreation()
 
 	// testing code to enable debugger use
 	http.Handle("/event/", httpauth.SimpleBasicAuth("replicat", "isthecat")(http.HandlerFunc(eventHandler)))
