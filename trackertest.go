@@ -155,7 +155,7 @@ func trackerTestFileChangeTrackerAddFolders() {
 		cycleCount++
 
 		if logHandler.FoldersCreated != expectedCreated || logHandler.FoldersDeleted != expectedDeleted {
-			if cycleCount > 20 {
+			if cycleCount > 20 || logHandler.FoldersCreated > expectedCreated || logHandler.FoldersDeleted > expectedDeleted {
 				tracker.printTracker()
 				panic(fmt.Sprintf("Expected/Found created: (%d/%d) deleted: (%d/%d)\n", expectedCreated, logHandler.FoldersCreated, expectedDeleted, logHandler.FoldersDeleted))
 			}
