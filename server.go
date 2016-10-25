@@ -21,11 +21,12 @@ import (
 
 // Event stores the relevant information on events or updates to the storage layer.
 type Event struct {
-	Source      string
-	Name        string
-	Message     string
-	Time        time.Time
-	IsDirectory bool
+	Source        string
+	Name          string
+	Message       string
+	Time          time.Time
+	IsDirectory   bool
+	NetworkSource string
 }
 
 var events = make([]Event, 0, 100)
@@ -39,10 +40,10 @@ type FileEvent struct {
 
 // SendEvent gets events that have happened off to the peer servers so they can replicate the same change
 func SendEvent(event Event, fullPath string) {
-	if globalSettings.Name == "NodeB" {
-		fmt.Printf("Skipping sending from NodeB for test")
-		return
-	}
+	//if globalSettings.Name == "NodeB" {
+	//	fmt.Println("Skipping sending from NodeB for test")
+	//	return
+	//}
 
 	// sendEvent to manager
 	sendEvent(&event, fullPath, globalSettings.ManagerAddress, globalSettings.ManagerCredentials)
