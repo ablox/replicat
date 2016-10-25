@@ -42,7 +42,11 @@ func SendEvent(event Event, fullPath string) {
 	// sendEvent to manager
 	sendEvent(&event, fullPath, globalSettings.ManagerAddress, globalSettings.ManagerCredentials)
 
-	log.Println("We are NodeA send to our peers")
+	if globalSettings.Name == "NodeB" {
+		fmt.Printf("Skipping sending from NodeB for test")
+		return
+	}
+
 	// SendEvent to all peers
 	for k, v := range serverMap {
 		fmt.Printf("Considering sending to: %s\n", k)
