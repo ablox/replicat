@@ -400,7 +400,7 @@ func (handler *FilesystemTracker) monitorLoop(c chan notify.EventInfo) {
 			continue
 		}
 
-		event := Event{Name: ei.Event().String(), Message: path}
+		event := Event{Name: ei.Event().String(), Message: path, Source:globalSettings.Name}
 		log.Printf("Event captured name: %s location: %s, ei.Path(): %s", event.Name, event.Message, ei.Path())
 
 		isDirectory := handler.checkIfDirectory(event, path, fullPath)
