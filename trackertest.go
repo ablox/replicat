@@ -144,7 +144,7 @@ func trackerTestFileChangeTrackerAddFolders() {
 	os.Remove(folder2)
 	fmt.Printf("deleted two folders \n%s\n%s\n", folder1, folder2)
 
-	expectedCreated := numberOfSubFolders
+	expectedCreated := numberOfSubFolders * 2
 	expectedDeleted := 2
 
 	tracker.printTracker()
@@ -446,7 +446,7 @@ func trackerTestNestedDirectoryCreation() {
 	os.Mkdir(tmpFolder+"/a/b/c/d/e/f", os.ModeDir+os.ModePerm)
 	time.Sleep(10 * time.Millisecond)
 
-	expectedCreated := 6
+	expectedCreated := 6 * 2
 	expectedDeleted := 0
 
 	// wait for the final tally to come through.
@@ -493,7 +493,7 @@ func trackerTestNestedFastDirectoryCreation() {
 
 	os.MkdirAll(fullPath, os.ModeDir+os.ModePerm)
 
-	expectedCreated := 6
+	expectedCreated := 6 * 2
 	expectedDeleted := 0
 
 	// wait for the final tally to come through.
