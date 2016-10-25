@@ -22,6 +22,10 @@ func trackerTestEmptyDirectoryMovesInOutAround() {
 	tracker.init(monitoredFolder)
 	defer tracker.cleanup()
 
+	testName := "trackerTestEmptyDirectoryMovesInOutAround"
+	tracker.startTest(testName)
+	defer tracker.endTest(testName)
+
 	logger := &LogOnlyChangeHandler{}
 	var loggerInterface ChangeHandler = logger
 	tracker.watchDirectory(&loggerInterface)
@@ -102,6 +106,10 @@ func trackerTestFileChangeTrackerAddFolders() {
 	tracker := new(FilesystemTracker)
 	tracker.init(tmpFolder)
 	defer tracker.cleanup()
+
+	testName := "trackerTestFileChangeTrackerAddFolders"
+	tracker.startTest(testName)
+	defer tracker.endTest(testName)
 
 	tracker.watchDirectory(&c)
 	fmt.Println("TestFileChangeTrackerAddFolders: Done - About to call watchDirectory")
@@ -189,6 +197,10 @@ func trackerTestSmallFileCreationAndRename() {
 	tracker.init(monitoredFolder)
 	defer tracker.cleanup()
 
+	testName := "trackerTestSmallFileCreationAndRename"
+	tracker.startTest(testName)
+	defer tracker.endTest(testName)
+
 	logger := &LogOnlyChangeHandler{}
 	var loggerInterface ChangeHandler = logger
 	tracker.watchDirectory(&loggerInterface)
@@ -270,6 +282,10 @@ func trackerTestSmallFileCreationAndUpdate() {
 	tracker.init(monitoredFolder)
 	defer tracker.cleanup()
 
+	testName := "trackerTestSmallFileCreationAndUpdate"
+	tracker.startTest(testName)
+	defer tracker.endTest(testName)
+
 	logger := &countingChangeHandler{}
 	var loggerInterface ChangeHandler = logger
 	tracker.watchDirectory(&loggerInterface)
@@ -350,6 +366,10 @@ func trackerTestSmallFileMovesInOutAround() {
 	tracker.init(monitoredFolder)
 	defer tracker.cleanup()
 
+	testName := "trackerTestSmallFileMovesInOutAround"
+	tracker.startTest(testName)
+	defer tracker.endTest(testName)
+
 	logger := &LogOnlyChangeHandler{}
 	var loggerInterface ChangeHandler = logger
 	tracker.watchDirectory(&loggerInterface)
@@ -397,6 +417,10 @@ func trackerTestDirectoryCreation() {
 	tracker.init(tmpFolder)
 	defer tracker.cleanup()
 
+	testName := "trackerTestDirectoryCreation"
+	tracker.startTest(testName)
+	defer tracker.endTest(testName)
+
 	testDirectory := tmpFolder + "/newbie"
 	before, err := os.Stat(testDirectory)
 
@@ -432,6 +456,10 @@ func trackerTestNestedDirectoryCreation() {
 	tracker.init(tmpFolder)
 	tracker.watchDirectory(&c)
 	defer tracker.cleanup()
+
+	testName := "trackerTestNestedDirectoryCreation"
+	tracker.startTest(testName)
+	defer tracker.endTest(testName)
 
 	os.Mkdir(tmpFolder+"/a", os.ModeDir+os.ModePerm)
 	time.Sleep(10 * time.Millisecond)
@@ -488,6 +516,10 @@ func trackerTestNestedFastDirectoryCreation() {
 	tracker.watchDirectory(&c)
 	defer tracker.cleanup()
 
+	testName := "trackerTestNestedFastDirectoryCreation"
+	tracker.startTest(testName)
+	defer tracker.endTest(testName)
+
 	nestedRelativePath := "a/b/c/d/e/f"
 	fullPath := tmpFolder + "/" + nestedRelativePath
 
@@ -528,6 +560,10 @@ func trackerTestDirectoryStorage() {
 	tracker := new(FilesystemTracker)
 	tracker.init(tmpFolder)
 	defer tracker.cleanup()
+
+	testName := "trackerTestDirectoryStorage"
+	tracker.startTest(testName)
+	defer tracker.endTest(testName)
 
 	empty := make([]string, 0)
 	empty = append(empty, ".")
