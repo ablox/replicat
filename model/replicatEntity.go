@@ -1,7 +1,7 @@
 package model
 
 type ReplicatEntityValue struct {
-	hash string
+	hash      string
 	timestamp string
 }
 
