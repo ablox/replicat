@@ -498,7 +498,9 @@ func WaitFor(tracker *FilesystemTracker, folder string, waitingFor bool, helper 
 func (handler *FilesystemTracker) completeRenameIfAbandoned(iNode uint64) {
 	time.Sleep(TRACKER_RENAME_TIMEOUT)
 
-	//todo add locking
+	handler.fsLock.Lock()
+	defer handler.fsLock.Unlock()
+
 	inProgress, exists := handler.renamesInProgress[iNode]
 	if !exists {
 		fmt.Printf("Rename for iNode %d appears to have been completed\n", iNode)
