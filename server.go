@@ -39,13 +39,13 @@ type FileEvent struct {
 
 // SendEvent gets events that have happened off to the peer servers so they can replicate the same change
 func SendEvent(event Event, fullPath string) {
-	// sendEvent to manager
-	sendEvent(&event, fullPath, globalSettings.ManagerAddress, globalSettings.ManagerCredentials)
-
 	if globalSettings.Name == "NodeB" {
 		fmt.Printf("Skipping sending from NodeB for test")
 		return
 	}
+
+	// sendEvent to manager
+	sendEvent(&event, fullPath, globalSettings.ManagerAddress, globalSettings.ManagerCredentials)
 
 	// SendEvent to all peers
 	for k, v := range serverMap {
