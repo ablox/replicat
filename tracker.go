@@ -155,6 +155,16 @@ func (handler *FilesystemTracker) printTracker() {
 	handler.printLockable(false)
 }
 
+func (handler *FilesystemTracker) startTest(name string) {
+	event := Event{Name: "startTest", Message: name, Source: globalSettings.Name}
+	SendEvent(event, "")
+}
+
+func (handler *FilesystemTracker) endTest(name string) {
+	event := Event{Name: "endTest", Message: name, Source: globalSettings.Name}
+	SendEvent(event, "")
+}
+
 func (handler *FilesystemTracker) printLockable(lock bool) {
 	if lock {
 		fmt.Println("FilesystemTracker:print")
