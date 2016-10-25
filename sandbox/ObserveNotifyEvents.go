@@ -1,14 +1,14 @@
 package main
 
 import (
-	"log"
-	"github.com/rjeczalik/notify"
-	"os"
 	"fmt"
-	"time"
+	"github.com/rjeczalik/notify"
+	"io/ioutil"
+	"log"
+	"os"
 	"path/filepath"
 	"strconv"
-	"io/ioutil"
+	"time"
 )
 
 var done = make(chan bool)
@@ -17,7 +17,7 @@ var testDirPath1 = filepath.Join(testDirectory, "mydir1")
 var testTextFilePath1 = filepath.Join(testDirectory, "abc.txt")
 var testTextFilePath2 = filepath.Join(testDirectory, "def.txt")
 
-func main()  {
+func main() {
 	log.Println("Observe Notify Events")
 	log.Println("Create new test directory... ")
 	os.Mkdir(testDirectory, os.ModePerm)
@@ -91,5 +91,3 @@ func monitor() {
 		done <- true
 	}
 }
-
-

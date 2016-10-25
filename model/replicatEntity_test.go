@@ -1,9 +1,9 @@
 package model
 
 import (
-	"testing"
 	"fmt"
 	"strconv"
+	"testing"
 )
 
 func TestReplicatEntity(t *testing.T) {
@@ -15,4 +15,3 @@ func TestReplicatEntity(t *testing.T) {
 	}
 	fmt.Println(entityMap.size())
 }
-
