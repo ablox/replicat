@@ -298,8 +298,8 @@ func validatePath(directory string) (fullPath string) {
 }
 
 // CreatePath tells the storage tracker to create a new path
-func (handler *FilesystemTracker) CreatePath(relativePath string, isDirectory bool) (err error) {
-	fmt.Println("FilesystemTracker:CreatePath")
+func (handler *FilesystemTracker) CreatePath(pathName string, isDirectory bool) (err error) {
+	fmt.Printf("FilesystemTracker:CreatePath called with relativePath: %s isDirectory: %v\n", pathName, isDirectory)
 	handler.fsLock.Lock()
 	defer handler.fsLock.Unlock()
 	fmt.Println("FilesystemTracker:/CreatePath")
@@ -309,44 +309,111 @@ func (handler *FilesystemTracker) CreatePath(relativePath string, isDirectory bo
 		panic("FilesystemTracker:CreatePath called when not yet setup")
 	}
 
-	absolutePath := handler.directory + "/" + relativePath
+	//absolutePath := filepath.Join(handler.directory, pathName)
+	fmt.Printf("about to split: %s\n", pathName)
 
-	creatingType := "File"
-	if isDirectory {
-		creatingType = "Path"
+	relativePathName := pathName
+	file := ""
+
+	if !isDirectory {
+		relativePathName, file = filepath.Split(pathName)
 	}
-	for maxCycles := 0; maxCycles < 0; maxCycles-- {
-		if isDirectory {
-			err = os.MkdirAll(absolutePath, os.ModeDir+os.ModePerm)
-		} else {
-			_, err = os.Create(absolutePath)
-		}
+
+	fmt.Printf("Path name before any adjustments (directory: %v)\npath: %s\nfile: %s\n", isDirectory, relativePathName, file)
+	if len(relativePathName) > 0 && relativePathName[len(relativePathName)-1] == filepath.Separator {
+		fmt.Println("Stripping out path ending")
+		relativePathName = relativePathName[:len(relativePathName)-1]
+	}
+
+	absolutePathName := filepath.Join(handler.directory, relativePathName)
+	fmt.Printf("**********\npath was split into \nrelativePathName: %s \nfile: %s \nabsolutePath: %s\n**********\n", relativePathName, file, absolutePathName)
+
+	var stat os.FileInfo
+	pathCreated := false
+	for maxCycles := 0; maxCycles < 5 && pathName != ""; maxCycles++ {
+		stat, err = os.Stat(pathName)
 
 		if err == nil {
-			fmt.Printf("%s was created: %s\n", creatingType, relativePath)
+			fmt.Printf("Path existed: %s\n", absolutePathName)
+			pathCreated = true
+			break
+		} else {
+			// if there is an error, go to create the path
+			fmt.Printf("Creating path: %s\n", absolutePathName)
+			err = os.MkdirAll(absolutePathName, os.ModeDir+os.ModePerm)
+		}
+
+		// after attempting to create the path, check the err again
+		if err == nil {
+			fmt.Printf("Path was created or existed: %s\n", absolutePathName)
+			pathCreated = true
 			break
 		} else if os.IsExist(err) {
-			fmt.Printf("%s already exists: %s\n", creatingType, relativePath)
+			fmt.Printf("Path already exists: %s\n", absolutePathName)
+			pathCreated = true
 			break
 		}
 
-		fmt.Printf("Error encountered, going to try again. Attempt: %d\n", maxCycles)
+		fmt.Printf("Error (%v) encountered creating path, going to try again. Attempt: %d\n", err, maxCycles)
 		time.Sleep(20 * time.Millisecond)
 	}
 
 	if err != nil && !os.IsExist(err) {
-		panic(fmt.Sprintf("Error creating folder %s: %v\n", absolutePath, err))
+		panic(fmt.Sprintf("Error creating folder %s: %v\n", relativePathName, err))
 	}
 
-	_, exists := handler.contents[relativePath]
-	fmt.Printf("CreatePath: '%s' (%v)\n", relativePath, exists)
+	if pathCreated {
+		//directory := NewDirectoryFromFileInfo(&stat)
+		//directory.FileInfo = stat
+		handler.contents[relativePathName] = *NewDirectoryFromFileInfo(&stat)
+	}
 
-	if !exists {
-		directory := Entry{}
-		directory.FileInfo, err = os.Stat(absolutePath)
-		handler.contents[relativePath] = directory
-	} else {
-		fmt.Printf("for some reason the directory object already exists in the map: %s\n", relativePath)
+	if !isDirectory {
+		completeAbsoluteFilePath := filepath.Join(handler.directory, pathName)
+		fmt.Printf("We are creating a file at: %s\n", completeAbsoluteFilePath)
+
+		// We also need to create the file.
+		for maxCycles := 0; maxCycles < 5; maxCycles++ {
+			stat, err = os.Stat(completeAbsoluteFilePath)
+			fmt.Printf("Stat call done for\npath: %s\nerr: %v\nstat: %v\n", completeAbsoluteFilePath, err, stat)
+			var newFile *os.File
+
+
+
+			//if isDirectory {
+			//	err = os.MkdirAll(absolutePath, os.ModeDir+os.ModePerm)
+			//} else {
+			//	_, err = os.Create(absolutePath)
+			//}
+
+
+			// if there is an error, go to create the file
+			fmt.Println("before")
+			if err != nil {
+				fmt.Printf("Creating file: %s\n", completeAbsoluteFilePath)
+				newFile, err = os.Create(completeAbsoluteFilePath)
+				fmt.Printf("Attempt to create file finished\n err: %v\n path: %s\n", err, completeAbsoluteFilePath)
+			}
+			fmt.Println("after")
+
+			// after attempting to create the file, check the err again
+			if err == nil {
+				newFile.Close()
+				stat, err = os.Stat(completeAbsoluteFilePath)
+				fmt.Printf("file was created or existed: %s\n", completeAbsoluteFilePath)
+				pathCreated = true
+				break
+			}
+
+			fmt.Printf("Error (%v) encountered creating file, going to try again. Attempt: %d\n", err, maxCycles)
+			time.Sleep(20 * time.Millisecond)
+		}
+
+		if err != nil {
+			panic(fmt.Sprintf("Error creating file %s: %v\n", completeAbsoluteFilePath, err))
+		}
+
+		handler.contents[relativePathName] = *NewDirectoryFromFileInfo(&stat)
 	}
 
 	return nil
