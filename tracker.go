@@ -378,6 +378,15 @@ func (handler *FilesystemTracker) CreatePath(pathName string, isDirectory bool) 
 			fmt.Printf("Stat call done for\npath: %s\nerr: %v\nstat: %v\n", completeAbsoluteFilePath, err, stat)
 			var newFile *os.File
 
+
+
+			//if isDirectory {
+			//	err = os.MkdirAll(absolutePath, os.ModeDir+os.ModePerm)
+			//} else {
+			//	_, err = os.Create(absolutePath)
+			//}
+
+
 			// if there is an error, go to create the file
 			fmt.Println("before")
 			if err != nil {
@@ -405,7 +414,6 @@ func (handler *FilesystemTracker) CreatePath(pathName string, isDirectory bool) 
 		}
 
 		handler.contents[relativePathName] = *NewDirectoryFromFileInfo(&stat)
-
 	}
 
 	return nil
