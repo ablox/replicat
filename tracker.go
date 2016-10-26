@@ -382,6 +382,7 @@ func (handler *FilesystemTracker) CreatePath(pathName string, isDirectory bool) 
 			// after attempting to create the file, check the err again
 			if err == nil {
 				newFile.Close()
+				stat, err = os.Stat(completeAbsoluteFilePath)
 				fmt.Printf("file was created or existed: %s\n", completeAbsoluteFilePath)
 				pathCreated = true
 				break
