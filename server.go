@@ -57,6 +57,8 @@ func SendEvent(event Event, fullPath string) {
 				return
 			}
 		}
+	} else {
+		log.Printf("Send event called. No prior owndership: %s\n", fullPath)
 	}
 
 	// At this point, it is our change and our event. Store our ownership
