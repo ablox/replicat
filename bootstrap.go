@@ -32,7 +32,7 @@ type ReplicatServer struct {
 var serverMap = make(map[string]*ReplicatServer)
 var serverMapLock sync.RWMutex
 
-func bootstrapAndServe() {
+func bootstrapAndServe(portRangeBegin, portRangeEnd int) {
 	//trackerTestEmptyDirectoryMovesInOutAround()
 	//trackerTestFileChangeTrackerAddFolders()
 	//trackerTestSmallFileCreationAndRename()
@@ -50,9 +50,18 @@ func bootstrapAndServe() {
 	http.Handle("/config/", httpauth.SimpleBasicAuth("replicat", "isthecat")(http.HandlerFunc(configHandler)))
 	http.Handle("/upload/", httpauth.SimpleBasicAuth("replicat", "isthecat")(http.HandlerFunc(uploadHandler)))
 
-	lsnr, err := net.Listen("tcp4", ":0")
-	if err != nil {
-		fmt.Println("Error listening:", err)
+	var lsnr net.Listener
+	var err error
+	for i := portRangeBegin; i <= portRangeEnd; i++ {
+		lsnr, err = net.Listen("tcp4", ":" + strconv.Itoa(i))
+		if err != nil {
+			fmt.Println("Error listening:", err)
+		} else {
+			break
+		}
+	}
+	if lsnr == nil {
+		fmt.Printf("no ports available: %d - %d\n", portRangeBegin, portRangeEnd)
 		os.Exit(1)
 	}
 	fmt.Println("Listening on:", lsnr.Addr().String())

@@ -18,7 +18,7 @@ func main() {
 
 	SetupCli()
 
-	bootstrapAndServe()
+	bootstrapAndServe(8000, 8016)
 	fmt.Printf("replicat %s online....\n", globalSettings.Name)
 	defer fmt.Println("End of line")
 
