@@ -311,10 +311,27 @@ func (handler *FilesystemTracker) CreatePath(relativePath string, isDirectory bo
 
 	absolutePath := handler.directory + "/" + relativePath
 
+	creatingType := "File"
 	if isDirectory {
-		err = os.MkdirAll(absolutePath, os.ModeDir+os.ModePerm)
-	} else {
-		_, err = os.Create(absolutePath)
+		creatingType = "Path"
+	}
+	for maxCycles := 0; maxCycles < 0; maxCycles-- {
+		if isDirectory {
+			err = os.MkdirAll(absolutePath, os.ModeDir+os.ModePerm)
+		} else {
+			_, err = os.Create(absolutePath)
+		}
+
+		if err == nil {
+			fmt.Printf("%s was created: %s\n", creatingType, relativePath)
+			break
+		} else if os.IsExist(err) {
+			fmt.Printf("%s already exists: %s\n", creatingType, relativePath)
+			break
+		}
+
+		fmt.Printf("Error encountered, going to try again. Attempt: %d\n", maxCycles)
+		time.Sleep(20 * time.Millisecond)
 	}
 
 	if err != nil && !os.IsExist(err) {
