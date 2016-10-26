@@ -356,6 +356,97 @@ func trackerTestSmallFileCreationAndUpdate() {
 
 }
 
+func trackerTestSmallFileInSubfolder() {
+	monitoredFolder, _ := ioutil.TempDir("", "monitored")
+	defer os.RemoveAll(monitoredFolder)
+
+	tracker := new(FilesystemTracker)
+	tracker.init(monitoredFolder)
+	defer tracker.cleanup()
+
+	testName := "trackerTestSmallFileInSubfolder"
+	tracker.startTest(testName)
+	defer tracker.endTest(testName)
+
+	logger := &countingChangeHandler{}
+	var loggerInterface ChangeHandler = logger
+	tracker.watchDirectory(&loggerInterface)
+
+	tracker.printTracker()
+
+	fileName := filepath.Join("subfolder", "happy.txt")
+	fmt.Printf("about to create nested folder: %s\n", fileName)
+
+	// create the subfolder and the file underneath it.
+	tracker.CreatePath(fileName, false)
+
+	time.Sleep(50 * time.Millisecond)
+	tracker.printTracker()
+	tracker.validate()
+
+	//targetMonitoredPath := filepath.Join(monitoredFolder, fileName)
+	//
+	//fmt.Printf("making file: %s\n", targetMonitoredPath)
+	//file, err := os.Create(targetMonitoredPath)
+	//if err != nil {
+	//	panic(err)
+	//}
+	//
+	//sampleFileContents := "This is the content of the file\n"
+	//n, err := file.WriteString(sampleFileContents)
+	//if err != nil {
+	//	panic(err)
+	//}
+	//if n != len(sampleFileContents) {
+	//	panic(fmt.Sprintf("Contents of file not correct length n: %d len: %d\n", n, len(sampleFileContents)))
+	//}
+	//
+	//err = file.Close()
+	//if err != nil {
+	//	panic(err)
+	//}
+	//
+	//helper := func(tracker *FilesystemTracker, path string) bool {
+	//	entry, exists := tracker.contents[path]
+	//	if !exists {
+	//		return false
+	//	}
+	//
+	//	fmt.Printf("entry is: %#v\npath: %s\n", entry, path)
+	//
+	//	return true
+	//}
+	//
+	//if !WaitFor(tracker, fileName, true, helper) {
+	//	panic(fmt.Sprintf("%s not found in contents\ncontents: %v\n", fileName, tracker.contents))
+	//}
+	//
+	//tracker.printTracker()
+	//tracker.validate()
+	//
+	//// Open the file and make a change to make sure the write event is tracked and sent
+	//fmt.Printf("opening file to modify: %s\n", targetMonitoredPath)
+	//file, err = os.OpenFile(targetMonitoredPath, os.O_APPEND|os.O_WRONLY, 0600)
+	//if err != nil {
+	//	panic(err)
+	//}
+	//
+	//_, err = file.WriteString("And we have a second line!!!!\n")
+	//if err != nil {
+	//	panic(err)
+	//}
+	//
+	//fmt.Println("we just wrote the second line...")
+	//file.Close()
+	//fmt.Println("file closed...")
+	//
+	//time.Sleep(50 * time.Millisecond)
+	//if logger.FilesCreated != 1 || logger.FilesUpdated != 2 {
+	//	panic(fmt.Sprintf("Expected created 1 updated 2. Actual Values: \n%#v", logger))
+	//}
+
+}
+
 func trackerTestSmallFileMovesInOutAround() {
 	monitoredFolder, _ := ioutil.TempDir("", "monitored")
 	outsideFolder, _ := ioutil.TempDir("", "outside")
