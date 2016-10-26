@@ -333,8 +333,12 @@ func (handler *FilesystemTracker) CreatePath(pathName string, isDirectory bool) 
 	for maxCycles := 0; maxCycles < 5 && pathName != ""; maxCycles++ {
 		stat, err = os.Stat(pathName)
 
-		// if there is an error, go to create the path
-		if err != nil {
+		if err == nil {
+			fmt.Printf("Path existed: %s\n", absolutePathName)
+			pathCreated = true
+			break
+		} else {
+			// if there is an error, go to create the path
 			fmt.Printf("Creating path: %s\n", absolutePathName)
 			err = os.MkdirAll(absolutePathName, os.ModeDir+os.ModePerm)
 		}
@@ -350,7 +354,7 @@ func (handler *FilesystemTracker) CreatePath(pathName string, isDirectory bool) 
 			break
 		}
 
-		fmt.Printf("Error encountered creating path, going to try again. Attempt: %d\n", maxCycles)
+		fmt.Printf("Error (%v) encountered creating path, going to try again. Attempt: %d\n", err, maxCycles)
 		time.Sleep(20 * time.Millisecond)
 	}
 
