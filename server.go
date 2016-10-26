@@ -16,6 +16,7 @@ import (
 	"net/http"
 	"os"
 	"sort"
+	"sync"
 	"time"
 )
 
@@ -33,10 +34,35 @@ var events = make([]Event, 0, 100)
 
 // SendEvent gets events that have happened off to the peer servers so they can replicate the same change
 func SendEvent(event Event, fullPath string) {
-
 	// look back through the events for a similar event in the recent path.
 	// Set the event source  (server name)
 	event.Source = globalSettings.Name
+	event.Time = time.Now()
+
+	// Get the current owner of this entry if any
+	ownershipLock.RLock()
+	originalEntry, exists := ownership[event.Message]
+	ownershipLock.RUnlock()
+
+	if exists {
+		log.Printf("Original ownership: %#v\n", originalEntry)
+		timeDelta := time.Since(originalEntry.Time)
+		if timeDelta > OWNERSHIP_EXPIRATION_TIMEOUT {
+			log.Printf("Owndership expired. Delta is: %v\n", timeDelta)
+		} else {
+			// At this point, someone owns this item.
+			// If we are not the owner, we are done.
+			if originalEntry.Source != globalSettings.Name {
+				log.Println("We do not own this. Do not send")
+				return
+			}
+		}
+	}
+
+	// At this point, it is our change and our event. Store our ownership
+	ownershipLock.Lock()
+	ownership[event.Message] = event
+	ownershipLock.Unlock()
 
 	// sendEvent to manager
 	sendEvent(&event, fullPath, globalSettings.ManagerAddress, globalSettings.ManagerCredentials)
@@ -84,6 +110,13 @@ func sendEvent(event *Event, fullPath string, address string, credentials string
 	}
 }
 
+var ownership = make(map[string]Event, 100)
+var ownershipLock = sync.RWMutex{}
+
+const (
+	OWNERSHIP_EXPIRATION_TIMEOUT = 5 * time.Second
+)
+
 func eventHandler(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case "GET":
@@ -98,7 +131,18 @@ func eventHandler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		log.Println(event.Name + ", path: " + event.Message)
-		log.Printf("Event info: %v\n", event)
+		log.Printf("Event info: %#v\n", event)
+
+		// At this point, the other side should have ownership of this path.
+		ownershipLock.Lock()
+		originalEntry, exists := ownership[event.Message]
+		if exists {
+			log.Printf("Original ownership: %#v\n", originalEntry)
+		} else {
+			log.Println("No original ownership found")
+		}
+		ownership[event.Message] = event
+		ownershipLock.Unlock()
 
 		pathName := globalSettings.Directory + "/" + event.Message
 		relativePath := event.Message
