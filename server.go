@@ -31,15 +31,12 @@ type Event struct {
 
 var events = make([]Event, 0, 100)
 
-// FileEvent stores the nodeid, string, and time of file related events
-type FileEvent struct {
-	NodeID int32
-	Name   string
-	Time   time.Time
-}
-
 // SendEvent gets events that have happened off to the peer servers so they can replicate the same change
 func SendEvent(event Event, fullPath string) {
+
+	// look back through the events for a similar event in the recent path.
+
+
 	// sendEvent to manager
 	sendEvent(&event, fullPath, globalSettings.ManagerAddress, globalSettings.ManagerCredentials)
 
