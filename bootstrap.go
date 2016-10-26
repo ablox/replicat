@@ -33,6 +33,7 @@ var serverMap = make(map[string]*ReplicatServer)
 var serverMapLock sync.RWMutex
 
 func bootstrapAndServe(portRangeBegin, portRangeEnd int) {
+	//trackerTestSmallFileInSubfolder()
 	//trackerTestEmptyDirectoryMovesInOutAround()
 	//trackerTestFileChangeTrackerAddFolders()
 	//trackerTestSmallFileCreationAndRename()

@@ -19,6 +19,11 @@ func causeFailOnPanic(t *testing.T) {
 	}
 }
 
+func TestTrackerTestSmallFileInSubfolder(t *testing.T) {
+	defer causeFailOnPanic(t)
+	trackerTestSmallFileInSubfolder()
+}
+
 func TestEmptyDirectoryMovesInOutAround(t *testing.T) {
 	defer causeFailOnPanic(t)
 	trackerTestEmptyDirectoryMovesInOutAround()
