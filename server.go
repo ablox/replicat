@@ -35,7 +35,8 @@ var events = make([]Event, 0, 100)
 func SendEvent(event Event, fullPath string) {
 
 	// look back through the events for a similar event in the recent path.
-
+	// Set the event source  (server name)
+	event.Source = globalSettings.Name
 
 	// sendEvent to manager
 	sendEvent(&event, fullPath, globalSettings.ManagerAddress, globalSettings.ManagerCredentials)
@@ -53,9 +54,6 @@ func SendEvent(event Event, fullPath string) {
 func sendEvent(event *Event, fullPath string, address string, credentials string) {
 	url := "http://" + address + "/event/"
 	fmt.Printf("target url: %s\n", url)
-
-	// Set the event source  (server name)
-	event.Source = globalSettings.Name
 
 	jsonStr, _ := json.Marshal(event)
 	req, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonStr))
