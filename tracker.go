@@ -375,13 +375,17 @@ func (handler *FilesystemTracker) CreatePath(pathName string, isDirectory bool) 
 		// We also need to create the file.
 		for maxCycles := 0; maxCycles < 5; maxCycles++ {
 			stat, err = os.Stat(completeAbsoluteFilePath)
+			fmt.Printf("Stat call done for\npath: %s\nerr: %v\nstat: %v\n", completeAbsoluteFilePath, err, stat)
 			var newFile *os.File
 
 			// if there is an error, go to create the file
+			fmt.Println("before")
 			if err != nil {
 				fmt.Printf("Creating file: %s\n", completeAbsoluteFilePath)
 				newFile, err = os.Create(completeAbsoluteFilePath)
+				fmt.Printf("Attempt to create file finished\n err: %v\n path: %s\n", err, completeAbsoluteFilePath)
 			}
+			fmt.Println("after")
 
 			// after attempting to create the file, check the err again
 			if err == nil {
@@ -392,7 +396,7 @@ func (handler *FilesystemTracker) CreatePath(pathName string, isDirectory bool) 
 				break
 			}
 
-			fmt.Printf("Error encountered creating file, going to try again. Attempt: %d\n", maxCycles)
+			fmt.Printf("Error (%v) encountered creating file, going to try again. Attempt: %d\n", err, maxCycles)
 			time.Sleep(20 * time.Millisecond)
 		}
 
