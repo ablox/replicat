@@ -116,6 +116,7 @@ var ownership = make(map[string]Event, 100)
 var ownershipLock = sync.RWMutex{}
 
 const (
+	// OWNERSHIP_EXPIRATION_TIMEOUT - Duration for a replicated change to hold ownership after they make changes. This leaves time for multiple filesystem events to come back without being reported to other nodes
 	OWNERSHIP_EXPIRATION_TIMEOUT = 5 * time.Second
 )
 
