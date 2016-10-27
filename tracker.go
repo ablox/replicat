@@ -309,8 +309,7 @@ func (handler *FilesystemTracker) CreatePath(pathName string, isDirectory bool) 
 		panic("FilesystemTracker:CreatePath called when not yet setup")
 	}
 
-	//absolutePath := filepath.Join(handler.directory, pathName)
-	fmt.Printf("about to split: %s\n", pathName)
+	//fmt.Printf("about to split: %s\n", pathName)
 
 	relativePathName := pathName
 	file := ""
@@ -319,7 +318,7 @@ func (handler *FilesystemTracker) CreatePath(pathName string, isDirectory bool) 
 		relativePathName, file = filepath.Split(pathName)
 	}
 
-	fmt.Printf("Path name before any adjustments (directory: %v)\npath: %s\nfile: %s\n", isDirectory, relativePathName, file)
+	//fmt.Printf("Path name before any adjustments (directory: %v)\npath: %s\nfile: %s\n", isDirectory, relativePathName, file)
 	if len(relativePathName) > 0 && relativePathName[len(relativePathName)-1] == filepath.Separator {
 		fmt.Println("Stripping out path ending")
 		relativePathName = relativePathName[:len(relativePathName)-1]
@@ -363,8 +362,6 @@ func (handler *FilesystemTracker) CreatePath(pathName string, isDirectory bool) 
 	}
 
 	if pathCreated {
-		//directory := NewDirectoryFromFileInfo(&stat)
-		//directory.FileInfo = stat
 		handler.contents[relativePathName] = *NewDirectoryFromFileInfo(&stat)
 	}
 
@@ -377,12 +374,6 @@ func (handler *FilesystemTracker) CreatePath(pathName string, isDirectory bool) 
 			stat, err = os.Stat(completeAbsoluteFilePath)
 			fmt.Printf("Stat call done for\npath: %s\nerr: %v\nstat: %v\n", completeAbsoluteFilePath, err, stat)
 			var newFile *os.File
-
-			//if isDirectory {
-			//	err = os.MkdirAll(absolutePath, os.ModeDir+os.ModePerm)
-			//} else {
-			//	_, err = os.Create(absolutePath)
-			//}
 
 			// if there is an error, go to create the file
 			fmt.Println("before")
@@ -398,7 +389,6 @@ func (handler *FilesystemTracker) CreatePath(pathName string, isDirectory bool) 
 				newFile.Close()
 				stat, err = os.Stat(completeAbsoluteFilePath)
 				fmt.Printf("file was created or existed: %s\n", completeAbsoluteFilePath)
-				pathCreated = true
 				break
 			}
 
@@ -652,11 +642,6 @@ func (handler *FilesystemTracker) handleRename(event Event, pathName, fullPath s
 	}
 
 	inProgress, _ := handler.renamesInProgress[iNode]
-	//inProgress, found := handler.renamesInProgress[iNode]
-	//fmt.Printf("^^^^^^^retrieving under iNode: %d (found %v) saved transfer inProgress: %v\n", iNode, found, inProgress)
-
-	//startedWithSourceSet := inProgress.sourceSet
-	//fmt.Printf("^^^^^^^tmpSourceSet: %v (started: %v) tmpDestinationSet: %v\n", tmpSourceSet, startedWithSourceSet, tmpDestinationSet)
 
 	if !inProgress.sourceSet && tmpSourceSet {
 		inProgress.sourceDirectory = &tmpSourceDirectory
@@ -843,7 +828,7 @@ func (handler *FilesystemTracker) scanFolders() error {
 	return nil
 }
 
-//
+// old code that handled periodic scanning of the entire watched folder to change to match
 //dotCount := 0
 //sleepSeconds := time.Duration(25 + rand.Intn(10))
 //fmt.Printf("Full Sync time set to: %d seconds\n", sleepSeconds)
