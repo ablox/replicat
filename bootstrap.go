@@ -54,7 +54,7 @@ func bootstrapAndServe(portRangeBegin, portRangeEnd int) {
 	var lsnr net.Listener
 	var err error
 	for i := portRangeBegin; i <= portRangeEnd; i++ {
-		lsnr, err = net.Listen("tcp4", ":" + strconv.Itoa(i))
+		lsnr, err = net.Listen("tcp4", ":"+strconv.Itoa(i))
 		if err != nil {
 			fmt.Println("Error listening:", err)
 		} else {

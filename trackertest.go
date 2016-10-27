@@ -384,7 +384,6 @@ func trackerTestSmallFileInSubfolder() {
 	tracker.printTracker()
 	tracker.validate()
 
-
 	// todo complete this test. The folder needs to be there and the single file need to be there.
 }
 
