@@ -13,7 +13,6 @@ import (
 	"net"
 	"net/http"
 	"os"
-	"strconv"
 	"sync"
 )
 
@@ -64,7 +63,7 @@ func bootstrapAndServe(address string) {
 	c = &logOnlyHandler
 	tracker.watchDirectory(&c)
 
-	serverMap[globalSettings.Name] = &ReplicatServer{Name: globalSettings.Name, Address: "127.0.0.1:" + strconv.Itoa(lsnr.Addr().(*net.TCPAddr).Port), storage: &tracker}
+	serverMap[globalSettings.Name] = &ReplicatServer{Name: globalSettings.Name, Address: lsnr.Addr().String(), storage: &tracker}
 
 	go func(lsnr net.Listener) {
 		err = http.Serve(lsnr, nil)

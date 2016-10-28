@@ -1,9 +1,9 @@
 {
   "Directory": "/home/ray/foo1",
-  "ManagerAddress": "localhost:8080",
+  "ManagerAddress": "10.1.10.244:8080",
   "ManagerCredentials": "replicat:isthecat",
-  "Address" : ":8801",
-  "Name" : "nodeA",
+  "Address" : "10.1.10.108:8801",
+  "Name" : "nodeRayA",
   "PeersAddresses": [
     ":8802"
   ]
