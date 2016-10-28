@@ -32,7 +32,7 @@ type ReplicatServer struct {
 var serverMap = make(map[string]*ReplicatServer)
 var serverMapLock sync.RWMutex
 
-func bootstrapAndServe(portRangeBegin, portRangeEnd int) {
+func bootstrapAndServe(address string) {
 	//trackerTestSmallFileInSubfolder()
 	//trackerTestEmptyDirectoryMovesInOutAround()
 	//trackerTestFileChangeTrackerAddFolders()
@@ -51,19 +51,9 @@ func bootstrapAndServe(portRangeBegin, portRangeEnd int) {
 	http.Handle("/config/", httpauth.SimpleBasicAuth("replicat", "isthecat")(http.HandlerFunc(configHandler)))
 	http.Handle("/upload/", httpauth.SimpleBasicAuth("replicat", "isthecat")(http.HandlerFunc(uploadHandler)))
 
-	var lsnr net.Listener
-	var err error
-	for i := portRangeBegin; i <= portRangeEnd; i++ {
-		lsnr, err = net.Listen("tcp4", ":"+strconv.Itoa(i))
-		if err != nil {
-			fmt.Println("Error listening:", err)
-		} else {
-			break
-		}
-	}
-	if lsnr == nil {
-		fmt.Printf("no ports available: %d - %d\n", portRangeBegin, portRangeEnd)
-		os.Exit(1)
+	lsnr, err := net.Listen("tcp4", address)
+	if err != nil {
+		fmt.Println("Error listening:", err)
 	}
 	fmt.Println("Listening on:", lsnr.Addr().String())
 
@@ -87,8 +77,11 @@ func bootstrapAndServe(portRangeBegin, portRangeEnd int) {
 	go configUpdateProcessor(configUpdateChannel)
 
 	fmt.Println("about to send config to server")
-	go sendConfigToServer()
-	fmt.Printf("config sent to server with address: %s\n", lsnr.Addr())
+
+	if globalSettings.ManagerAddress != "" {
+		go sendConfigToServer()
+		fmt.Printf("config sent to server with address: %s\n", lsnr.Addr())
+	}
 }
 
 func sendConfigToServer() {

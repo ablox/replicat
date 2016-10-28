@@ -5,6 +5,7 @@ package main
 import (
 	"github.com/urfave/cli"
 	"os"
+	"encoding/json"
 )
 
 // Settings for the server
@@ -14,15 +15,10 @@ type Settings struct {
 	ManagerCredentials string
 	Address            string
 	Name               string
+	PeersAddresses     []string
 }
 
-var globalSettings Settings = Settings{
-	Directory:          "",
-	ManagerAddress:     "localhost:8080",
-	ManagerCredentials: "replicat:isthecat",
-	Address:            ":8001",
-	Name:               "",
-}
+var globalSettings Settings
 
 // SetupCli sets up the command line environment. Provide help and read the settings in.
 func SetupCli() {
@@ -31,11 +27,33 @@ func SetupCli() {
 	app.Name = "Replicat"
 	app.Usage = "rsync for the cloud"
 	app.Action = func(c *cli.Context) error {
-		globalSettings.Directory = c.GlobalString("directory")
-		globalSettings.ManagerAddress = c.GlobalString("manager")
-		globalSettings.ManagerCredentials = c.GlobalString("manager_credentials")
-		globalSettings.Address = c.GlobalString("address")
-		globalSettings.Name = c.GlobalString("name")
+
+		if c.GlobalString("config") != "" {
+			configFile, err := os.Open(c.GlobalString("config"))
+			if err != nil {
+				panic("cannot load config file.")
+			}
+			jsonParser := json.NewDecoder(configFile)
+			if err = jsonParser.Decode(&globalSettings); err != nil {
+				panic("cannot decode config file.")
+			}
+		}
+
+		if c.GlobalString("directory") != "" {
+			globalSettings.Directory = c.GlobalString("directory")
+		}
+		if c.GlobalString("manager") != "" {
+			globalSettings.ManagerAddress = c.GlobalString("manager")
+		}
+		if c.GlobalString("manager_credentials") != "" {
+			globalSettings.ManagerCredentials = c.GlobalString("manager_credentials")
+		}
+		if c.GlobalString("address") != "" {
+			globalSettings.Address = c.GlobalString("address")
+		}
+		if c.GlobalString("name") != "" {
+			globalSettings.Name = c.GlobalString("name")
+		}
 
 		if globalSettings.Directory == "" {
 			panic("directory is required to serve files\n")
@@ -49,6 +67,12 @@ func SetupCli() {
 	}
 
 	app.Flags = []cli.Flag{
+		cli.StringFlag{
+			Name:   "config, c",
+			Value:  globalSettings.Directory,
+			Usage:  "Specify a path to a config file.",
+			EnvVar: "config, c",
+		},
 		cli.StringFlag{
 			Name:   "directory, d",
 			Value:  globalSettings.Directory,
