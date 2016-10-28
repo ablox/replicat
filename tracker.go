@@ -228,7 +228,7 @@ func (handler *FilesystemTracker) init(directory string) {
 	fullPath := validatePath(directory)
 	handler.directory = fullPath
 
-	if fullPath != globalSettings.Directory {
+	if fullPath != globalSettings.Nodes[globalSettings.Name].Directory {
 		fmt.Printf("Updating serving directory to: %s\n", fullPath)
 		handler.directory = fullPath
 	}

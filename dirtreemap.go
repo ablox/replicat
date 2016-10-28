@@ -133,7 +133,7 @@ func checkForChanges(originalState, newState DirTreeMap) (changed bool, updatedS
 
 func scanDirectoryContents() (DirTreeMap, error) {
 	pendingPaths := make([]string, 0, 100)
-	pendingPaths = append(pendingPaths, globalSettings.Directory)
+	pendingPaths = append(pendingPaths, globalSettings.Nodes[globalSettings.Name].Directory)
 	listOfFileInfo := make(DirTreeMap)
 
 	for len(pendingPaths) > 0 {
@@ -167,7 +167,7 @@ func scanDirectoryContents() (DirTreeMap, error) {
 
 		// Strip the base path off of the current path
 		// make sure all of the paths are still '/' prefixed
-		relativePath := currentPath[len(globalSettings.Directory):]
+		relativePath := currentPath[len(globalSettings.Nodes[globalSettings.Name].Directory):]
 		if relativePath == "" {
 			relativePath = "/"
 		}

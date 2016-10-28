@@ -9,13 +9,16 @@ import (
 )
 
 // Settings for the server
-type Settings struct {
+type Node struct {
 	Directory          string
+	Address            string
+}
+
+type Settings struct {
+	Name			   string
 	ManagerAddress     string
 	ManagerCredentials string
-	Address            string
-	Name               string
-	PeersAddresses     []string
+	Nodes		       map[string]Node
 }
 
 var globalSettings Settings
@@ -28,6 +31,14 @@ func SetupCli() {
 	app.Usage = "rsync for the cloud"
 	app.Action = func(c *cli.Context) error {
 
+		if c.GlobalString("name") != "" {
+			globalSettings.Name = c.GlobalString("name")
+		}
+
+		if globalSettings.Name == "" {
+			panic("Name is currently a required parameter. Name has to be one of the predefined names (e.g. NodeA, NodeB). This will improve.\n")
+		}
+
 		if c.GlobalString("config") != "" {
 			configFile, err := os.Open(c.GlobalString("config"))
 			if err != nil {
@@ -39,28 +50,20 @@ func SetupCli() {
 			}
 		}
 
-		if c.GlobalString("directory") != "" {
-			globalSettings.Directory = c.GlobalString("directory")
+		node := globalSettings.Nodes[globalSettings.Name]
+		if c.GlobalString("address") != "" {
+			node.Address = c.GlobalString("address")
 		}
+		if c.GlobalString("directory") != "" {
+			node.Directory = c.GlobalString("directory")
+		}
+		globalSettings.Nodes[globalSettings.Name] = node
+
 		if c.GlobalString("manager") != "" {
 			globalSettings.ManagerAddress = c.GlobalString("manager")
 		}
 		if c.GlobalString("manager_credentials") != "" {
 			globalSettings.ManagerCredentials = c.GlobalString("manager_credentials")
-		}
-		if c.GlobalString("address") != "" {
-			globalSettings.Address = c.GlobalString("address")
-		}
-		if c.GlobalString("name") != "" {
-			globalSettings.Name = c.GlobalString("name")
-		}
-
-		if globalSettings.Directory == "" {
-			panic("directory is required to serve files\n")
-		}
-
-		if globalSettings.Name == "" {
-			panic("Name is currently a required parameter. Name has to be one of the predefined names (e.g. NodeA, NodeB). This will improve.\n")
 		}
 
 		return nil
@@ -69,13 +72,11 @@ func SetupCli() {
 	app.Flags = []cli.Flag{
 		cli.StringFlag{
 			Name:   "config, c",
-			Value:  globalSettings.Directory,
 			Usage:  "Specify a path to a config file.",
 			EnvVar: "config, c",
 		},
 		cli.StringFlag{
 			Name:   "directory, d",
-			Value:  globalSettings.Directory,
 			Usage:  "Specify a directory where the files to share are located.",
 			EnvVar: "directory, d",
 		},
@@ -93,7 +94,6 @@ func SetupCli() {
 		},
 		cli.StringFlag{
 			Name:   "address, a",
-			Value:  globalSettings.Address,
 			Usage:  "Specify a listen address for this node. e.g. '127.0.0.1:8000' or ':8000' for where updates are accepted from",
 			EnvVar: "address, a",
 		},
