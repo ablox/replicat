@@ -1,0 +1,10 @@
+{
+  "Directory": "/home/ray/foo2",
+  "ManagerAddress": "localhost:8080",
+  "ManagerCredentials": "replicat:isthecat",
+  "Address" : ":8802",
+  "Name" : "nodeB",
+  "PeersAddresses": [
+    ":8801"
+  ]
+}
