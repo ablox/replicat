@@ -15,7 +15,6 @@ type Settings struct {
 	ManagerEnabled     bool
 	Address            string
 	Name               string
-	BootstrapAddress   string
 }
 
 var globalSettings Settings = Settings{
@@ -24,7 +23,6 @@ var globalSettings Settings = Settings{
 	ManagerCredentials: "replicat:isthecat",
 	Address:            ":8001",
 	Name:               "",
-	BootstrapAddress:   ":8080",
 }
 
 // SetupCli sets up the command line environment. Provide help and read the settings in.
@@ -39,7 +37,6 @@ func SetupCli() {
 		globalSettings.ManagerCredentials = c.GlobalString("manager_credentials")
 		globalSettings.Address = c.GlobalString("address")
 		globalSettings.Name = c.GlobalString("name")
-		globalSettings.BootstrapAddress = c.GlobalString("bootstrap_address")
 
 		if globalSettings.Directory == "" {
 			panic("directory is required to serve files\n")
@@ -82,12 +79,6 @@ func SetupCli() {
 			Value:  globalSettings.Name,
 			Usage:  "Specify a name for this node. e.g. 'NodeA' or 'NodeB'",
 			EnvVar: "name, n",
-		},
-		cli.StringFlag{
-			Name:   "bootstrap_address, ba",
-			Value:  globalSettings.BootstrapAddress,
-			Usage:  "Specify a bootstrap address. e.g. '10.10.10.10:12345'",
-			EnvVar: "bootstrap_address, ba",
 		},
 	}
 
