@@ -3,22 +3,22 @@
 package main
 
 import (
+	"encoding/json"
 	"github.com/urfave/cli"
 	"os"
-	"encoding/json"
 )
 
 // Settings for the server
 type Node struct {
-	Directory          string
-	Address            string
+	Directory string
+	Address   string
 }
 
 type Settings struct {
-	Name			   string
+	Name               string
 	ManagerAddress     string
 	ManagerCredentials string
-	Nodes		       map[string]Node
+	Nodes              map[string]Node
 }
 
 var globalSettings Settings
