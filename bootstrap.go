@@ -92,7 +92,7 @@ func bootstrapAndServe(portRangeBegin, portRangeEnd int) {
 }
 
 func sendConfigToServer() {
-	url := "http://" + globalSettings.BootstrapAddress + "/config/"
+	url := "http://" + globalSettings.ManagerAddress + "/config/"
 	fmt.Printf("Manager location: %s\n", url)
 
 	jsonStr, _ := json.Marshal(serverMap[globalSettings.Name])
