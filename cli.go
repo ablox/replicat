@@ -12,7 +12,6 @@ type Settings struct {
 	Directory          string
 	ManagerAddress     string
 	ManagerCredentials string
-	ManagerEnabled     bool
 	Address            string
 	Name               string
 }
