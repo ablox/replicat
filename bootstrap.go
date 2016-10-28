@@ -58,7 +58,7 @@ func bootstrapAndServe(address string) {
 
 	logOnlyHandler := LogOnlyChangeHandler{}
 	tracker := FilesystemTracker{}
-	tracker.init(globalSettings.Directory)
+	tracker.init(globalSettings.Nodes[globalSettings.Name].Directory)
 	var c ChangeHandler
 	c = &logOnlyHandler
 	tracker.watchDirectory(&c)
@@ -117,9 +117,9 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprint(w, handler.Header)
 
 		hash := r.Form.Get("HASH")
-		myHash, _ := fileMd5Hash(globalSettings.Directory + "/" + handler.Filename)
+		myHash, _ := fileMd5Hash(globalSettings.Nodes[globalSettings.Name].Directory + "/" + handler.Filename)
 		if hash != myHash {
-			f, err := os.OpenFile(globalSettings.Directory+"/"+handler.Filename, os.O_WRONLY|os.O_CREATE, 0666)
+			f, err := os.OpenFile(globalSettings.Nodes[globalSettings.Name].Directory+"/"+handler.Filename, os.O_WRONLY|os.O_CREATE, 0666)
 
 			if err != nil {
 				fmt.Println(err)

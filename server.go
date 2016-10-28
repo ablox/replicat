@@ -147,7 +147,7 @@ func eventHandler(w http.ResponseWriter, r *http.Request) {
 		ownership[event.Message] = event
 		ownershipLock.Unlock()
 
-		pathName := globalSettings.Directory + "/" + event.Message
+		pathName := globalSettings.Nodes[globalSettings.Name].Directory + "/" + event.Message
 		relativePath := event.Message
 
 		//todo remember these events and skip the logging on the other side. Possibly use nodeID?
@@ -256,7 +256,7 @@ func getListOfFolders(w http.ResponseWriter) {
 }
 
 func deletePaths(deletedPaths []string) {
-	if globalSettings.Directory == "" {
+	if globalSettings.Nodes[globalSettings.Name].Directory == "" {
 		panic("globalSettings.Directory is not configured correctly. Aborting")
 	}
 
@@ -271,7 +271,7 @@ func deletePaths(deletedPaths []string) {
 			fmt.Printf("We had a request to delete the base path. Skipping: %s\n", relativePath)
 			continue
 		}
-		fullPath := globalSettings.Directory + relativePath
+		fullPath := globalSettings.Nodes[globalSettings.Name].Directory + relativePath
 		fmt.Printf("Full path is: %s\n", fullPath)
 
 		fmt.Printf("%s: about to remove\n", fullPath)
@@ -311,7 +311,7 @@ func folderTreeHandler(w http.ResponseWriter, r *http.Request) {
 
 		var remoteTree = make(DirTreeMap)
 		for key, value := range remoteTreePreTranslate {
-			key = fmt.Sprintf("%s/%s", globalSettings.Directory, key)
+			key = fmt.Sprintf("%s/%s", globalSettings.Nodes[globalSettings.Name].Directory, key)
 			remoteTree[key] = value
 		}
 
