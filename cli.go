@@ -8,12 +8,13 @@ import (
 	"os"
 )
 
-// Settings for the server
+// Node Details for a single replicat node
 type Node struct {
 	Directory string
 	Address   string
 }
 
+// Settings - for the server. including a map of the nodes
 type Settings struct {
 	Name               string
 	ManagerAddress     string
