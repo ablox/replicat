@@ -156,13 +156,19 @@ func (handler *FilesystemTracker) printTracker() {
 }
 
 func (handler *FilesystemTracker) startTest(name string) {
-	event := Event{Name: "startTest", Message: name, Source: globalSettings.Name}
+	event := Event{Name: "startTest", Path: name, Source: globalSettings.Name}
 	SendEvent(event, "")
 }
 
 func (handler *FilesystemTracker) endTest(name string) {
-	event := Event{Name: "endTest", Message: name, Source: globalSettings.Name}
+	event := Event{Name: "endTest", Path: name, Source: globalSettings.Name}
 	SendEvent(event, "")
+}
+
+func (handler *FilesystemTracker) sendFileMoved(source, destination string) {
+	//event := Event{Name: "endTest", Message: name, Source: globalSettings.Name}
+	//SendEvent(event, "")
+	panic("Not done yet....")
 }
 
 func (handler *FilesystemTracker) printLockable(lock bool) {
@@ -481,8 +487,8 @@ func (handler *FilesystemTracker) monitorLoop(c chan notify.EventInfo) {
 			continue
 		}
 
-		event := Event{Name: ei.Event().String(), Message: path, Source: globalSettings.Name}
-		log.Printf("Event captured name: %s location: %s, ei.Path(): %s", event.Name, event.Message, ei.Path())
+		event := Event{Name: ei.Event().String(), Path: path, Source: globalSettings.Name}
+		log.Printf("Event captured name: %s location: %s, ei.Path(): %s", event.Name, event.Path, ei.Path())
 
 		isDirectory := handler.checkIfDirectory(event, path, fullPath)
 		event.IsDirectory = isDirectory
@@ -669,8 +675,11 @@ func (handler *FilesystemTracker) handleRename(event Event, pathName, fullPath s
 		handler.contents[relativeDestination] = *NewDirectoryFromFileInfo(&inProgress.destinationStat)
 		delete(handler.contents, relativeSource)
 		delete(handler.renamesInProgress, iNode)
+
+		// tell the other nodes that a rename was done.
+
+
 	} else {
-		//todo schedule this for destruction
 		fmt.Printf("^^^^^^^We do not have both a source and destination - schedule and save under iNode: %d Current transfer is: %#v\n", iNode, inProgress)
 		inProgress.iNode = iNode
 		handler.renamesInProgress[iNode] = inProgress

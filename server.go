@@ -24,7 +24,7 @@ import (
 type Event struct {
 	Source        string
 	Name          string
-	Message       string
+	Path          string
 	Time          time.Time
 	IsDirectory   bool
 	NetworkSource string
@@ -42,7 +42,7 @@ func SendEvent(event Event, fullPath string) {
 
 	// Get the current owner of this entry if any
 	ownershipLock.RLock()
-	originalEntry, exists := ownership[event.Message]
+	originalEntry, exists := ownership[event.Path]
 	ownershipLock.RUnlock()
 
 	if exists {
@@ -64,7 +64,7 @@ func SendEvent(event Event, fullPath string) {
 
 	// At this point, it is our change and our event. Store our ownership
 	ownershipLock.Lock()
-	ownership[event.Message] = event
+	ownership[event.Path] = event
 	ownershipLock.Unlock()
 
 	// sendEvent to manager
@@ -109,7 +109,7 @@ func sendEvent(event *Event, fullPath string, address string, credentials string
 	if event.Name == "notify.Write" {
 		fmt.Printf("source: notify.Write => %s\n", fullPath)
 		url := "http://" + address + "/upload/"
-		postFile(event.Message, fullPath, url, credentials)
+		postFile(event.Path, fullPath, url, credentials)
 	}
 }
 
@@ -134,22 +134,22 @@ func eventHandler(w http.ResponseWriter, r *http.Request) {
 			panic("bad json body")
 		}
 
-		log.Println(event.Name + ", path: " + event.Message)
+		log.Println(event.Name + ", path: " + event.Path)
 		log.Printf("Event info: %#v\n", event)
 
 		// At this point, the other side should have ownership of this path.
 		ownershipLock.Lock()
-		originalEntry, exists := ownership[event.Message]
+		originalEntry, exists := ownership[event.Path]
 		if exists {
 			log.Printf("Original ownership: %#v\n", originalEntry)
 		} else {
 			log.Println("No original ownership found")
 		}
-		ownership[event.Message] = event
+		ownership[event.Path] = event
 		ownershipLock.Unlock()
 
-		pathName := globalSettings.Nodes[globalSettings.Name].Directory + "/" + event.Message
-		relativePath := event.Message
+		pathName := globalSettings.Nodes[globalSettings.Name].Directory + "/" + event.Path
+		relativePath := event.Path
 
 		//todo remember these events and skip the logging on the other side. Possibly use nodeID?
 
