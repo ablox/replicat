@@ -27,6 +27,7 @@ type ChangeHandler interface {
 // StorageTracker - Listener that allows you to tell the tracker what has happened elsewhere so it can mirror the changes
 type StorageTracker interface {
 	CreatePath(relativePath string, isDirectory bool) (err error)
+	Rename(sourcePath string, destinationPath string, isDirectory bool) (err error)
 	DeleteFolder(name string) (err error)
 	ListFolders() (folderList []string)
 }
@@ -412,6 +413,49 @@ func (handler *FilesystemTracker) CreatePath(pathName string, isDirectory bool) 
 	return nil
 }
 
+func (handler *FilesystemTracker) Rename(sourcePath string, destinationPath string, isDirectory bool) (err error) {
+	fmt.Println("FilesystemTracker:Rename")
+	handler.fsLock.Lock()
+	defer handler.fsLock.Unlock()
+	fmt.Println("FilesystemTracker:/Rename")
+	defer fmt.Println("FilesystemTracker://Rename")
+
+	fmt.Printf("We have a rename event. source: %s dest: %s directory %v\n", sourcePath, destinationPath, isDirectory)
+
+	if !handler.setup {
+		panic("FilesystemTracker:CreatePath called when not yet setup")
+	}
+
+	if sourcePath == "" || destinationPath == "" {
+		panic("Source or destination path not set in rename handler")
+	}
+
+	// First we do the simple rename where both sides are here.
+	absoluteSourcePath := filepath.Join(handler.directory, sourcePath)
+	absoluteDestinationPath := filepath.Join(handler.directory, destinationPath)
+
+	for maxCycles := 0; maxCycles < 5; maxCycles++ {
+		err = os.Rename(absoluteSourcePath, absoluteDestinationPath)
+
+		// after attempting to create the path, check the err again
+		if err == nil {
+			fmt.Println("Rename Complete")
+			break
+		}
+
+		fmt.Printf("Error (%v) encountered moving path, going to try again. Attempt: %d\n", err, maxCycles)
+		time.Sleep(20 * time.Millisecond)
+	}
+
+	if err != nil {
+		panic(fmt.Sprintf("Rename failed (%v)!  source: %s dest: %s directory %v\n", err, sourcePath, destinationPath, isDirectory))
+	}
+
+	fmt.Printf("Rename Complete source: %s dest: %s directory %v\n", sourcePath, destinationPath, isDirectory)
+
+	return
+}
+
 // DeleteFolder - This storage handler should remove the specified path
 func (handler *FilesystemTracker) DeleteFolder(name string) error {
 	fmt.Println("FilesystemTracker:DeleteFolder")
@@ -677,7 +721,9 @@ func (handler *FilesystemTracker) handleRename(event Event, pathName, fullPath s
 		delete(handler.renamesInProgress, iNode)
 
 		// tell the other nodes that a rename was done.
-
+		event := Event{Name: "replicat.Rename", Path: relativeDestination, Source: globalSettings.Name, SourcePath: relativeSource}
+		// todo - verify relativeDestination is the right thing to send here
+		SendEvent(event, relativeDestination)
 
 	} else {
 		fmt.Printf("^^^^^^^We do not have both a source and destination - schedule and save under iNode: %d Current transfer is: %#v\n", iNode, inProgress)
@@ -764,6 +810,7 @@ func (handler *FilesystemTracker) processEvent(event Event, pathName, fullPath s
 		}
 
 		SendEvent(event, fullPath)
+
 	default:
 		// do not send the event if we do not recognize it
 		//SendEvent(event)
