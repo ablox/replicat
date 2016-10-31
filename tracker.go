@@ -166,12 +166,6 @@ func (handler *FilesystemTracker) endTest(name string) {
 	SendEvent(event, "")
 }
 
-func (handler *FilesystemTracker) sendFileMoved(source, destination string) {
-	//event := Event{Name: "endTest", Message: name, Source: globalSettings.Name}
-	//SendEvent(event, "")
-	panic("Not done yet....")
-}
-
 func (handler *FilesystemTracker) printLockable(lock bool) {
 	if lock {
 		fmt.Println("FilesystemTracker:print")
@@ -304,20 +298,8 @@ func validatePath(directory string) (fullPath string) {
 	return
 }
 
-// CreatePath tells the storage tracker to create a new path
-func (handler *FilesystemTracker) CreatePath(pathName string, isDirectory bool) (err error) {
-	fmt.Printf("FilesystemTracker:CreatePath called with relativePath: %s isDirectory: %v\n", pathName, isDirectory)
-	handler.fsLock.Lock()
-	defer handler.fsLock.Unlock()
-	fmt.Println("FilesystemTracker:/CreatePath")
-	defer fmt.Println("FilesystemTracker://CreatePath")
-
-	if !handler.setup {
-		panic("FilesystemTracker:CreatePath called when not yet setup")
-	}
-
-	//fmt.Printf("about to split: %s\n", pathName)
-
+// createPath implements the new path/file creation. Locking is done outside this call.
+func (handler *FilesystemTracker) createPath(pathName string, isDirectory bool) (err error) {
 	relativePathName := pathName
 	file := ""
 
@@ -326,9 +308,9 @@ func (handler *FilesystemTracker) CreatePath(pathName string, isDirectory bool) 
 	}
 
 	//fmt.Printf("Path name before any adjustments (directory: %v)\npath: %s\nfile: %s\n", isDirectory, relativePathName, file)
-	if len(relativePathName) > 0 && relativePathName[len(relativePathName)-1] == filepath.Separator {
+	if len(relativePathName) > 0 && relativePathName[len(relativePathName) - 1] == filepath.Separator {
 		fmt.Println("Stripping out path ending")
-		relativePathName = relativePathName[:len(relativePathName)-1]
+		relativePathName = relativePathName[:len(relativePathName) - 1]
 	}
 
 	absolutePathName := filepath.Join(handler.directory, relativePathName)
@@ -346,7 +328,7 @@ func (handler *FilesystemTracker) CreatePath(pathName string, isDirectory bool) 
 		} else {
 			// if there is an error, go to create the path
 			fmt.Printf("Creating path: %s\n", absolutePathName)
-			err = os.MkdirAll(absolutePathName, os.ModeDir+os.ModePerm)
+			err = os.MkdirAll(absolutePathName, os.ModeDir + os.ModePerm)
 		}
 
 		// after attempting to create the path, check the err again
@@ -410,25 +392,25 @@ func (handler *FilesystemTracker) CreatePath(pathName string, isDirectory bool) 
 		handler.contents[relativePathName] = *NewDirectoryFromFileInfo(&stat)
 	}
 
-	return nil
+	return
 }
 
-func (handler *FilesystemTracker) Rename(sourcePath string, destinationPath string, isDirectory bool) (err error) {
-	fmt.Println("FilesystemTracker:Rename")
+// CreatePath tells the storage tracker to create a new path
+func (handler *FilesystemTracker) CreatePath(pathName string, isDirectory bool) (err error) {
+	fmt.Printf("FilesystemTracker:CreatePath called with relativePath: %s isDirectory: %v\n", pathName, isDirectory)
 	handler.fsLock.Lock()
 	defer handler.fsLock.Unlock()
-	fmt.Println("FilesystemTracker:/Rename")
-	defer fmt.Println("FilesystemTracker://Rename")
-
-	fmt.Printf("We have a rename event. source: %s dest: %s directory %v\n", sourcePath, destinationPath, isDirectory)
+	fmt.Println("FilesystemTracker:/CreatePath")
+	defer fmt.Println("FilesystemTracker://CreatePath")
 
 	if !handler.setup {
 		panic("FilesystemTracker:CreatePath called when not yet setup")
 	}
 
-	if sourcePath == "" || destinationPath == "" {
-		panic("Source or destination path not set in rename handler")
-	}
+	return handler.createPath(pathName, isDirectory)
+}
+
+func (handler *FilesystemTracker) handleCompleteRename(sourcePath string, destinationPath string, isDirectory bool) (err error) {
 
 	// First we do the simple rename where both sides are here.
 	absoluteSourcePath := filepath.Join(handler.directory, sourcePath)
@@ -451,8 +433,47 @@ func (handler *FilesystemTracker) Rename(sourcePath string, destinationPath stri
 		panic(fmt.Sprintf("Rename failed (%v)!  source: %s dest: %s directory %v\n", err, sourcePath, destinationPath, isDirectory))
 	}
 
-	fmt.Printf("Rename Complete source: %s dest: %s directory %v\n", sourcePath, destinationPath, isDirectory)
+	return err
+}
 
+func (handler *FilesystemTracker) Rename(sourcePath string, destinationPath string, isDirectory bool) (err error) {
+	fmt.Println("FilesystemTracker:Rename")
+	handler.fsLock.Lock()
+	defer handler.fsLock.Unlock()
+	fmt.Println("FilesystemTracker:/Rename")
+	defer fmt.Println("FilesystemTracker://Rename")
+
+	fmt.Printf("We have a rename event. source: %s dest: %s directory %v\n", sourcePath, destinationPath, isDirectory)
+
+	if !handler.setup {
+		panic("FilesystemTracker:CreatePath called when not yet setup")
+	}
+
+	// If we have a source and destination, perform the move to mirror the other side
+	if len(sourcePath) > 0 && len(destinationPath) > 0 {
+		fmt.Println("FilesystemTracker:Rename completing")
+		err = handler.handleCompleteRename(sourcePath, destinationPath, isDirectory)
+	} else if sourcePath == "" {
+		fmt.Println("FilesystemTracker:Rename creating a new path")
+		// If the file was moved into the monitored folder from nowhere, ...
+		// bypass the locking by using the internal method since we already have the lockings and safety checks
+		err = handler.createPath(destinationPath, isDirectory)
+	} else if destinationPath == "" {
+		fmt.Println("FilesystemTracker:Rename deleting existing path")
+		// If the file or folder was moved out of the monitored folder, get rid of it.
+		delete(handler.contents, sourcePath)
+		// todo - shortcut the events on this one. Should create a bit of a storm.
+		absolutePathForDeletion := filepath.Join(handler.directory, sourcePath)
+		fmt.Printf("About to call os.RemoveAll on: %s\n", absolutePathForDeletion)
+		err = os.RemoveAll(absolutePathForDeletion)
+		if err != nil {
+			panic(fmt.Sprintf("%v encountered when attempting to os.RemoveAll(%s)", err, absolutePathForDeletion))
+		}
+	} else {
+		panic("Enexpected case encountered in rename")
+	}
+
+	fmt.Printf("Rename Complete source: %s dest: %s directory %v\n", sourcePath, destinationPath, isDirectory)
 	return
 }
 
@@ -468,7 +489,6 @@ func (handler *FilesystemTracker) DeleteFolder(name string) error {
 		panic("FilesystemTracker:DeleteFolder called when not yet setup")
 	}
 
-	fmt.Printf("%d before delete of: %s\n", len(handler.contents), name)
 	fmt.Printf("DeleteFolder: '%s'\n", name)
 	delete(handler.contents, name)
 	fmt.Printf("%d after delete of: %s\n", len(handler.contents), name)
@@ -633,6 +653,12 @@ func (handler *FilesystemTracker) completeRenameIfAbandoned(iNode uint64) {
 		relativePath := inProgress.sourcePath[len(handler.directory)+1:]
 		fmt.Printf("File at: %s (iNode %d) appears to have been moved away. Removing it\n", relativePath, iNode)
 		delete(handler.contents, relativePath)
+
+		// tell the other nodes that a rename was done.
+		event := Event{Name: "replicat.Rename", Source: globalSettings.Name, SourcePath: relativePath}
+		// todo - verify relativeDestination is the right thing to send here
+		SendEvent(event, relativePath)
+
 	} else if inProgress.destinationSet {
 		fmt.Printf("directory: %s src: %s dest: %s\n", handler.directory, inProgress.sourcePath, inProgress.destinationPath)
 		fmt.Printf("inProgress: %v\n", handler.renamesInProgress)
@@ -640,13 +666,17 @@ func (handler *FilesystemTracker) completeRenameIfAbandoned(iNode uint64) {
 
 		//this code failed because of an slice index out of bounds error. It is a reasonable copy with both sides and
 		//yet it was initialized blank. The first event was for the copy and it should have existed. Ahh, it is a file
-
 		if len(inProgress.destinationPath) < len(handler.directory)+1 {
 			fmt.Print("About to pop.....")
 		}
 
 		relativePath := inProgress.destinationPath[len(handler.directory)+1:]
 		handler.contents[relativePath] = *NewDirectoryFromFileInfo(&inProgress.destinationStat)
+
+		// tell the other nodes that a rename was done.
+		event := Event{Name: "replicat.Rename", Source: globalSettings.Name, Path: relativePath}
+		SendEvent(event, relativePath)
+
 		// find the source if the destination is an iNode in our system
 		// This is probably expensive. :) Wait until there is a flag of a cleanup
 		// We also have to watch out for hardlinks if those would share iNodes.
@@ -746,7 +776,7 @@ func (handler *FilesystemTracker) processEvent(event Event, pathName, fullPath s
 	switch event.Name {
 	case "notify.Create":
 		fmt.Printf("processEvent: About to assign from one path to the next. Original: %v Map: %v\n", currentValue, handler.contents)
-		// make sure there is an entry in the DirTreeMap for this folder. Since and empty list will always be returned, we can use that
+		// make sure there is an entry in the DirTreeMap for this folder. Since an empty list will always be returned, we can use that
 		if !exists {
 			info, err := os.Stat(fullPath)
 			if err != nil {
