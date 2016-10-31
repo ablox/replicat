@@ -25,10 +25,10 @@ type Event struct {
 	Source        string
 	Name          string
 	Path          string
+	SourcePath    string
 	Time          time.Time
 	IsDirectory   bool
 	NetworkSource string
-
 }
 
 var events = make([]Event, 0, 100)
@@ -151,17 +151,14 @@ func eventHandler(w http.ResponseWriter, r *http.Request) {
 		pathName := globalSettings.Nodes[globalSettings.Name].Directory + "/" + event.Path
 		relativePath := event.Path
 
-		//todo remember these events and skip the logging on the other side. Possibly use nodeID?
+		server, exists := serverMap[globalSettings.Name]
+		if !exists {
+			panic("Unable to find server definition")
+		}
 
 		switch event.Name {
 		case "notify.Create":
 			fmt.Printf("notify.Create: %s\n", pathName)
-
-			server, exists := serverMap[globalSettings.Name]
-			if !exists {
-				panic("Unable to find server definition")
-			}
-
 			fmt.Println("eventHandler->CreatePath")
 			server.storage.CreatePath(relativePath, event.IsDirectory)
 			fmt.Println("eventHandler->/CreatePath")
@@ -171,18 +168,19 @@ func eventHandler(w http.ResponseWriter, r *http.Request) {
 				panic(fmt.Sprintf("Error deleting folder %s: %v\n", pathName, err))
 			}
 			fmt.Printf("notify.Remove: %s\n", pathName)
+
 		// todo fix this to handle the two rename events to be one event
 		case "notify.Rename":
 			fmt.Printf("notify.Rename: %s\n", pathName)
 
-			server, exists := serverMap[globalSettings.Name]
-			if !exists {
-				panic("Unable to find server definition")
-			}
-
 			fmt.Println("eventHandler->CreatePath")
 			server.storage.CreatePath(relativePath, event.IsDirectory)
 			fmt.Println("eventHandler->/CreatePath")
+		case "replicat.Rename":
+			fmt.Printf("We have a new rename event!!!!!!")
+			fmt.Println("eventHandler->Rename")
+			server.storage.Rename(event.SourcePath, event.Path, event.IsDirectory)
+			fmt.Println("eventHandler->/Rename")
 
 		default:
 			fmt.Printf("Unknown event found, doing nothing. Event: %v\n", event)
