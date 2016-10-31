@@ -28,6 +28,7 @@ type Event struct {
 	Time          time.Time
 	IsDirectory   bool
 	NetworkSource string
+
 }
 
 var events = make([]Event, 0, 100)
@@ -58,7 +59,7 @@ func SendEvent(event Event, fullPath string) {
 			}
 		}
 	} else {
-		log.Printf("Send event called. No prior owndership: %s\n", fullPath)
+		log.Printf("Send event called. No prior ownership: %s\n", fullPath)
 	}
 
 	// At this point, it is our change and our event. Store our ownership
