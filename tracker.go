@@ -298,28 +298,10 @@ func validatePath(directory string) (fullPath string) {
 	return
 }
 
-// createPath implements the new path/file creation. Locking is done outside this call.
-func (handler *FilesystemTracker) createPath(pathName string, isDirectory bool) (err error) {
-	relativePathName := pathName
-	file := ""
-
-	if !isDirectory {
-		relativePathName, file = filepath.Split(pathName)
-	}
-
-	//fmt.Printf("Path name before any adjustments (directory: %v)\npath: %s\nfile: %s\n", isDirectory, relativePathName, file)
-	if len(relativePathName) > 0 && relativePathName[len(relativePathName)-1] == filepath.Separator {
-		fmt.Println("Stripping out path ending")
-		relativePathName = relativePathName[:len(relativePathName)-1]
-	}
-
-	absolutePathName := filepath.Join(handler.directory, relativePathName)
-	fmt.Printf("**********\npath was split into \nrelativePathName: %s \nfile: %s \nabsolutePath: %s\n**********\n", relativePathName, file, absolutePathName)
-
-	var stat os.FileInfo
-	pathCreated := false
+func createPath(pathName string, absolutePathName string, stat *os.FileInfo) (pathCreated bool, err error) {
 	for maxCycles := 0; maxCycles < 5 && pathName != ""; maxCycles++ {
-		stat, err = os.Stat(pathName)
+		localStat, err := os.Stat(pathName)
+		stat = &localStat
 
 		if err == nil {
 			fmt.Printf("Path existed: %s\n", absolutePathName)
@@ -345,6 +327,30 @@ func (handler *FilesystemTracker) createPath(pathName string, isDirectory bool) 
 		fmt.Printf("Error (%v) encountered creating path, going to try again. Attempt: %d\n", err, maxCycles)
 		time.Sleep(20 * time.Millisecond)
 	}
+
+	return
+}
+
+// createPath implements the new path/file creation. Locking is done outside this call.
+func (handler *FilesystemTracker) createPath(pathName string, isDirectory bool) (err error) {
+	relativePathName := pathName
+	file := ""
+
+	if !isDirectory {
+		relativePathName, file = filepath.Split(pathName)
+	}
+
+	//fmt.Printf("Path name before any adjustments (directory: %v)\npath: %s\nfile: %s\n", isDirectory, relativePathName, file)
+	if len(relativePathName) > 0 && relativePathName[len(relativePathName)-1] == filepath.Separator {
+		fmt.Println("Stripping out path ending")
+		relativePathName = relativePathName[:len(relativePathName)-1]
+	}
+
+	absolutePathName := filepath.Join(handler.directory, relativePathName)
+	fmt.Printf("**********\npath was split into \nrelativePathName: %s \nfile: %s \nabsolutePath: %s\n**********\n", relativePathName, file, absolutePathName)
+
+	var stat os.FileInfo
+	pathCreated, err := createPath(pathName, absolutePathName, &stat)
 
 	if err != nil && !os.IsExist(err) {
 		panic(fmt.Sprintf("Error creating folder %s: %v\n", relativePathName, err))
