@@ -308,9 +308,9 @@ func (handler *FilesystemTracker) createPath(pathName string, isDirectory bool) 
 	}
 
 	//fmt.Printf("Path name before any adjustments (directory: %v)\npath: %s\nfile: %s\n", isDirectory, relativePathName, file)
-	if len(relativePathName) > 0 && relativePathName[len(relativePathName) - 1] == filepath.Separator {
+	if len(relativePathName) > 0 && relativePathName[len(relativePathName)-1] == filepath.Separator {
 		fmt.Println("Stripping out path ending")
-		relativePathName = relativePathName[:len(relativePathName) - 1]
+		relativePathName = relativePathName[:len(relativePathName)-1]
 	}
 
 	absolutePathName := filepath.Join(handler.directory, relativePathName)
@@ -328,7 +328,7 @@ func (handler *FilesystemTracker) createPath(pathName string, isDirectory bool) 
 		} else {
 			// if there is an error, go to create the path
 			fmt.Printf("Creating path: %s\n", absolutePathName)
-			err = os.MkdirAll(absolutePathName, os.ModeDir + os.ModePerm)
+			err = os.MkdirAll(absolutePathName, os.ModeDir+os.ModePerm)
 		}
 
 		// after attempting to create the path, check the err again
@@ -436,6 +436,7 @@ func (handler *FilesystemTracker) handleCompleteRename(sourcePath string, destin
 	return err
 }
 
+// Rename - Rename a file or folder from one location to another
 func (handler *FilesystemTracker) Rename(sourcePath string, destinationPath string, isDirectory bool) (err error) {
 	fmt.Println("FilesystemTracker:Rename")
 	handler.fsLock.Lock()
