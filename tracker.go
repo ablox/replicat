@@ -298,7 +298,7 @@ func validatePath(directory string) (fullPath string) {
 	return
 }
 
-func createPath(pathName string, absolutePathName string, stat *os.FileInfo) (pathCreated bool, err error) {
+func createPath(pathName string, absolutePathName string) (pathCreated bool, stat *os.FileInfo, err error) {
 	for maxCycles := 0; maxCycles < 5 && pathName != ""; maxCycles++ {
 		localStat, err := os.Stat(pathName)
 		stat = &localStat
@@ -328,7 +328,7 @@ func createPath(pathName string, absolutePathName string, stat *os.FileInfo) (pa
 		time.Sleep(20 * time.Millisecond)
 	}
 
-	return
+	return pathCreated, stat, err
 }
 
 // createPath implements the new path/file creation. Locking is done outside this call.
@@ -349,8 +349,7 @@ func (handler *FilesystemTracker) createPath(pathName string, isDirectory bool) 
 	absolutePathName := filepath.Join(handler.directory, relativePathName)
 	fmt.Printf("**********\npath was split into \nrelativePathName: %s \nfile: %s \nabsolutePath: %s\n**********\n", relativePathName, file, absolutePathName)
 
-	var stat os.FileInfo
-	pathCreated, err := createPath(pathName, absolutePathName, &stat)
+	pathCreated, stat, err := createPath(pathName, absolutePathName)
 
 	if err != nil && !os.IsExist(err) {
 		panic(fmt.Sprintf("Error creating folder %s: %v\n", relativePathName, err))
