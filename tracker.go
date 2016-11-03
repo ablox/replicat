@@ -298,10 +298,10 @@ func validatePath(directory string) (fullPath string) {
 	return
 }
 
-func createPath(pathName string, absolutePathName string) (pathCreated bool, stat *os.FileInfo, err error) {
+func createPath(pathName string, absolutePathName string) (pathCreated bool, stat os.FileInfo, err error) {
 	for maxCycles := 0; maxCycles < 5 && pathName != ""; maxCycles++ {
 		localStat, err := os.Stat(pathName)
-		stat = &localStat
+		stat = localStat
 
 		if err == nil {
 			fmt.Printf("Path existed: %s\n", absolutePathName)
