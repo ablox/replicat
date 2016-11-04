@@ -33,6 +33,7 @@ type Settings struct {
 	Name               string
 	ManagerAddress     string
 	ManagerCredentials string
+	ClusterKey         string
 	Nodes              map[string]Node
 }
 
@@ -53,6 +54,9 @@ var events = make([]Event, 0, 100)
 
 // GetGlobalSettings -- retrieve the settings for the replicat server
 func GetGlobalSettings() Settings {
+	if globalSettings.Nodes == nil {
+		globalSettings.Nodes = make(map[string]Node)
+	}
 	return globalSettings
 }
 
