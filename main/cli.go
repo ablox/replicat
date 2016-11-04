@@ -4,9 +4,9 @@ package main
 
 import (
 	"encoding/json"
+	"github.com/ablox/replicat"
 	"github.com/urfave/cli"
 	"os"
-	"github.com/ablox/replicat"
 )
 
 // SetupCli sets up the command line environment. Provide help and read the settings in.
