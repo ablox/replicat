@@ -4,10 +4,10 @@ package main
 
 import (
 	"encoding/json"
-	"github.com/urfave/cli"
-	"os"
 	"github.com/ablox/replicat"
+	"github.com/urfave/cli"
 	"math/rand"
+	"os"
 	"strconv"
 )
 
