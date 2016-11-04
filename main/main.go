@@ -4,10 +4,10 @@ package main
 
 import (
 	"fmt"
+	"github.com/ablox/replicat"
 	"log"
 	"math/rand"
 	"time"
-	"github.com/ablox/replicat"
 )
 
 func main() {
