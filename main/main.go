@@ -7,6 +7,7 @@ import (
 	"log"
 	"math/rand"
 	"time"
+	"github.com/ablox/replicat"
 )
 
 func main() {
@@ -18,13 +19,14 @@ func main() {
 
 	SetupCli()
 
-	bootstrapAndServe(globalSettings.Nodes[globalSettings.Name].Address)
+	globalSettings := replicat.GetGlobalSettings()
+	replicat.BootstrapAndServe(globalSettings.Nodes[globalSettings.Name].Address)
 	fmt.Printf("replicat %s online....\n", globalSettings.Name)
 	defer fmt.Println("End of line")
 
 	// keep this process running until it is shut down
 	for {
-		time.Sleep(time.Millisecond * 500)
+		time.Sleep(time.Second * 60)
 	}
 
 }

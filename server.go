@@ -1,6 +1,6 @@
 // Copyright 2016 Jacob Taylor jacob@ablox.io
 // License: Apache2 - http://www.apache.org/licenses/LICENSE-2.0
-package main
+package replicat
 
 import (
 	"bytes"
@@ -20,6 +20,22 @@ import (
 	"time"
 )
 
+// Node Details for a single replicat node
+type Node struct {
+	Directory string
+	Address   string
+}
+
+// Settings - for the server. including a map of the nodes
+type Settings struct {
+	Name               string
+	ManagerAddress     string
+	ManagerCredentials string
+	Nodes              map[string]Node
+}
+
+var globalSettings Settings
+
 // Event stores the relevant information on events or updates to the storage layer.
 type Event struct {
 	Source        string
@@ -32,6 +48,16 @@ type Event struct {
 }
 
 var events = make([]Event, 0, 100)
+
+// GetGlobalSettings -- retrieve the settings for the replicat server
+func GetGlobalSettings() Settings {
+	return globalSettings
+}
+
+// SetGlobalSettings -- set the settings for the replicat server
+func SetGlobalSettings(newSettings Settings) {
+	globalSettings = newSettings
+}
 
 // SendEvent gets events that have happened off to the peer servers so they can replicate the same change
 func SendEvent(event Event, fullPath string) {
