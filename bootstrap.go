@@ -21,7 +21,7 @@ import (
 // ReplicatServer is a structure that contains the definition of the servers in a cluster. Each node has a name and this
 // node (as determined by globalSettings.name at the moment) also has a StorageTracker interface.
 type ReplicatServer struct {
-	Cluster       string
+	ClusterKey    string
 	Name          string
 	Address       string
 	CurrentState  DirTreeMap
@@ -75,7 +75,7 @@ func BootstrapAndServe(address string) {
 	c = &logOnlyHandler
 	tracker.watchDirectory(&c)
 
-	serverMap[globalSettings.Name] = &ReplicatServer{Name: globalSettings.Name, Address: lsnr.Addr().String(), storage: &tracker}
+	serverMap[globalSettings.Name] = &ReplicatServer{Name: globalSettings.Name, ClusterKey: globalSettings.ClusterKey, Address: lsnr.Addr().String(), storage: &tracker}
 
 	go func(lsnr net.Listener) {
 		err = http.Serve(lsnr, nil)
@@ -181,7 +181,7 @@ func configUpdateProcessor(c chan *map[string]*ReplicatServer) {
 				continue
 			}
 
-			if serverData.Address != newServerData.Address || serverData.Name != newServerData.Name || serverData.Cluster != newServerData.Cluster {
+			if serverData.Address != newServerData.Address || serverData.Name != newServerData.Name || serverData.ClusterKey != newServerData.ClusterKey {
 				fmt.Printf("Server data is radically changed. Replacing.\nold: %v\nnew: %v\n", &serverData, &newServerData)
 				serverMap[name] = newServerData
 				fmt.Println("Server data replaced with new server data")

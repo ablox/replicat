@@ -1,6 +1,7 @@
 {
-  "ManagerAddress": ":8080",
+  "ManagerAddress": ":8000",
   "ManagerCredentials": "replicat:isthecat",
+  "ClusterCredentials": "test:test",
   "Nodes" : {
     "nodeA": {
       "Directory": "/tmp/foo",

@@ -4,9 +4,11 @@ package main
 
 import (
 	"encoding/json"
-	"github.com/ablox/replicat"
 	"github.com/urfave/cli"
 	"os"
+	"github.com/ablox/replicat"
+	"math/rand"
+	"strconv"
 )
 
 // SetupCli sets up the command line environment. Provide help and read the settings in.
@@ -18,6 +20,13 @@ func SetupCli() {
 		globalSettings := replicat.GetGlobalSettings()
 		if c.GlobalString("name") != "" {
 			globalSettings.Name = c.GlobalString("name")
+		} else {
+			name, err := os.Hostname()
+
+			if err != nil {
+				panic(err)
+			}
+			globalSettings.Name = name + "-" + strconv.Itoa(rand.Intn(100))
 		}
 
 		if globalSettings.Name == "" {
@@ -51,6 +60,10 @@ func SetupCli() {
 			globalSettings.ManagerCredentials = c.GlobalString("manager_credentials")
 		}
 
+		if c.GlobalString("cluster_key") != "" {
+			globalSettings.ClusterKey = c.GlobalString("cluster_key")
+		}
+
 		replicat.SetGlobalSettings(globalSettings)
 		return nil
 	}
@@ -79,6 +92,11 @@ func SetupCli() {
 			Value:  globalSettings.ManagerCredentials,
 			Usage:  "Specify a usernmae:password for login to the manager",
 			EnvVar: "manager_credentials, mc",
+		},
+		cli.StringFlag{
+			Name:   "cluster_key, ck",
+			Usage:  "Specify cluster's key.",
+			EnvVar: "cluster_key, ck",
 		},
 		cli.StringFlag{
 			Name:   "address, a",
