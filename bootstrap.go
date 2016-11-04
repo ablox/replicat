@@ -59,7 +59,16 @@ func BootstrapAndServe(address string) {
 
 	logOnlyHandler := LogOnlyChangeHandler{}
 	tracker := FilesystemTracker{}
-	tracker.init(globalSettings.Nodes[globalSettings.Name].Directory)
+	fmt.Printf("Looking up settings for node: %s\n", globalSettings.Name)
+
+	fmt.Println("GlobalSettings are:")
+	for k, v := range globalSettings.Nodes {
+		fmt.Printf("%s := %#v\n", k, v)
+	}
+	directory := globalSettings.Nodes[globalSettings.Name].Directory
+
+	fmt.Printf("GlobalSettings directory retrieved for this node: %s\n", directory)
+	tracker.init(directory)
 	var c ChangeHandler
 	c = &logOnlyHandler
 	tracker.watchDirectory(&c)
