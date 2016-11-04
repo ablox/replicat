@@ -1,4 +1,5 @@
-// Package replicat
+// Package replicat is a server for n way synchronization of content (rsync for the cloud).
+// More information at: http://replic.at
 // Copyright 2016 Jacob Taylor jacob@ablox.io
 // License: Apache2 - http://www.apache.org/licenses/LICENSE-2.0
 package replicat
