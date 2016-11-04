@@ -1,14 +1,14 @@
 {
-  "ManagerAddress": "10.1.10.244:8080",
+  "ManagerAddress": "192.168.43.9:8080",
   "ManagerCredentials": "replicat:isthecat",
   "Nodes" : {
-    "nodeRayA": {
-      "Directory": "/home/ray/foo1",
-      "Address" : "10.1.10.108:8801"
+    "nodeA": {
+      "Directory": "/tmp/foo",
+      "Address" : "192.168.43.9:8801"
     },
-    "nodeRayB": {
-      "Directory": "/home/ray/foo2",
-      "Address" : "10.1.10.108:8802"
+    "nodeB": {
+      "Directory": "/tmp/foo2",
+      "Address" : "192.168.43.9:8802"
     }
   }
 }

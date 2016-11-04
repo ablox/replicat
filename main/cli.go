@@ -6,32 +6,16 @@ import (
 	"encoding/json"
 	"github.com/urfave/cli"
 	"os"
+	"github.com/ablox/replicat"
 )
-
-// Node Details for a single replicat node
-type Node struct {
-	Directory string
-	Address   string
-}
-
-// Settings - for the server. including a map of the nodes
-type Settings struct {
-	Name               string
-	ManagerAddress     string
-	ManagerCredentials string
-	Nodes              map[string]Node
-}
-
-var globalSettings Settings
 
 // SetupCli sets up the command line environment. Provide help and read the settings in.
 func SetupCli() {
-
 	app := cli.NewApp()
 	app.Name = "Replicat"
 	app.Usage = "rsync for the cloud"
 	app.Action = func(c *cli.Context) error {
-
+		globalSettings := replicat.GetGlobalSettings()
 		if c.GlobalString("name") != "" {
 			globalSettings.Name = c.GlobalString("name")
 		}
@@ -67,8 +51,11 @@ func SetupCli() {
 			globalSettings.ManagerCredentials = c.GlobalString("manager_credentials")
 		}
 
+		replicat.SetGlobalSettings(globalSettings)
 		return nil
 	}
+
+	globalSettings := replicat.GetGlobalSettings()
 
 	app.Flags = []cli.Flag{
 		cli.StringFlag{

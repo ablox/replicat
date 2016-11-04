@@ -1,6 +1,6 @@
 // Copyright 2016 Jacob Taylor jacob@ablox.io
 // License: Apache2 - http://www.apache.org/licenses/LICENSE-2.0
-package main
+package replicat
 
 import (
 	"bytes"
@@ -31,7 +31,8 @@ type ReplicatServer struct {
 var serverMap = make(map[string]*ReplicatServer)
 var serverMapLock sync.RWMutex
 
-func bootstrapAndServe(address string) {
+// BootstrapAndServe - Start the server
+func BootstrapAndServe(address string) {
 	//trackerTestSmallFileInSubfolder()
 	//trackerTestEmptyDirectoryMovesInOutAround()
 	//trackerTestFileChangeTrackerAddFolders()
