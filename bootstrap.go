@@ -55,7 +55,7 @@ func BootstrapAndServe(address string) {
 
 	lsnr, err := net.Listen("tcp4", address)
 	if err != nil {
-		fmt.Println("Error listening:", err)
+		panic(fmt.Sprintf("Error listening: %v\nAddress: %s\n", err, address))
 	}
 	fmt.Println("Listening on:", lsnr.Addr().String())
 
@@ -87,11 +87,10 @@ func BootstrapAndServe(address string) {
 	fmt.Println("Starting config update processor")
 	go configUpdateProcessor(configUpdateChannel)
 
-	fmt.Println("about to send config to server")
 
 	if globalSettings.ManagerAddress != "" {
+		fmt.Printf("about to send config to server (%s)\nOur address is: (%s)", globalSettings.ManagerAddress, lsnr.Addr())
 		go sendConfigToServer()
-		fmt.Printf("config sent to server with address: %s\n", lsnr.Addr())
 	}
 }
 
