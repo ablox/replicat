@@ -138,11 +138,23 @@ func sendEvent(event *Event, fullPath string, address string, credentials string
 	body, _ := ioutil.ReadAll(resp.Body)
 	fmt.Println("response Body:", string(body))
 
-	if event.Name == "notify.Write" {
+	if event.Name == "replicat.Rename" {
+		fmt.Printf("sendEvent - %s, full event: %#v\n", event.Name, event)
+
+		if event.SourcePath == "" {
+			fmt.Printf("sendEvent We have a rename in. destination: %s\n", event.Path)
+			postHelper(event.Path, fullPath, address, credentials)
+		}
+	} else if event.Name == "notify.Write" {
 		fmt.Printf("source: notify.Write => %s\n", fullPath)
-		url := "http://" + address + "/upload/"
-		postFile(event.Path, fullPath, url, credentials)
+		postHelper(event.Path, fullPath, address, credentials)
 	}
+}
+
+func postHelper(path, fullPath, address, credentials string) {
+	fmt.Printf("Sending file to: %s\npath: %s\n", address, path)
+	url := "http://" + address + "/upload/"
+	postFile(path, fullPath, url, credentials)
 }
 
 var ownership = make(map[string]Event, 100)
@@ -371,6 +383,7 @@ func folderTreeHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func postFile(filename string, fullPath string, targetUrl string, credentials string) error {
+	fmt.Printf("postFile: filename: %s, fullPath: %s\n", filename, fullPath)
 	body := &bytes.Buffer{}
 	bodyWriter := multipart.NewWriter(body)
 	fileWriter, err := bodyWriter.CreateFormFile("uploadfile", filename)
