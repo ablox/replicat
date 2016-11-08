@@ -814,7 +814,7 @@ func (handler *FilesystemTracker) processEvent(event Event, pathName, fullPath s
 		fmt.Printf("notify.Create: Updated value for %s: %v (%t)\n", pathName, updatedValue, exists)
 
 		// sendEvent to manager
-		SendEvent(event, "")
+		SendEvent(event, fullPath)
 		return
 
 	case "notify.Remove":
