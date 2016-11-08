@@ -138,16 +138,14 @@ func sendEvent(event *Event, fullPath string, address string, credentials string
 	body, _ := ioutil.ReadAll(resp.Body)
 	fmt.Println("response Body:", string(body))
 
-	if event.Name == "replicat.Rename" {
+	switch event.Name {
+	case "replicat.Rename", "notify.Create", "notify.Write":
 		fmt.Printf("sendEvent - %s, full event: %#v\n", event.Name, event)
 
 		if event.SourcePath == "" {
 			fmt.Printf("sendEvent We have a rename in. destination: %s\n", event.Path)
 			postHelper(event.Path, fullPath, address, credentials)
 		}
-	} else if event.Name == "notify.Write" {
-		fmt.Printf("source: notify.Write => %s\n", fullPath)
-		postHelper(event.Path, fullPath, address, credentials)
 	}
 }
 
