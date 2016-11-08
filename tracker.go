@@ -679,8 +679,7 @@ func (handler *FilesystemTracker) completeRenameIfAbandoned(iNode uint64) {
 
 		// tell the other nodes that a rename was done.
 		event := Event{Name: "replicat.Rename", Source: globalSettings.Name, SourcePath: relativePath}
-		// todo - verify relativeDestination is the right thing to send here
-		SendEvent(event, relativePath)
+		SendEvent(event, inProgress.sourcePath)
 
 	} else if inProgress.destinationSet {
 		fmt.Printf("directory: %s src: %s dest: %s\n", handler.directory, inProgress.sourcePath, inProgress.destinationPath)
@@ -698,7 +697,7 @@ func (handler *FilesystemTracker) completeRenameIfAbandoned(iNode uint64) {
 
 		// tell the other nodes that a rename was done.
 		event := Event{Name: "replicat.Rename", Source: globalSettings.Name, Path: relativePath}
-		SendEvent(event, relativePath)
+		SendEvent(event, inProgress.destinationPath)
 
 		// find the source if the destination is an iNode in our system
 		// This is probably expensive. :) Wait until there is a flag of a cleanup
