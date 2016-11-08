@@ -547,6 +547,12 @@ func extractPaths(handler *FilesystemTracker, ei *notify.EventInfo) (path, fullP
 
 // Monitor the filesystem looking for changes to files we are keeping track of.
 func (handler *FilesystemTracker) monitorLoop(c chan notify.EventInfo) {
+	// filesToIgnore - If you run into one of these files, do not sync it to other side.
+	filesToIgnore := map[string]bool{
+		".DS_Store": true,
+		"Thumbs.db": true,
+	}
+
 	for {
 		ei := <-c
 
@@ -556,6 +562,15 @@ func (handler *FilesystemTracker) monitorLoop(c chan notify.EventInfo) {
 		// Skip empty paths
 		if path == "" {
 			fmt.Println("blank path. Ignore!")
+			continue
+		}
+
+		//.DS_Store
+		// split out the filename and check to see if it is on the ignore list.
+		_, testFile := filepath.Split(ei.Path())
+		_, exists := filesToIgnore[testFile]
+		if exists {
+			fmt.Printf("Ignoring event for file on ignore list: %s - %s\n", ei.Event(), testFile)
 			continue
 		}
 
