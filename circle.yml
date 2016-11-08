@@ -1,0 +1,5 @@
+test:
+  override:
+    # './...' is a relative pattern which means all subdirectories
+    - go test -v ./...
+
