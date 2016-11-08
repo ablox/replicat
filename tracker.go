@@ -155,7 +155,7 @@ func NewDirectoryFromFileInfo(info *os.FileInfo) *Entry {
 }
 
 func (handler *FilesystemTracker) printTracker() {
-	handler.printLockable(false)
+	handler.printLockable(true)
 }
 
 func (handler *FilesystemTracker) startTest(name string) {
