@@ -6,6 +6,7 @@ package replicat
 
 import (
 	"fmt"
+	"os"
 	"runtime/debug"
 	"testing"
 )
@@ -77,6 +78,10 @@ func TestBelowThisTestsFailOnUbuntu(t *testing.T) {
 }
 
 func TestNestedFastDirectoryCreation(t *testing.T) {
+	if os.Getenv("CIRCLECI") == "true" {
+		t.Skip("skipping test on circleci")
+	}
+
 	defer causeFailOnPanic(t)
 	trackerTestNestedFastDirectoryCreation()
 }
