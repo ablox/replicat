@@ -87,7 +87,6 @@ func BootstrapAndServe(address string) {
 	fmt.Println("Starting config update processor")
 	go configUpdateProcessor(configUpdateChannel)
 
-
 	if globalSettings.ManagerAddress != "" {
 		fmt.Printf("about to send config to server (%s)\nOur address is: (%s)", globalSettings.ManagerAddress, lsnr.Addr())
 		go sendConfigToServer()
