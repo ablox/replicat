@@ -14,3 +14,5 @@ Start Replicat with my custom key
 2. Jacob:  replicat --clusterKey aa88aa88aa88 --directory /tmp/foo (this uses machine's hostname:port as the name)
 
 3. James:  replicat --clusterKey aa88aa88aa88 --directory /tmp/foo
+
+// Instances are using tmp folder for testing. Switch to a permanant folder for production or long term use.
