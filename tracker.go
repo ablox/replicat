@@ -237,10 +237,12 @@ func (handler *FilesystemTracker) init(directory string) {
 	}
 
 	fmt.Println("Setting up filesystemTracker!")
+	handler.printLockable(false)
 	err := handler.scanFolders()
 	if err != nil {
 		panic(err)
 	}
+	handler.printLockable(false)
 
 	handler.renamesInProgress = make(map[uint64]renameInformation, 0)
 
@@ -579,7 +581,7 @@ func (handler *FilesystemTracker) monitorLoop(c chan notify.EventInfo) {
 
 		isDirectory := handler.checkIfDirectory(event, path, fullPath)
 		event.IsDirectory = isDirectory
-		handler.processEvent(event, path, fullPath)
+		handler.processEvent(event, path, fullPath, true)
 	}
 }
 
@@ -785,9 +787,11 @@ func (handler *FilesystemTracker) handleRename(event Event, pathName, fullPath s
 	}
 }
 
-func (handler *FilesystemTracker) processEvent(event Event, pathName, fullPath string) {
+func (handler *FilesystemTracker) processEvent(event Event, pathName, fullPath string, lock bool) {
 	fmt.Println("FilesystemTracker:processEvent")
-	handler.fsLock.Lock()
+	if lock {
+		handler.fsLock.Lock()
+	}
 	fmt.Println("FilesystemTracker:/processEvent")
 	defer fmt.Println("FilesystemTracker://processEvent")
 
@@ -811,7 +815,9 @@ func (handler *FilesystemTracker) processEvent(event Event, pathName, fullPath s
 
 		updatedValue, exists := handler.contents[pathName]
 
-		handler.fsLock.Unlock()
+		if lock {
+			handler.fsLock.Unlock()
+		}
 		fmt.Println("FilesystemTracker:/+processEvent")
 
 		if handler.watcher != nil {
@@ -842,7 +848,9 @@ func (handler *FilesystemTracker) processEvent(event Event, pathName, fullPath s
 			fmt.Println("In the notify.Remove section but did not see a watcher")
 		}
 
-		handler.fsLock.Unlock()
+		if lock {
+			handler.fsLock.Unlock()
+		}
 		fmt.Println("FilesystemTracker:/+processEvent")
 		SendEvent(event, "")
 
@@ -869,15 +877,13 @@ func (handler *FilesystemTracker) processEvent(event Event, pathName, fullPath s
 		fmt.Printf("%s: %s not known, skipping (%v)\n", event.Name, pathName, event)
 	}
 
-	handler.fsLock.Unlock()
+	if lock {
+		handler.fsLock.Unlock()
+	}
 	fmt.Println("FilesystemTracker:/+processEvent")
-
-	// sendEvent to manager
-	//SendEvent(event)
 }
 
-// Scan the files and folders inside of the directory we are watching and add them to the contents. This function
-// can only be called inside of a writelock on handler.fsLock
+// Scan for existing files and add them to the list of files that we have with create events. this has to be called outside of a lock
 func (handler *FilesystemTracker) scanFolders() error {
 	pendingPaths := make([]string, 0, 100)
 	pendingPaths = append(pendingPaths, handler.directory)
@@ -885,7 +891,6 @@ func (handler *FilesystemTracker) scanFolders() error {
 
 	for len(pendingPaths) > 0 {
 		currentPath := pendingPaths[0]
-		directory := NewDirectory()
 		pendingPaths = pendingPaths[1:]
 
 		// Read the directories in the path
@@ -897,40 +902,23 @@ func (handler *FilesystemTracker) scanFolders() error {
 		dirEntries, err := f.Readdir(-1)
 		for _, entry := range dirEntries {
 			// Determine the relative path for this file or folder
-			relativePath := filepath.Join(currentPath, entry.Name())
-			relativePath = relativePath[len(handler.directory):]
-			currentEntry := Entry{entry, true, ""}
-			handler.contents[relativePath] = currentEntry
+			absolutePath := filepath.Join(currentPath, entry.Name())
+			relativePath := absolutePath[len(handler.directory):]
 
-			//todo fix this This function
+
+			event := Event{Name: "notify.Create", Path: relativePath, Source: globalSettings.Name}
+			handler.processEvent(event, relativePath, absolutePath, false)
+
 			if entry.IsDir() {
 				newDirectory := filepath.Join(currentPath, entry.Name())
 				pendingPaths = append(pendingPaths, newDirectory)
-			} else {
-				//directory.contents[entry.Name()] = entry
 			}
-			//panic("This function is not completed yet.")
 		}
 
-		f.Close()
+		err = f.Close()
 		if err != nil {
 			return err
 		}
-
-		// Strip the base path off of the current path
-		// make sure all of the paths are still '/' prefixed
-		relativePath := currentPath[len(handler.directory):]
-		if relativePath == "" {
-			relativePath = "."
-		}
-
-		//todo add the directory stat into fileinfo
-		info, err := os.Stat(currentPath)
-		if err != nil {
-			panic(fmt.Sprintf("Could not get stats on directory %s", currentPath))
-		}
-		directory.FileInfo = info
-		handler.contents[relativePath] = *directory
 	}
 
 	return nil
