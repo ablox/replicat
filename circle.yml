@@ -7,6 +7,6 @@ machine:
   environment:
     # CIRCLECI - flag to let me know what system we are running on.
     CIRCLECI: "true"
-    // XCODE flags to signal on OSX builds that it is safe to continue
+    # XCODE flags to signal on OSX builds that it is safe to continue
     XCODE_SCHEME: symbolicator
     XCODE_WORKSPACE: symbolicator
