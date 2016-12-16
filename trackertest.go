@@ -599,9 +599,10 @@ func trackerTestDirectoryStorage() {
 	defer tracker.endTest(testName)
 
 	empty := make([]string, 0)
-	empty = append(empty, ".")
 
 	folderList := tracker.ListFolders()
+
+	fmt.Printf("empty: %v\nlist: %v\n", empty, folderList)
 
 	if reflect.DeepEqual(empty, folderList) == false {
 		panic(fmt.Sprintf("expected empty folder, found something: %v\n", folderList))
@@ -617,13 +618,12 @@ func trackerTestDirectoryStorage() {
 	}
 
 	folderList = tracker.ListFolders()
-
-	expectedFolderList := append(folderTemplate, ".")
-	sort.Strings(expectedFolderList)
 	sort.Strings(folderList)
 
-	if reflect.DeepEqual(expectedFolderList, folderList) == false {
-		panic(fmt.Sprintf("Found: %v\nExpected: %v\n", folderList, expectedFolderList))
+	sort.Strings(folderTemplate)
+
+	if reflect.DeepEqual(folderTemplate, folderList) == false {
+		panic(fmt.Sprintf("Found: %v\nExpected: %v\n", folderList, folderTemplate))
 	}
 
 	err = tracker.DeleteFolder(folderTemplate[0])
@@ -635,12 +635,10 @@ func trackerTestDirectoryStorage() {
 	sort.Strings(folderList)
 
 	folderTemplate = folderTemplate[1:]
+	sort.Strings(folderTemplate)
 
-	expectedFolderList = append(folderTemplate, ".")
-	sort.Strings(expectedFolderList)
-
-	if reflect.DeepEqual(folderList, expectedFolderList) == false {
-		panic(fmt.Sprintf("Found: %v\nExpected: %v\n", folderList, expectedFolderList))
+	if reflect.DeepEqual(folderList, folderTemplate) == false {
+		panic(fmt.Sprintf("Found: %v\nExpected: %v\n", folderList, folderTemplate))
 	}
 
 }
