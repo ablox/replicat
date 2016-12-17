@@ -905,7 +905,6 @@ func (handler *FilesystemTracker) scanFolders() error {
 			absolutePath := filepath.Join(currentPath, entry.Name())
 			relativePath := absolutePath[len(handler.directory):]
 
-
 			event := Event{Name: "notify.Create", Path: relativePath, Source: globalSettings.Name}
 			handler.processEvent(event, relativePath, absolutePath, false)
 
