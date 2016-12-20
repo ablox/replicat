@@ -24,11 +24,18 @@ type ReplicatServer struct {
 	ClusterKey    string
 	Name          string
 	Address       string
+	Status        string
 	CurrentState  DirTreeMap
 	PreviousState DirTreeMap
 	Lock          sync.Mutex
 	storage       StorageTracker
 }
+
+const (
+	REPLICAT_STATUS_INITIAL_SCAN    = "Initial Scan"
+	REPLICAT_STATUS_JOINING_CLUSTER = "Joining Cluster"
+	REPLICAT_STATUS_ONLINE          = "Online"
+)
 
 var serverMap = make(map[string]*ReplicatServer)
 var serverMapLock sync.RWMutex
@@ -75,7 +82,7 @@ func BootstrapAndServe(address string) {
 	c = &logOnlyHandler
 	tracker.watchDirectory(&c)
 
-	serverMap[globalSettings.Name] = &ReplicatServer{Name: globalSettings.Name, ClusterKey: globalSettings.ClusterKey, Address: lsnr.Addr().String(), storage: &tracker}
+	serverMap[globalSettings.Name] = &ReplicatServer{Name: globalSettings.Name, ClusterKey: globalSettings.ClusterKey, Address: lsnr.Addr().String(), storage: &tracker, Status: REPLICAT_STATUS_INITIAL_SCAN}
 
 	go func(lsnr net.Listener) {
 		err = http.Serve(lsnr, nil)
@@ -179,8 +186,8 @@ func configUpdateProcessor(c chan *map[string]*ReplicatServer) {
 				continue
 			}
 
-			if serverData.Address != newServerData.Address || serverData.Name != newServerData.Name || serverData.ClusterKey != newServerData.ClusterKey {
-				fmt.Printf("Server data is radically changed. Replacing.\nold: %v\nnew: %v\n", &serverData, &newServerData)
+			if serverData.Address != newServerData.Address || serverData.Name != newServerData.Name || serverData.ClusterKey != newServerData.ClusterKey || serverData.Status != serverData.Status {
+				fmt.Printf("Server data is changed. Replacing.\nold: %v\nnew: %v\n", &serverData, &newServerData)
 				serverMap[name] = newServerData
 				fmt.Println("Server data replaced with new server data")
 			} else {

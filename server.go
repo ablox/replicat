@@ -28,7 +28,8 @@ type Node struct {
 	Address   string
 }
 
-// Settings - for the server. including a map of the nodes
+// Settings - for this replicat server. This should include everything needed for this server to run and connect with
+// its manager and cluster. It should not include anything else.
 type Settings struct {
 	Name               string
 	ManagerAddress     string
