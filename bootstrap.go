@@ -159,7 +159,7 @@ func configHandler(_ http.ResponseWriter, r *http.Request) {
 		defer serverMapLock.Unlock()
 
 		decoder := json.NewDecoder(r.Body)
-		var newServerMap map[string]*ReplicatServer //:= make(map[string]ReplicatServer)
+		var newServerMap map[string]*ReplicatServer
 		err := decoder.Decode(&newServerMap)
 		if err != nil {
 			fmt.Println(err)
