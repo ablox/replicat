@@ -33,15 +33,19 @@ func SetupCli() {
 			panic("Name is currently a required parameter. Name has to be one of the predefined names (e.g. NodeA, NodeB). This will improve.\n")
 		}
 
+		json_file := "nodes.json"
 		if c.GlobalString("config") != "" {
-			configFile, err := os.Open(c.GlobalString("config"))
-			if err != nil {
-				panic("cannot load config file.")
-			}
-			jsonParser := json.NewDecoder(configFile)
-			if err = jsonParser.Decode(&globalSettings); err != nil {
-				panic("cannot decode config file.")
-			}
+			json_file = c.GlobalString("config")
+		}
+
+		// read defaults
+		configFile, err := os.Open(json_file)
+		if err != nil {
+			panic("cannot load config file.")
+		}
+		jsonParser := json.NewDecoder(configFile)
+		if err = jsonParser.Decode(&globalSettings); err != nil {
+			panic("cannot decode config file.")
 		}
 
 		node := globalSettings.Nodes[globalSettings.Name]

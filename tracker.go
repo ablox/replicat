@@ -236,15 +236,21 @@ func (handler *FilesystemTracker) init(directory string) {
 		handler.directory = fullPath
 	}
 
+	handler.renamesInProgress = make(map[uint64]renameInformation, 0)
+
 	fmt.Println("Setting up filesystemTracker!")
 	handler.printLockable(false)
 	err := handler.scanFolders()
 	if err != nil {
 		panic(err)
 	}
-	handler.printLockable(false)
 
-	handler.renamesInProgress = make(map[uint64]renameInformation, 0)
+	// Set the status to be done with initial scan
+	fmt.Printf("%v\n", serverMap[globalSettings.Name])
+
+ 	serverMap[globalSettings.Name].Status = REPLICAT_STATUS_JOINING_CLUSTER
+
+	handler.printLockable(false)
 
 	handler.setup = true
 }
@@ -885,6 +891,7 @@ func (handler *FilesystemTracker) processEvent(event Event, pathName, fullPath s
 
 // Scan for existing files and add them to the list of files that we have with create events. this has to be called outside of a lock
 func (handler *FilesystemTracker) scanFolders() error {
+	fmt.Println("FileSystemTracker ScanFolders - start")
 	pendingPaths := make([]string, 0, 100)
 	pendingPaths = append(pendingPaths, handler.directory)
 	handler.contents = make(map[string]Entry)
@@ -920,6 +927,7 @@ func (handler *FilesystemTracker) scanFolders() error {
 		}
 	}
 
+	fmt.Println("FileSystemTracker ScanFolders - end")
 	return nil
 }
 

@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"fmt"
 )
 
 // DirTreeMap is a mapping between directories and lists of file names.
@@ -134,6 +135,7 @@ func checkForChanges(originalState, newState DirTreeMap) (changed bool, updatedS
 }
 
 func scanDirectoryContents() (DirTreeMap, error) {
+	fmt.Println("scanning directory contents - start")
 	pendingPaths := make([]string, 0, 100)
 	pendingPaths = append(pendingPaths, globalSettings.Nodes[globalSettings.Name].Directory)
 	listOfFileInfo := make(DirTreeMap)
@@ -183,5 +185,7 @@ func scanDirectoryContents() (DirTreeMap, error) {
 	//}
 	//fmt.Printf("Export done:\n")
 
+
+	fmt.Println("scanning directory contents - end")
 	return listOfFileInfo, nil
 }

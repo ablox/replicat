@@ -1,15 +1,6 @@
 {
-  "ManagerAddress": "localhost:8000",
+  "ManagerAddress": "localhost:8100",
   "ManagerCredentials": "replicat:isthecat",
-  "ClusterCredentials": "test:test",
-  "Nodes" : {
-    "nodeA": {
-      "Directory": "/tmp/foo",
-      "Address" : "localhost:8801"
-    },
-    "nodeB": {
-      "Directory": "/tmp/foo2",
-      "Address" : "localhost:8802"
-    }
-  }
+  "ClusterCredentials": "test:test"
+
 }

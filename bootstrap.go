@@ -77,12 +77,12 @@ func BootstrapAndServe(address string) {
 	directory := globalSettings.Nodes[globalSettings.Name].Directory
 
 	fmt.Printf("GlobalSettings directory retrieved for this node: %s\n", directory)
+	serverMap[globalSettings.Name] = &ReplicatServer{Name: globalSettings.Name, ClusterKey: globalSettings.ClusterKey, Address: lsnr.Addr().String(), storage: &tracker, Status: REPLICAT_STATUS_INITIAL_SCAN}
 	tracker.init(directory)
 	var c ChangeHandler
 	c = &logOnlyHandler
 	tracker.watchDirectory(&c)
 
-	serverMap[globalSettings.Name] = &ReplicatServer{Name: globalSettings.Name, ClusterKey: globalSettings.ClusterKey, Address: lsnr.Addr().String(), storage: &tracker, Status: REPLICAT_STATUS_INITIAL_SCAN}
 
 	go func(lsnr net.Listener) {
 		err = http.Serve(lsnr, nil)
