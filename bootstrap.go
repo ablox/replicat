@@ -16,6 +16,8 @@ import (
 	"net/http"
 	"os"
 	"sync"
+	"time"
+	"math/rand"
 )
 
 // ReplicatServer is a structure that contains the definition of the servers in a cluster. Each node has a name and this
@@ -96,9 +98,22 @@ func BootstrapAndServe(address string) {
 
 	if globalSettings.ManagerAddress != "" {
 		fmt.Printf("about to send config to server (%s)\nOur address is: (%s)", globalSettings.ManagerAddress, lsnr.Addr())
-		go sendConfigToServer()
+
+		go simulateBootup()
+		//go sendConfigToServer()
 	}
 }
+func simulateBootup() {
+	serverMap[globalSettings.Name].Status = REPLICAT_STATUS_INITIAL_SCAN
+	sendConfigToServer()
+	time.Sleep(time.Second * time.Duration(rand.Intn(10)))
+	serverMap[globalSettings.Name].Status = REPLICAT_STATUS_JOINING_CLUSTER
+	sendConfigToServer()
+	time.Sleep(time.Second * time.Duration(rand.Intn(5)))
+	serverMap[globalSettings.Name].Status = REPLICAT_STATUS_ONLINE
+	sendConfigToServer()
+}
+
 
 func sendConfigToServer() {
 	url := "http://" + globalSettings.ManagerAddress + "/config/"
