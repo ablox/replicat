@@ -48,14 +48,12 @@ func SetupCli() {
 			panic("cannot decode config file.")
 		}
 
-		node := globalSettings.Nodes[globalSettings.Name]
 		if c.GlobalString("address") != "" {
-			node.Address = c.GlobalString("address")
+			globalSettings.Address = c.GlobalString("address")
 		}
 		if c.GlobalString("directory") != "" {
-			node.Directory = c.GlobalString("directory")
+			globalSettings.Directory = c.GlobalString("directory")
 		}
-		globalSettings.Nodes[globalSettings.Name] = node
 
 		if c.GlobalString("manager") != "" {
 			globalSettings.ManagerAddress = c.GlobalString("manager")

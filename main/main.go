@@ -20,7 +20,7 @@ func main() {
 	SetupCli()
 
 	globalSettings := replicat.GetGlobalSettings()
-	replicat.BootstrapAndServe(globalSettings.Nodes[globalSettings.Name].Address)
+	replicat.BootstrapAndServe(globalSettings.Address)
 	fmt.Printf("replicat %s online....\n", globalSettings.Name)
 	defer fmt.Println("End of line")
 

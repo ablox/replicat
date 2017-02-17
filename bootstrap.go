@@ -72,11 +72,7 @@ func BootstrapAndServe(address string) {
 	tracker := FilesystemTracker{}
 	fmt.Printf("Looking up settings for node: %s\n", globalSettings.Name)
 
-	fmt.Println("GlobalSettings are:")
-	for k, v := range globalSettings.Nodes {
-		fmt.Printf("%s := %#v\n", k, v)
-	}
-	directory := globalSettings.Nodes[globalSettings.Name].Directory
+	directory := globalSettings.Directory
 
 	fmt.Printf("GlobalSettings directory retrieved for this node: %s\n", directory)
 	serverMap[globalSettings.Name] = &ReplicatServer{Name: globalSettings.Name, ClusterKey: globalSettings.ClusterKey, Address: lsnr.Addr().String(), storage: &tracker, Status: REPLICAT_STATUS_INITIAL_SCAN}
@@ -149,9 +145,9 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprint(w, handler.Header)
 
 		hash := r.Form.Get("HASH")
-		myHash, _ := fileMd5Hash(globalSettings.Nodes[globalSettings.Name].Directory + "/" + handler.Filename)
+		myHash, _ := fileMd5Hash(globalSettings.Directory + "/" + handler.Filename)
 		if hash != myHash {
-			f, err := os.OpenFile(globalSettings.Nodes[globalSettings.Name].Directory+"/"+handler.Filename, os.O_WRONLY|os.O_CREATE, 0666)
+			f, err := os.OpenFile(globalSettings.Directory+"/"+handler.Filename, os.O_WRONLY|os.O_CREATE, 0666)
 
 			if err != nil {
 				fmt.Println(err)

@@ -22,12 +22,6 @@ import (
 	"time"
 )
 
-// Node Details for a single replicat node
-type Node struct {
-	Directory string
-	Address   string
-}
-
 // Settings - for this replicat server. This should include everything needed for this server to run and connect with
 // its manager and cluster. It should not include anything else.
 type Settings struct {
@@ -35,7 +29,8 @@ type Settings struct {
 	ManagerAddress     string
 	ManagerCredentials string
 	ClusterKey         string
-	Nodes              map[string]Node
+	Directory 		   string
+	Address 		   string
 }
 
 var globalSettings Settings
@@ -55,9 +50,6 @@ var events = make([]Event, 0, 100)
 
 // GetGlobalSettings -- retrieve the settings for the replicat server
 func GetGlobalSettings() Settings {
-	if globalSettings.Nodes == nil {
-		globalSettings.Nodes = make(map[string]Node)
-	}
 	return globalSettings
 }
 
@@ -191,7 +183,7 @@ func eventHandler(w http.ResponseWriter, r *http.Request) {
 		ownership[event.Path] = event
 		ownershipLock.Unlock()
 
-		pathName := globalSettings.Nodes[globalSettings.Name].Directory + "/" + event.Path
+		pathName := globalSettings.Directory + "/" + event.Path
 		relativePath := event.Path
 
 		server, exists := serverMap[globalSettings.Name]
@@ -298,7 +290,7 @@ func getListOfFolders(w http.ResponseWriter) {
 }
 
 func deletePaths(deletedPaths []string) {
-	if globalSettings.Nodes[globalSettings.Name].Directory == "" {
+	if globalSettings.Directory == "" {
 		panic("globalSettings.Directory is not configured correctly. Aborting")
 	}
 
@@ -313,7 +305,7 @@ func deletePaths(deletedPaths []string) {
 			fmt.Printf("We had a request to delete the base path. Skipping: %s\n", relativePath)
 			continue
 		}
-		fullPath := globalSettings.Nodes[globalSettings.Name].Directory + relativePath
+		fullPath := globalSettings.Directory + relativePath
 		fmt.Printf("Full path is: %s\n", fullPath)
 
 		fmt.Printf("%s: about to remove\n", fullPath)
@@ -353,7 +345,7 @@ func folderTreeHandler(w http.ResponseWriter, r *http.Request) {
 
 		var remoteTree = make(DirTreeMap)
 		for key, value := range remoteTreePreTranslate {
-			key = fmt.Sprintf("%s/%s", globalSettings.Nodes[globalSettings.Name].Directory, key)
+			key = fmt.Sprintf("%s/%s", globalSettings.Directory, key)
 			remoteTree[key] = value
 		}
 

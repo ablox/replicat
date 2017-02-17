@@ -22,6 +22,12 @@ func causeFailOnPanic(t *testing.T) {
 	}
 }
 
+//REPLICAT_STATUS_INITIAL_SCAN
+//func TestTrackerStatusAndScanInitialFiles(t *testing.T) {
+//	defer causeFailOnPanic(t)
+//	testTrackerStatusAndScanInitialFiles()
+//}
+
 func TestTrackerTestSmallFileInSubfolder(t *testing.T) {
 	defer causeFailOnPanic(t)
 	trackerTestSmallFileInSubfolder()
