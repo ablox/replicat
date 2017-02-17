@@ -39,6 +39,7 @@ func (server *ReplicatServer) GetStatus() string {
 
 func (server *ReplicatServer) SetStatus(status string) {
 	server.Status = status
+	sendConfigToServer()
 }
 
 const (
@@ -111,18 +112,27 @@ func BootstrapAndServe(address string) {
 }
 
 func simulateBootup() {
-	serverMap[globalSettings.Name].Status = REPLICAT_STATUS_INITIAL_SCAN
-	sendConfigToServer()
+	server := serverMap[globalSettings.Name]
+	server.SetStatus(REPLICAT_STATUS_INITIAL_SCAN)
+	//serverMap[globalSettings.Name].Status =
+	//sendConfigToServer()
 	time.Sleep(time.Second * time.Duration(rand.Intn(10)))
-	serverMap[globalSettings.Name].Status = REPLICAT_STATUS_JOINING_CLUSTER
-	sendConfigToServer()
+	server.SetStatus(REPLICAT_STATUS_JOINING_CLUSTER)
+	//serverMap[globalSettings.Name].Status =
+	//sendConfigToServer()
 	time.Sleep(time.Second * time.Duration(rand.Intn(5)))
-	serverMap[globalSettings.Name].Status = REPLICAT_STATUS_ONLINE
-	sendConfigToServer()
+	server.SetStatus(REPLICAT_STATUS_ONLINE)
+	//serverMap[globalSettings.Name].Status =
+	//sendConfigToServer()
 }
 
 
 func sendConfigToServer() {
+	// This field will be empty during testing
+	if globalSettings.ManagerAddress == "" {
+		return
+	}
+
 	url := "http://" + globalSettings.ManagerAddress + "/config/"
 	fmt.Printf("Manager location: %s\n", url)
 
