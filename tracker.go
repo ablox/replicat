@@ -245,10 +245,10 @@ func (handler *FilesystemTracker) init(directory string) {
 		panic(err)
 	}
 
-	// Set the status to be done with initial scan
-	fmt.Printf("%v\n", serverMap[globalSettings.Name])
-
- 	serverMap[globalSettings.Name].Status = REPLICAT_STATUS_JOINING_CLUSTER
+	// Set the status to be done with initial scan if we are really starting (skip for unit tests)
+	if server, ok := serverMap[globalSettings.Name]; ok {
+		server.Status = REPLICAT_STATUS_JOINING_CLUSTER
+	}
 
 	handler.printLockable(false)
 
