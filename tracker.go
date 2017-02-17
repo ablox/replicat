@@ -135,6 +135,7 @@ type FilesystemTracker struct {
 	fsEventsChannel   chan notify.EventInfo
 	renamesInProgress map[uint64]renameInformation // map from inode to source/destination of items being moved
 	fsLock            sync.RWMutex
+	server			  *ReplicatServer
 }
 
 // Entry - contains the data for a file
@@ -209,7 +210,7 @@ func (handler *FilesystemTracker) validate() {
 	fmt.Println("~~~~~~~~~~~~~~~~~~~~~~~")
 }
 
-func (handler *FilesystemTracker) init(directory string) {
+func (handler *FilesystemTracker) init(directory string, server *ReplicatServer) {
 	fmt.Println("FilesystemTracker:init")
 	handler.fsLock.Lock()
 	defer handler.fsLock.Unlock()
@@ -219,6 +220,8 @@ func (handler *FilesystemTracker) init(directory string) {
 	if handler.setup {
 		return
 	}
+
+	server.SetStatus(REPLICAT_STATUS_INITIAL_SCAN)
 
 	fmt.Printf("FilesystemTracker:init called with %s\n", directory)
 	handler.directory = directory
@@ -245,13 +248,9 @@ func (handler *FilesystemTracker) init(directory string) {
 		panic(err)
 	}
 
-	// Set the status to be done with initial scan if we are really starting (skip for unit tests)
-	if server, ok := serverMap[globalSettings.Name]; ok {
-		server.Status = REPLICAT_STATUS_JOINING_CLUSTER
-	}
-
+	// Set the status to be done with initial scan
+	server.SetStatus(REPLICAT_STATUS_JOINING_CLUSTER)
 	handler.printLockable(false)
-
 	handler.setup = true
 }
 

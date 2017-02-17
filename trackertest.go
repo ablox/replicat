@@ -21,7 +21,8 @@ func trackerTestEmptyDirectoryMovesInOutAround() {
 	defer os.RemoveAll(outsideFolder)
 
 	tracker := new(FilesystemTracker)
-	tracker.init(monitoredFolder)
+	server := ReplicatServer{}
+	tracker.init(monitoredFolder, &server)
 	defer tracker.cleanup()
 
 	testName := "trackerTestEmptyDirectoryMovesInOutAround"
@@ -106,7 +107,8 @@ func trackerTestFileChangeTrackerAddFolders() {
 
 	fmt.Println("TestFileChangeTrackerAddFolders: About to call watchDirectory")
 	tracker := new(FilesystemTracker)
-	tracker.init(tmpFolder)
+	server := ReplicatServer{}
+	tracker.init(tmpFolder, &server)
 	defer tracker.cleanup()
 
 	testName := "trackerTestFileChangeTrackerAddFolders"
@@ -196,7 +198,8 @@ func trackerTestSmallFileCreationAndRename() {
 	defer os.RemoveAll(outsideFolder)
 
 	tracker := new(FilesystemTracker)
-	tracker.init(monitoredFolder)
+	server := ReplicatServer{}
+	tracker.init(monitoredFolder, &server)
 	defer tracker.cleanup()
 
 	testName := "trackerTestSmallFileCreationAndRename"
@@ -281,7 +284,8 @@ func trackerTestSmallFileCreationAndUpdate() {
 	defer os.RemoveAll(monitoredFolder)
 
 	tracker := new(FilesystemTracker)
-	tracker.init(monitoredFolder)
+	server := ReplicatServer{}
+	tracker.init(monitoredFolder, &server)
 	defer tracker.cleanup()
 
 	testName := "trackerTestSmallFileCreationAndUpdate"
@@ -363,7 +367,8 @@ func testTrackerStatusAndScanInitialFiles() {
 	defer os.RemoveAll(monitoredFolder)
 
 	tracker := new(FilesystemTracker)
-	tracker.init(monitoredFolder)
+	server := ReplicatServer{}
+	tracker.init(monitoredFolder, &server)
 	defer tracker.cleanup()
 
 	//if tracker.
@@ -378,7 +383,8 @@ func trackerTestSmallFileInSubfolder() {
 	defer os.RemoveAll(monitoredFolder)
 
 	tracker := new(FilesystemTracker)
-	tracker.init(monitoredFolder)
+	server := ReplicatServer{}
+	tracker.init(monitoredFolder, &server)
 	defer tracker.cleanup()
 
 	testName := "trackerTestSmallFileInSubfolder"
@@ -411,7 +417,8 @@ func trackerTestSmallFileMovesInOutAround() {
 	defer os.RemoveAll(outsideFolder)
 
 	tracker := new(FilesystemTracker)
-	tracker.init(monitoredFolder)
+	server := ReplicatServer{}
+	tracker.init(monitoredFolder, &server)
 	defer tracker.cleanup()
 
 	testName := "trackerTestSmallFileMovesInOutAround"
@@ -462,7 +469,8 @@ func trackerTestDirectoryCreation() {
 	defer os.RemoveAll(tmpFolder)
 
 	tracker := new(FilesystemTracker)
-	tracker.init(tmpFolder)
+	server := ReplicatServer{}
+	tracker.init(tmpFolder, &server)
 	defer tracker.cleanup()
 
 	testName := "trackerTestDirectoryCreation"
@@ -501,7 +509,8 @@ func trackerTestNestedDirectoryCreation() {
 	defer os.RemoveAll(tmpFolder)
 
 	tracker := new(FilesystemTracker)
-	tracker.init(tmpFolder)
+	server := ReplicatServer{}
+	tracker.init(tmpFolder, &server)
 	tracker.watchDirectory(&c)
 	defer tracker.cleanup()
 
@@ -560,7 +569,8 @@ func trackerTestNestedFastDirectoryCreation() {
 	defer os.RemoveAll(tmpFolder)
 
 	tracker := new(FilesystemTracker)
-	tracker.init(tmpFolder)
+	server := ReplicatServer{}
+	tracker.init(tmpFolder, &server)
 	tracker.watchDirectory(&c)
 	defer tracker.cleanup()
 
@@ -606,7 +616,8 @@ func trackerTestDirectoryStorage() {
 	defer os.RemoveAll(tmpFolder)
 
 	tracker := new(FilesystemTracker)
-	tracker.init(tmpFolder)
+	server := ReplicatServer{}
+	tracker.init(tmpFolder, &server)
 	defer tracker.cleanup()
 
 	testName := "trackerTestDirectoryStorage"
@@ -670,7 +681,8 @@ func trackerTestFileChangeTrackerAutoCreateFolderAndCleanup() {
 	logger := &LogOnlyChangeHandler{}
 	var loggerInterface ChangeHandler = logger
 
-	tracker.init(tmpFolder)
+	server := ReplicatServer{}
+	tracker.init(tmpFolder, &server)
 	tracker.watchDirectory(&loggerInterface)
 
 	// verify the folder was created

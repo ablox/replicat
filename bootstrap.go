@@ -33,6 +33,14 @@ type ReplicatServer struct {
 	storage       StorageTracker
 }
 
+func (server *ReplicatServer) GetStatus() string {
+	return server.Status
+}
+
+func (server *ReplicatServer) SetStatus(status string) {
+	server.Status = status
+}
+
 const (
 	REPLICAT_STATUS_INITIAL_SCAN    = "Initial Scan"
 	REPLICAT_STATUS_JOINING_CLUSTER = "Joining Cluster"
@@ -75,8 +83,10 @@ func BootstrapAndServe(address string) {
 	directory := globalSettings.Directory
 
 	fmt.Printf("GlobalSettings directory retrieved for this node: %s\n", directory)
-	serverMap[globalSettings.Name] = &ReplicatServer{Name: globalSettings.Name, ClusterKey: globalSettings.ClusterKey, Address: lsnr.Addr().String(), storage: &tracker, Status: REPLICAT_STATUS_INITIAL_SCAN}
-	tracker.init(directory)
+	server := &ReplicatServer{Name: globalSettings.Name, ClusterKey: globalSettings.ClusterKey, Address: lsnr.Addr().String(), storage: &tracker, Status: REPLICAT_STATUS_INITIAL_SCAN}
+	serverMap[globalSettings.Name] = server
+	tracker.init(directory, server)
+
 	var c ChangeHandler
 	c = &logOnlyHandler
 	tracker.watchDirectory(&c)
@@ -99,6 +109,7 @@ func BootstrapAndServe(address string) {
 		//go sendConfigToServer()
 	}
 }
+
 func simulateBootup() {
 	serverMap[globalSettings.Name].Status = REPLICAT_STATUS_INITIAL_SCAN
 	sendConfigToServer()
