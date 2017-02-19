@@ -82,9 +82,27 @@ type countingChangeHandler struct {
 	FilesCreated   int
 	FilesUpdated   int
 	FilesDeleted   int
+	fsLock            sync.RWMutex
+}
+
+func (handler *countingChangeHandler) GetFolderStats() (created, deleted, updated int) {
+	handler.fsLock.Lock()
+	defer handler.fsLock.Unlock()
+
+	return handler.FoldersCreated, handler.FoldersDeleted, handler.FoldersUpdated
+}
+
+func (handler *countingChangeHandler) GetFileStats() (created, deleted, updated int) {
+	handler.fsLock.Lock()
+	defer handler.fsLock.Unlock()
+
+	return handler.FilesCreated, handler.FilesDeleted, handler.FilesUpdated
 }
 
 func (handler *countingChangeHandler) FolderCreated(name string) error {
+	handler.fsLock.Lock()
+	defer handler.fsLock.Unlock()
+
 	handler.FoldersCreated++
 
 	fmt.Printf("countingChangeHandler:FolderCreated: %s (%d)\n", name, handler.FoldersCreated)
@@ -92,6 +110,9 @@ func (handler *countingChangeHandler) FolderCreated(name string) error {
 }
 
 func (handler *countingChangeHandler) FolderDeleted(name string) error {
+	handler.fsLock.Lock()
+	defer handler.fsLock.Unlock()
+
 	handler.FoldersDeleted++
 
 	fmt.Printf("countingChangeHandler:FolderDeleted: %s (%d)\n", name, handler.FoldersDeleted)
@@ -99,6 +120,9 @@ func (handler *countingChangeHandler) FolderDeleted(name string) error {
 }
 
 func (handler *countingChangeHandler) FolderUpdated(name string) error {
+	handler.fsLock.Lock()
+	defer handler.fsLock.Unlock()
+
 	handler.FoldersUpdated++
 
 	fmt.Printf("countingChangeHandler:FolderUpdated: %s (%d)\n", name, handler.FoldersUpdated)
@@ -106,6 +130,9 @@ func (handler *countingChangeHandler) FolderUpdated(name string) error {
 }
 
 func (handler *countingChangeHandler) FileCreated(name string) error {
+	handler.fsLock.Lock()
+	defer handler.fsLock.Unlock()
+
 	handler.FilesCreated++
 
 	fmt.Printf("countingChangeHandler:FileCreated: %s (%d)\n", name, handler.FilesCreated)
@@ -113,6 +140,9 @@ func (handler *countingChangeHandler) FileCreated(name string) error {
 }
 
 func (handler *countingChangeHandler) FileDeleted(name string) error {
+	handler.fsLock.Lock()
+	defer handler.fsLock.Unlock()
+
 	handler.FilesDeleted++
 
 	fmt.Printf("countingChangeHandler:FileDeleted: %s (%d)\n", name, handler.FilesDeleted)
@@ -120,6 +150,9 @@ func (handler *countingChangeHandler) FileDeleted(name string) error {
 }
 
 func (handler *countingChangeHandler) FileUpdated(name string) error {
+	handler.fsLock.Lock()
+	defer handler.fsLock.Unlock()
+
 	handler.FilesUpdated++
 
 	fmt.Printf("countingChangeHandler:FileUpdated: %s (%d)\n", name, handler.FilesUpdated)

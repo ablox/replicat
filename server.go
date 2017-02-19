@@ -106,6 +106,11 @@ func SendEvent(event Event, fullPath string) {
 }
 
 func sendEvent(event *Event, fullPath string, address string, credentials string) {
+	if address == "" {
+		fmt.Println("No address for manager, returning")
+		return
+	}
+
 	url := "http://" + address + "/event/"
 	fmt.Printf("target url: %s\n", url)
 
