@@ -80,7 +80,14 @@ func trackerTestEmptyDirectoryMovesInOutAround() {
 		panic(fmt.Sprintf("%s not found after renamte timout\ncontents: %v\n", folderName, tracker.contents))
 	}
 	tracker.printTracker()
-	if len(tracker.renamesInProgress) > 0 {
+
+	waitForEmptyRenamesInProgress := func(tracker *FilesystemTracker, folder string) bool {
+		tracker.fsLock.Lock()
+		defer tracker.fsLock.Unlock()
+		return len(tracker.renamesInProgress) == 0
+	}
+
+	if !WaitFor(tracker, folderName, true, waitForEmptyRenamesInProgress) {
 		tracker.printTracker()
 		panic(fmt.Sprint("11 tracker has renames in progress still"))
 	}
