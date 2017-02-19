@@ -29,8 +29,8 @@ type Settings struct {
 	ManagerAddress     string
 	ManagerCredentials string
 	ClusterKey         string
-	Directory 		   string
-	Address 		   string
+	Directory          string
+	Address            string
 }
 
 var globalSettings Settings

@@ -5,10 +5,10 @@
 package replicat
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"sort"
-	"fmt"
 )
 
 // DirTreeMap is a mapping between directories and lists of file names.
@@ -184,7 +184,6 @@ func scanDirectoryContents() (DirTreeMap, error) {
 	//	fmt.Printf("%s\n", dir)
 	//}
 	//fmt.Printf("Export done:\n")
-
 
 	fmt.Println("scanning directory contents - end")
 	return listOfFileInfo, nil

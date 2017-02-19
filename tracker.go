@@ -135,7 +135,7 @@ type FilesystemTracker struct {
 	fsEventsChannel   chan notify.EventInfo
 	renamesInProgress map[uint64]renameInformation // map from inode to source/destination of items being moved
 	fsLock            sync.RWMutex
-	server			  *ReplicatServer
+	server            *ReplicatServer
 }
 
 // Entry - contains the data for a file
@@ -687,7 +687,6 @@ func (handler *FilesystemTracker) completeRenameIfAbandoned(iNode uint64) {
 		// tell the other nodes that a rename was done.
 		event := Event{Name: "replicat.Rename", Source: globalSettings.Name, SourcePath: relativePath}
 		SendEvent(event, inProgress.sourcePath)
-
 	} else if inProgress.destinationSet {
 		fmt.Printf("directory: %s src: %s dest: %s\n", handler.directory, inProgress.sourcePath, inProgress.destinationPath)
 		fmt.Printf("inProgress: %v\n", handler.renamesInProgress)

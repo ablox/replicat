@@ -12,12 +12,12 @@ import (
 	"github.com/goji/httpauth"
 	"io"
 	"log"
+	"math/rand"
 	"net"
 	"net/http"
 	"os"
 	"sync"
 	"time"
-	"math/rand"
 )
 
 // ReplicatServer is a structure that contains the definition of the servers in a cluster. Each node has a name and this
@@ -92,7 +92,6 @@ func BootstrapAndServe(address string) {
 	c = &logOnlyHandler
 	tracker.watchDirectory(&c)
 
-
 	go func(lsnr net.Listener) {
 		err = http.Serve(lsnr, nil)
 		if err != nil {
@@ -125,7 +124,6 @@ func simulateBootup() {
 	//serverMap[globalSettings.Name].Status =
 	//sendConfigToServer()
 }
-
 
 func sendConfigToServer() {
 	// This field will be empty during testing

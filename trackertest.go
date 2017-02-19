@@ -377,7 +377,6 @@ func testTrackerStatusAndScanInitialFiles() {
 	// todo complete this test. The folder needs to be there and the single file need to be there.
 }
 
-
 func trackerTestSmallFileInSubfolder() {
 	monitoredFolder, _ := ioutil.TempDir("", "monitored")
 	defer os.RemoveAll(monitoredFolder)
