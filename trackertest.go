@@ -551,7 +551,6 @@ func trackerTestNestedDirectoryCreation() {
 	updated := 0
 	deleted := 0
 
-
 	// wait for the final tally to come through.
 	cycleCount := 0
 	for {

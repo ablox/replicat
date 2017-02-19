@@ -82,7 +82,7 @@ type countingChangeHandler struct {
 	FilesCreated   int
 	FilesUpdated   int
 	FilesDeleted   int
-	fsLock            sync.RWMutex
+	fsLock         sync.RWMutex
 }
 
 func (handler *countingChangeHandler) GetFolderStats() (created, deleted, updated int) {
