@@ -81,6 +81,7 @@ func trackerTestEmptyDirectoryMovesInOutAround() {
 	}
 	tracker.printTracker()
 	if len(tracker.renamesInProgress) > 0 {
+		tracker.printTracker()
 		panic(fmt.Sprint("11 tracker has renames in progress still"))
 	}
 
