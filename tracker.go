@@ -159,6 +159,53 @@ func (handler *countingChangeHandler) FileUpdated(name string) error {
 	return nil
 }
 
+// MemoryTracker - Track a pool of memory for testing - i.e. memory only object store
+type MemoryTracker struct {
+	fsLock    sync.RWMutex
+	contents  map[string]Entry  // the typical stat object information
+	fullData  map[string][]byte // the actual data of the object
+	directory string
+	setup     bool
+}
+
+func (tracker *MemoryTracker) CreatePath(relativePath string, isDirectory bool) (err error) {
+	return nil
+}
+
+func (tracker *MemoryTracker) Rename(sourcePath string, destinationPath string, isDirectory bool) (err error) {
+	return nil
+}
+
+func (tracker *MemoryTracker) DeleteFolder(name string) (err error) {
+	return nil
+}
+
+func (tracker *MemoryTracker) ListFolders() (folderList []string) {
+	return nil
+}
+
+func (tracker *MemoryTracker) printLockable(lock bool) {
+	if lock {
+		fmt.Println("FilesystemTracker:print")
+		tracker.fsLock.RLock()
+		fmt.Println("FilesystemTracker:/print")
+		defer tracker.fsLock.RUnlock()
+		defer fmt.Println("FilesystemTracker://print")
+	}
+
+	folders := make([]string, 0, len(tracker.contents))
+	for dir := range tracker.contents {
+		folders = append(folders, dir)
+	}
+	sort.Strings(folders)
+
+	fmt.Println("~~~~~~~~~~~~~~~~~~~~~~~")
+	fmt.Printf("~~~~%s MemoryTracker report setup(%v)\n", tracker.directory, tracker.setup)
+	fmt.Printf("~~~~contents: %v\n", tracker.contents)
+	fmt.Printf("~~~~folders: %v\n", folders)
+	fmt.Println("~~~~~~~~~~~~~~~~~~~~~~~")
+}
+
 // FilesystemTracker - Track a filesystem and keep it in sync
 type FilesystemTracker struct {
 	directory         string
@@ -207,6 +254,8 @@ func (handler *FilesystemTracker) printLockable(lock bool) {
 		fmt.Println("FilesystemTracker:print")
 		handler.fsLock.RLock()
 		fmt.Println("FilesystemTracker:/print")
+		defer handler.fsLock.RUnlock()
+		defer fmt.Println("FilesystemTracker://print")
 	}
 
 	folders := make([]string, 0, len(handler.contents))
@@ -221,11 +270,6 @@ func (handler *FilesystemTracker) printLockable(lock bool) {
 	fmt.Printf("~~~~folders: %v\n", folders)
 	fmt.Printf("~~~~renames in progress: %v\n", handler.renamesInProgress)
 	fmt.Println("~~~~~~~~~~~~~~~~~~~~~~~")
-
-	if lock {
-		handler.fsLock.RUnlock()
-		fmt.Println("FilesystemTracker://print")
-	}
 }
 
 func (handler *FilesystemTracker) validate() {
@@ -302,6 +346,9 @@ func (handler *FilesystemTracker) cleanup() {
 }
 
 func (handler *FilesystemTracker) watchDirectory(watcher *ChangeHandler) {
+	handler.fsLock.Lock()
+	defer handler.fsLock.Unlock()
+
 	if !handler.setup {
 		panic("FilesystemTracker:watchDirectory called when not yet setup")
 	}
@@ -843,7 +890,14 @@ func (handler *FilesystemTracker) processEvent(event Event, pathName, fullPath s
 		if !exists {
 			info, err := os.Stat(fullPath)
 			if err != nil {
-				panic(fmt.Sprintf("Could not get stats on directory %s", fullPath))
+				fmt.Printf("Could not get stats on directory %s\n", fullPath)
+				if lock {
+					handler.fsLock.Unlock()
+				}
+				//todo send error event up
+				return
+
+				//panic(fmt.Sprintf("Could not get stats on directory %s", fullPath))
 			}
 			directory := NewDirectory()
 			directory.FileInfo = info

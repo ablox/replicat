@@ -53,6 +53,7 @@ var serverMapLock sync.RWMutex
 
 // BootstrapAndServe - Start the server
 func BootstrapAndServe(address string) {
+	//trackerTestDual()
 	//trackerTestSmallFileInSubfolder()
 	//trackerTestEmptyDirectoryMovesInOutAround()
 	//trackerTestFileChangeTrackerAddFolders()

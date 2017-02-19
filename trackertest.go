@@ -10,24 +10,70 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"runtime"
 	"sort"
+	"strconv"
 	"time"
 )
 
-func trackerTestEmptyDirectoryMovesInOutAround() {
-	monitoredFolder, _ := ioutil.TempDir("", "monitored")
-	outsideFolder, _ := ioutil.TempDir("", "outside")
-	defer os.RemoveAll(monitoredFolder)
-	defer os.RemoveAll(outsideFolder)
-
-	tracker := new(FilesystemTracker)
+func createTracker(prefix string) (tracker *FilesystemTracker) {
+	monitoredFolder, _ := ioutil.TempDir("", prefix)
+	tracker = new(FilesystemTracker)
 	server := ReplicatServer{}
 	tracker.init(monitoredFolder, &server)
-	defer tracker.cleanup()
 
-	testName := "trackerTestEmptyDirectoryMovesInOutAround"
-	tracker.startTest(testName)
-	defer tracker.endTest(testName)
+	pc, _, _, _ := runtime.Caller(1)
+	details := runtime.FuncForPC(pc)
+	tracker.startTest(details.Name())
+
+	return tracker
+}
+
+func cleanupTracker(tracker *FilesystemTracker) {
+	os.RemoveAll(tracker.directory)
+	tracker.cleanup()
+
+	pc, _, _, _ := runtime.Caller(1)
+	details := runtime.FuncForPC(pc)
+	tracker.endTest(details.Name())
+}
+
+func createExtraFolder(prefix string) (name string) {
+	name, _ = ioutil.TempDir("", prefix)
+	return
+}
+
+func cleanupExtraFolder(name string) {
+	os.RemoveAll(name)
+}
+
+func trackerTestDual() {
+	outsideFolder := createExtraFolder("outside")
+	defer cleanupExtraFolder(outsideFolder)
+
+	tracker := createTracker("monitored")
+	defer cleanupTracker(tracker)
+
+	tracker2 := createTracker("monitored2")
+	defer cleanupTracker(tracker2)
+
+	logger := &LogOnlyChangeHandler{}
+	var loggerInterface ChangeHandler = logger
+	tracker.watchDirectory(&loggerInterface)
+
+	fmt.Println("tracker1")
+	tracker.printTracker()
+	fmt.Println("tracker2")
+	tracker2.printTracker()
+}
+
+func trackerTestEmptyDirectoryMovesInOutAround() {
+	outsideFolder := createExtraFolder("outside")
+	defer cleanupExtraFolder(outsideFolder)
+
+	tracker := createTracker("monitored")
+	defer cleanupTracker(tracker)
+	monitoredFolder := tracker.directory
 
 	logger := &LogOnlyChangeHandler{}
 	var loggerInterface ChangeHandler = logger
@@ -112,50 +158,39 @@ func trackerTestFileChangeTrackerAddFolders() {
 	logHandler := countingChangeHandler{}
 	var c ChangeHandler = &logHandler
 
-	tmpFolder, err := ioutil.TempDir("", "blank")
-	defer os.RemoveAll(tmpFolder)
-
-	fmt.Println("TestFileChangeTrackerAddFolders: About to call watchDirectory")
-	tracker := new(FilesystemTracker)
-	server := ReplicatServer{}
-	tracker.init(tmpFolder, &server)
-	defer tracker.cleanup()
-
-	testName := "trackerTestFileChangeTrackerAddFolders"
-	tracker.startTest(testName)
-	defer tracker.endTest(testName)
+	tracker := createTracker("monitored")
+	defer cleanupTracker(tracker)
+	tmpFolder := tracker.directory
 
 	tracker.watchDirectory(&c)
-	fmt.Println("TestFileChangeTrackerAddFolders: Done - About to call watchDirectory")
+	fmt.Printf("TestFileChangeTrackerAddFolders: Done - watchDirectory. Tracker is now watching: %s\n", tracker.directory)
 
 	numberOfSubFolders := 10
 
 	for i := 0; i < numberOfSubFolders; i++ {
 		path := fmt.Sprintf("%s/a%d", tmpFolder, i)
-
-		err = os.Mkdir(path, os.ModeDir+os.ModePerm)
+		fmt.Printf("os.Mkdir: %s\n", path)
+		err := os.Mkdir(path, os.ModeDir+os.ModePerm)
 		if err != nil {
 			panic(err)
 		}
 	}
-	fmt.Printf("done with creating %d different subfolders. :)\n", numberOfSubFolders)
+	fmt.Printf("done with creating %d different subfolders. \n", numberOfSubFolders)
 
-	// todo - convert to waitfor
-	cycleCount := 0
-	for {
-		cycleCount++
-		folderList := tracker.ListFolders()
-		if len(folderList) < numberOfSubFolders {
-			//fmt.Printf("did not get all folders. Current: %v\n", folderList)
-			if cycleCount > 20 {
-				panic(fmt.Sprintf("Did not find enough folders. Got bored of waiting. What was found: %v\n", folderList))
-			}
-			time.Sleep(time.Millisecond * 50)
-		} else {
-			fmt.Println("We have all of our ducks in a row")
-			break
-		}
+	helper := func(tracker *FilesystemTracker, numberOfSubFolders string) bool {
+		folderCount, _ := strconv.Atoi(numberOfSubFolders)
+		fmt.Printf("* looking for: %d currently have: %d\n", folderCount, len(tracker.ListFolders()))
+		return len(tracker.ListFolders()) == folderCount
 	}
+
+	folderSeeking := strconv.Itoa(numberOfSubFolders)
+	fmt.Printf("***************>>>>>>>>>>> folder seeking: %s num: %d\n", folderSeeking, numberOfSubFolders)
+	if !WaitFor(tracker, string(numberOfSubFolders), true, helper) {
+		panic(fmt.Sprintf("did not find enough subfolders. Looking for: %d found: %d", numberOfSubFolders, len(tracker.ListFolders())))
+	}
+
+	//todo figure out why this sleep is needed.
+	time.Sleep(time.Millisecond * 50)
 
 	folder1 := fmt.Sprintf("%s/a0", tmpFolder)
 	folder2 := fmt.Sprintf("%s/a1", tmpFolder)
@@ -175,7 +210,7 @@ func trackerTestFileChangeTrackerAddFolders() {
 	tracker.printTracker()
 
 	// wait for the final tally to come through.
-	cycleCount = 0
+	cycleCount := 0
 	for {
 		cycleCount++
 
