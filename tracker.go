@@ -833,9 +833,6 @@ func (handler *FilesystemTracker) processEvent(event Event, pathName, fullPath s
 			}
 		}
 
-		if handler.watcher != nil {
-			(*handler.watcher).FolderCreated(pathName)
-		}
 		fmt.Printf("notify.Create: Updated value for %s: %v (%t)\n", pathName, updatedValue, exists)
 
 		// sendEvent to manager
@@ -926,7 +923,7 @@ func (handler *FilesystemTracker) scanFolders() error {
 		}
 	}
 
-	fmt.Println("FileSystemTracker ScanFolders - end")
+	fmt.Printf("FileSystemTracker ScanFolders - end - Found %d items\n", len(handler.contents))
 	return nil
 }
 
