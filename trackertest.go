@@ -190,7 +190,7 @@ func trackerTestFileChangeTrackerAddFolders() {
 	}
 
 	//todo figure out why this sleep is needed.
-	time.Sleep(time.Millisecond * 50)
+	time.Sleep(time.Millisecond * 500)
 
 	folder1 := fmt.Sprintf("%s/a0", tmpFolder)
 	folder2 := fmt.Sprintf("%s/a1", tmpFolder)
@@ -244,19 +244,12 @@ func trackerTestFileChangeTrackerAddFolders() {
 }
 
 func trackerTestSmallFileCreationAndRename() {
-	monitoredFolder, _ := ioutil.TempDir("", "monitored")
-	outsideFolder, _ := ioutil.TempDir("", "outside")
-	defer os.RemoveAll(monitoredFolder)
-	defer os.RemoveAll(outsideFolder)
+	outsideFolder := createExtraFolder("outside")
+	defer cleanupExtraFolder(outsideFolder)
 
-	tracker := new(FilesystemTracker)
-	server := ReplicatServer{}
-	tracker.init(monitoredFolder, &server)
-	defer tracker.cleanup()
-
-	testName := "trackerTestSmallFileCreationAndRename"
-	tracker.startTest(testName)
-	defer tracker.endTest(testName)
+	tracker := createTracker("monitored")
+	defer cleanupTracker(tracker)
+	monitoredFolder := tracker.directory
 
 	logger := &LogOnlyChangeHandler{}
 	var loggerInterface ChangeHandler = logger
@@ -293,14 +286,8 @@ func trackerTestSmallFileCreationAndRename() {
 		tracker.fsLock.Lock()
 		defer tracker.fsLock.Unlock()
 
-		entry, exists := tracker.contents[path]
-		if !exists {
-			return false
-		}
-
-		fmt.Printf("entry is: %#v\npath: %s\n", entry, path)
-
-		return true
+		_, exists := tracker.contents[path]
+		return exists
 	}
 
 	if !WaitFor(tracker, fileName, true, helper) {
@@ -335,17 +322,12 @@ func trackerTestSmallFileCreationAndRename() {
 }
 
 func trackerTestSmallFileCreationAndUpdate() {
-	monitoredFolder, _ := ioutil.TempDir("", "monitored")
-	defer os.RemoveAll(monitoredFolder)
+	outsideFolder := createExtraFolder("outside")
+	defer cleanupExtraFolder(outsideFolder)
 
-	tracker := new(FilesystemTracker)
-	server := ReplicatServer{}
-	tracker.init(monitoredFolder, &server)
-	defer tracker.cleanup()
-
-	testName := "trackerTestSmallFileCreationAndUpdate"
-	tracker.startTest(testName)
-	defer tracker.endTest(testName)
+	tracker := createTracker("monitored")
+	defer cleanupTracker(tracker)
+	monitoredFolder := tracker.directory
 
 	logger := &countingChangeHandler{}
 	var loggerInterface ChangeHandler = logger
@@ -420,33 +402,12 @@ func trackerTestSmallFileCreationAndUpdate() {
 
 }
 
-func testTrackerStatusAndScanInitialFiles() {
-	monitoredFolder, _ := ioutil.TempDir("", "monitored")
-	defer os.RemoveAll(monitoredFolder)
-
-	tracker := new(FilesystemTracker)
-	server := ReplicatServer{}
-	tracker.init(monitoredFolder, &server)
-	defer tracker.cleanup()
-
-	//if tracker.
-	panic("probably should do something")
-
-	// todo complete this test. The folder needs to be there and the single file need to be there.
-}
-
 func trackerTestSmallFileInSubfolder() {
-	monitoredFolder, _ := ioutil.TempDir("", "monitored")
-	defer os.RemoveAll(monitoredFolder)
+	outsideFolder := createExtraFolder("outside")
+	defer cleanupExtraFolder(outsideFolder)
 
-	tracker := new(FilesystemTracker)
-	server := ReplicatServer{}
-	tracker.init(monitoredFolder, &server)
-	defer tracker.cleanup()
-
-	testName := "trackerTestSmallFileInSubfolder"
-	tracker.startTest(testName)
-	defer tracker.endTest(testName)
+	tracker := createTracker("monitored")
+	defer cleanupTracker(tracker)
 
 	logger := &countingChangeHandler{}
 	var loggerInterface ChangeHandler = logger
@@ -468,19 +429,12 @@ func trackerTestSmallFileInSubfolder() {
 }
 
 func trackerTestSmallFileMovesInOutAround() {
-	monitoredFolder, _ := ioutil.TempDir("", "monitored")
-	outsideFolder, _ := ioutil.TempDir("", "outside")
-	defer os.RemoveAll(monitoredFolder)
-	defer os.RemoveAll(outsideFolder)
+	outsideFolder := createExtraFolder("outside")
+	defer cleanupExtraFolder(outsideFolder)
 
-	tracker := new(FilesystemTracker)
-	server := ReplicatServer{}
-	tracker.init(monitoredFolder, &server)
-	defer tracker.cleanup()
-
-	testName := "trackerTestSmallFileMovesInOutAround"
-	tracker.startTest(testName)
-	defer tracker.endTest(testName)
+	tracker := createTracker("monitored")
+	defer cleanupTracker(tracker)
+	monitoredFolder := tracker.directory
 
 	logger := &LogOnlyChangeHandler{}
 	var loggerInterface ChangeHandler = logger
@@ -522,19 +476,14 @@ func trackerTestSmallFileMovesInOutAround() {
 }
 
 func trackerTestDirectoryCreation() {
-	tmpFolder, _ := ioutil.TempDir("", "blank")
-	defer os.RemoveAll(tmpFolder)
+	outsideFolder := createExtraFolder("outside")
+	defer cleanupExtraFolder(outsideFolder)
 
-	tracker := new(FilesystemTracker)
-	server := ReplicatServer{}
-	tracker.init(tmpFolder, &server)
-	defer tracker.cleanup()
+	tracker := createTracker("monitored")
+	defer cleanupTracker(tracker)
+	monitoredFolder := tracker.directory
 
-	testName := "trackerTestDirectoryCreation"
-	tracker.startTest(testName)
-	defer tracker.endTest(testName)
-
-	testDirectory := tmpFolder + "/newbie"
+	testDirectory := monitoredFolder + "/newbie"
 	before, err := os.Stat(testDirectory)
 
 	os.Mkdir(testDirectory, os.ModeDir+os.ModePerm)
@@ -561,31 +510,25 @@ func trackerTestNestedDirectoryCreation() {
 	logHandler := countingChangeHandler{}
 	var c ChangeHandler = &logHandler
 
-	// check to see if they are all in the contents
-	tmpFolder, _ := ioutil.TempDir("", "blank")
-	defer os.RemoveAll(tmpFolder)
+	outsideFolder := createExtraFolder("outside")
+	defer cleanupExtraFolder(outsideFolder)
 
-	tracker := new(FilesystemTracker)
-	server := ReplicatServer{}
-	tracker.init(tmpFolder, &server)
+	tracker := createTracker("monitored")
+	defer cleanupTracker(tracker)
+	monitoredFolder := tracker.directory
 	tracker.watchDirectory(&c)
-	defer tracker.cleanup()
 
-	testName := "trackerTestNestedDirectoryCreation"
-	tracker.startTest(testName)
-	defer tracker.endTest(testName)
-
-	os.Mkdir(tmpFolder+"/a", os.ModeDir+os.ModePerm)
+	os.Mkdir(monitoredFolder+"/a", os.ModeDir+os.ModePerm)
 	time.Sleep(10 * time.Millisecond)
-	os.Mkdir(tmpFolder+"/a/b", os.ModeDir+os.ModePerm)
+	os.Mkdir(monitoredFolder+"/a/b", os.ModeDir+os.ModePerm)
 	time.Sleep(10 * time.Millisecond)
-	os.Mkdir(tmpFolder+"/a/b/c", os.ModeDir+os.ModePerm)
+	os.Mkdir(monitoredFolder+"/a/b/c", os.ModeDir+os.ModePerm)
 	time.Sleep(10 * time.Millisecond)
-	os.Mkdir(tmpFolder+"/a/b/c/d", os.ModeDir+os.ModePerm)
+	os.Mkdir(monitoredFolder+"/a/b/c/d", os.ModeDir+os.ModePerm)
 	time.Sleep(10 * time.Millisecond)
-	os.Mkdir(tmpFolder+"/a/b/c/d/e", os.ModeDir+os.ModePerm)
+	os.Mkdir(monitoredFolder+"/a/b/c/d/e", os.ModeDir+os.ModePerm)
 	time.Sleep(10 * time.Millisecond)
-	os.Mkdir(tmpFolder+"/a/b/c/d/e/f", os.ModeDir+os.ModePerm)
+	os.Mkdir(monitoredFolder+"/a/b/c/d/e/f", os.ModeDir+os.ModePerm)
 	time.Sleep(10 * time.Millisecond)
 
 	expectedCreated := 6
