@@ -47,25 +47,29 @@ func cleanupExtraFolder(name string) {
 	os.RemoveAll(name)
 }
 
-func trackerTestDual() {
-	outsideFolder := createExtraFolder("outside")
-	defer cleanupExtraFolder(outsideFolder)
-
-	tracker := createTracker("monitored")
-	defer cleanupTracker(tracker)
-
-	tracker2 := createTracker("monitored2")
-	defer cleanupTracker(tracker2)
-
-	logger := &LogOnlyChangeHandler{}
-	var loggerInterface ChangeHandler = logger
-	tracker.watchDirectory(&loggerInterface)
-
-	fmt.Println("tracker1")
-	tracker.printTracker()
-	fmt.Println("tracker2")
-	tracker2.printTracker()
-}
+//func trackerTestDual() {
+//	outsideFolder := createExtraFolder("outside")
+//	defer cleanupExtraFolder(outsideFolder)
+//
+//	tracker := createTracker("monitored")
+//	defer cleanupTracker(tracker)
+//
+//	tracker2 := createTracker("monitored2")
+//	defer cleanupTracker(tracker2)
+//
+//	logger := &LogOnlyChangeHandler{}
+//	var loggerInterface ChangeHandler = logger
+//	tracker.watchDirectory(&loggerInterface)
+//
+//	fmt.Println("tracker1")
+//	tracker.printTracker()
+//	fmt.Println("tracker2")
+//	tracker2.printTracker()
+//
+//	fmt.Printf("tracker 1 (%s) tracker2 (%s)\n", tracker.server.Address, tracker2.server.Address)
+//
+//
+//}
 
 func trackerTestEmptyDirectoryMovesInOutAround() {
 	outsideFolder := createExtraFolder("outside")

@@ -28,10 +28,10 @@ func causeFailOnPanic(t *testing.T) {
 //	testTrackerStatusAndScanInitialFiles()
 //}
 
-func TestTrackerTestDual(t *testing.T) {
-	defer causeFailOnPanic(t)
-	trackerTestDual()
-}
+//func TestTrackerTestDual(t *testing.T) {
+//	defer causeFailOnPanic(t)
+//	trackerTestDual()
+//}
 
 func TestTrackerTestSmallFileInSubfolder(t *testing.T) {
 	defer causeFailOnPanic(t)
