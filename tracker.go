@@ -31,7 +31,8 @@ type StorageTracker interface {
 	CreatePath(relativePath string, isDirectory bool) (err error)
 	Rename(sourcePath string, destinationPath string, isDirectory bool) (err error)
 	DeleteFolder(name string) (err error)
-	ListFolders() (folderList []string)
+	ListFolders(getLocks bool) (folderList []string)
+	sendExistingFiles()
 }
 
 // LogOnlyChangeHandler - sample change handler
@@ -320,6 +321,8 @@ func (handler *FilesystemTracker) init(directory string, server *ReplicatServer)
 
 	fmt.Println("Setting up filesystemTracker!")
 	handler.printLockable(false)
+
+	fmt.Println("FilesystemTracker:init starting folder scan looking for initial files")
 	err := handler.scanFolders()
 	if err != nil {
 		panic(err)
@@ -329,7 +332,38 @@ func (handler *FilesystemTracker) init(directory string, server *ReplicatServer)
 	server.SetStatus(REPLICAT_STATUS_JOINING_CLUSTER)
 	handler.printLockable(false)
 	handler.setup = true
+
+	go handler.sendExistingFiles()
 }
+
+func (handler *FilesystemTracker) sendExistingFiles() {
+	//fmt.Println("FilesystemTracker:init")
+	//handler.fsLock.Lock()
+	//defer handler.fsLock.Unlock()
+	//fmt.Println("FilesystemTracker:/init")
+	//defer fmt.Println("FilesystemTracker://init")
+
+
+	folderList := handler.ListFolders(true)
+	fmt.Println("FilesystemTracker:sendExistingFiles Start folder listing *******************************")
+	for _, c := range folderList {
+		fmt.Printf("%s\n", c)
+	}
+	fmt.Println("FilesystemTracker:sendExistingFiles Completed listing folders **************************")
+
+	for _, currentItem := range folderList {
+		absolutePath := filepath.Join(handler.directory, currentItem)
+		relativePath := absolutePath[len(handler.directory):]
+
+		event := Event{Name: "notify.Create", Path: relativePath, Source: globalSettings.Name}
+		handler.processEvent(event, relativePath, absolutePath, true)
+	}
+
+}
+
+
+
+
 
 func (handler *FilesystemTracker) cleanup() {
 	fmt.Println("FilesystemTracker:cleanup")
@@ -592,12 +626,14 @@ func (handler *FilesystemTracker) DeleteFolder(name string) error {
 }
 
 // ListFolders - This storage handler should return a list of contained folders.
-func (handler *FilesystemTracker) ListFolders() (folderList []string) {
-	fmt.Println("FilesystemTracker:ListFolders")
-	handler.fsLock.Lock()
-	defer handler.fsLock.Unlock()
-	fmt.Println("FilesystemTracker:/ListFolders")
-	defer fmt.Println("FilesystemTracker://ListFolders")
+func (handler *FilesystemTracker) ListFolders(getLocks bool) (folderList []string) {
+	fmt.Printf("FilesystemTracker:ListFolders   getLocks: %s\n", getLocks)
+	if getLocks {
+		handler.fsLock.Lock()
+		defer handler.fsLock.Unlock()
+		fmt.Println("FilesystemTracker:/ListFolders")
+		defer fmt.Println("FilesystemTracker://ListFolders")
+	}
 
 	if !handler.setup {
 		panic("FilesystemTracker:ListFolders called when not yet setup")

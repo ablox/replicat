@@ -106,24 +106,26 @@ func BootstrapAndServe(address string) {
 	if globalSettings.ManagerAddress != "" {
 		fmt.Printf("about to send config to server (%s)\nOur address is: (%s)", globalSettings.ManagerAddress, lsnr.Addr())
 
-		go simulateBootup()
+		go simulateBootup(tracker)
 		//go sendConfigToServer()
 	}
 }
 
-func simulateBootup() {
+func simulateBootup(tracker FilesystemTracker) {
 	server := serverMap[globalSettings.Name]
 	server.SetStatus(REPLICAT_STATUS_INITIAL_SCAN)
-	//serverMap[globalSettings.Name].Status =
-	//sendConfigToServer()
+	sendConfigToServer()
 	time.Sleep(time.Second * time.Duration(rand.Intn(10)))
 	server.SetStatus(REPLICAT_STATUS_JOINING_CLUSTER)
+	sendConfigToServer()
+
 	//serverMap[globalSettings.Name].Status =
 	//sendConfigToServer()
 	time.Sleep(time.Second * time.Duration(rand.Intn(5)))
 	server.SetStatus(REPLICAT_STATUS_ONLINE)
 	//serverMap[globalSettings.Name].Status =
 	//sendConfigToServer()
+
 }
 
 func sendConfigToServer() {
@@ -208,6 +210,8 @@ func configUpdateProcessor(c chan *map[string]*ReplicatServer) {
 		newServerMap := <-c
 		configUpdateMapLock.Lock()
 
+		sendData := false
+
 		// find any nodes that have been deleted
 		for name, serverData := range serverMap {
 			newServerData, exists := (*newServerMap)[name]
@@ -219,6 +223,10 @@ func configUpdateProcessor(c chan *map[string]*ReplicatServer) {
 
 			if serverData.Address != newServerData.Address || serverData.Name != newServerData.Name || serverData.ClusterKey != newServerData.ClusterKey || serverData.Status != serverData.Status {
 				fmt.Printf("Server data is changed. Replacing.\nold: %v\nnew: %v\n", &serverData, &newServerData)
+				if serverData.Status != REPLICAT_STATUS_JOINING_CLUSTER && newServerData.Status == REPLICAT_STATUS_JOINING_CLUSTER {
+					fmt.Printf("Decided to send data to: %s\n", serverData.Name)
+					sendData = true
+				}
 				serverMap[name] = newServerData
 				fmt.Println("Server data replaced with new server data")
 			} else {
@@ -243,11 +251,21 @@ func configUpdateProcessor(c chan *map[string]*ReplicatServer) {
 					go func(tree DirTreeMap) {
 						sendFolderTree(tree)
 					}(listOfFileInfo)
+				} else {
+					fmt.Printf("New Node Decided to send data to: %s\n", name)
+					sendData = true
 				}
 
 				fmt.Printf("New server configuration provided. Copying: %s\n", name)
 				serverMap[name] = newServerData
 			}
+		}
+
+		if sendData {
+			server := serverMap[globalSettings.Name]
+			fmt.Println("about to send existing files")
+			go server.storage.sendExistingFiles()
+			fmt.Println("done sending existing files")
 		}
 		configUpdateMapLock.Unlock()
 	}

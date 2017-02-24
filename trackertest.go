@@ -183,14 +183,14 @@ func trackerTestFileChangeTrackerAddFolders() {
 
 	helper := func(tracker *FilesystemTracker, numberOfSubFolders string) bool {
 		folderCount, _ := strconv.Atoi(numberOfSubFolders)
-		fmt.Printf("* looking for: %d currently have: %d\n", folderCount, len(tracker.ListFolders()))
-		return len(tracker.ListFolders()) == folderCount
+		fmt.Printf("* looking for: %d currently have: %d\n", folderCount, len(tracker.ListFolders(true)))
+		return len(tracker.ListFolders(true)) == folderCount
 	}
 
 	folderSeeking := strconv.Itoa(numberOfSubFolders)
 	fmt.Printf("***************>>>>>>>>>>> folder seeking: %s num: %d\n", folderSeeking, numberOfSubFolders)
 	if !WaitFor(tracker, string(numberOfSubFolders), true, helper) {
-		panic(fmt.Sprintf("did not find enough subfolders. Looking for: %d found: %d", numberOfSubFolders, len(tracker.ListFolders())))
+		panic(fmt.Sprintf("did not find enough subfolders. Looking for: %d found: %d", numberOfSubFolders, len(tracker.ListFolders(true))))
 	}
 
 	//todo figure out why this sleep is needed.
@@ -200,7 +200,7 @@ func trackerTestFileChangeTrackerAddFolders() {
 	folder2 := fmt.Sprintf("%s/a1", tmpFolder)
 	fmt.Printf("about to delete two folders \n%s\n%s\n", folder1, folder2)
 	// Delete two folders
-	fmt.Println(tracker.ListFolders())
+	fmt.Println(tracker.ListFolders(true))
 	os.Remove(folder1)
 	os.Remove(folder2)
 	fmt.Printf("deleted two folders \n%s\n%s\n", folder1, folder2)
@@ -638,7 +638,7 @@ func trackerTestDirectoryStorage() {
 
 	empty := make([]string, 0)
 
-	folderList := tracker.ListFolders()
+	folderList := tracker.ListFolders(true)
 
 	fmt.Printf("empty: %v\nlist: %v\n", empty, folderList)
 
@@ -655,7 +655,7 @@ func trackerTestDirectoryStorage() {
 		}
 	}
 
-	folderList = tracker.ListFolders()
+	folderList = tracker.ListFolders(true)
 	sort.Strings(folderList)
 
 	sort.Strings(folderTemplate)
@@ -669,7 +669,7 @@ func trackerTestDirectoryStorage() {
 		panic(err)
 	}
 
-	folderList = tracker.ListFolders()
+	folderList = tracker.ListFolders(true)
 	sort.Strings(folderList)
 
 	folderTemplate = folderTemplate[1:]
