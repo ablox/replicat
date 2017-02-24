@@ -337,12 +337,6 @@ func (handler *FilesystemTracker) init(directory string, server *ReplicatServer)
 }
 
 func (handler *FilesystemTracker) sendExistingFiles() {
-	//fmt.Println("FilesystemTracker:init")
-	//handler.fsLock.Lock()
-	//defer handler.fsLock.Unlock()
-	//fmt.Println("FilesystemTracker:/init")
-	//defer fmt.Println("FilesystemTracker://init")
-
 	server, exists := serverMap[globalSettings.Name]
 	// Send the status if
 	if !exists || server != nil {
@@ -360,8 +354,17 @@ func (handler *FilesystemTracker) sendExistingFiles() {
 		absolutePath := filepath.Join(handler.directory, currentItem)
 		relativePath := absolutePath[len(handler.directory):]
 
-		event := Event{Name: "notify.Create", Path: relativePath, Source: globalSettings.Name}
-		handler.processEvent(event, relativePath, absolutePath, true)
+		fmt.Println("FilesystemTracker:sendExistingFiles")
+		handler.fsLock.Lock()
+		fmt.Println("FilesystemTracker:/sendExistingFiles")
+
+		entry := handler.contents[relativePath]
+		event := Event{Name: "notify.Create", Path: relativePath, Source: globalSettings.Name, Time: time.Now(), ModTime:entry.ModTime(), IsDirectory:entry.IsDir(), NetworkSource: globalSettings.Name}
+		handler.fsLock.Unlock()
+		fmt.Println("FilesystemTracker://sendExistingFiles")
+
+		handler.processEvent(event, relativePath, absolutePath, false)
+		fmt.Println("FilesystemTracker://sendExistingFiles 2")
 	}
 
 	server.SetStatus(REPLICAT_STATUS_ONLINE)
@@ -633,7 +636,7 @@ func (handler *FilesystemTracker) DeleteFolder(name string) error {
 
 // ListFolders - This storage handler should return a list of contained folders.
 func (handler *FilesystemTracker) ListFolders(getLocks bool) (folderList []string) {
-	fmt.Printf("FilesystemTracker:ListFolders   getLocks: %s\n", getLocks)
+	fmt.Printf("FilesystemTracker:ListFolders getLocks: %v\n", getLocks)
 	if getLocks {
 		handler.fsLock.Lock()
 		defer handler.fsLock.Unlock()
@@ -927,7 +930,7 @@ func (handler *FilesystemTracker) processEvent(event Event, pathName, fullPath s
 
 	switch event.Name {
 	case "notify.Create":
-		fmt.Printf("processEvent: About to assign from one path to the next. Original: %v Map: %v\n", currentValue, handler.contents)
+		fmt.Printf("processEvent: About to assign from one path to the next. Original: %v   Event: %v\n", currentValue, event)
 		// make sure there is an entry in the DirTreeMap for this folder. Since an empty list will always be returned, we can use that
 		if !exists {
 			info, err := os.Stat(fullPath)
@@ -938,8 +941,6 @@ func (handler *FilesystemTracker) processEvent(event Event, pathName, fullPath s
 				}
 				//todo send error event up
 				return
-
-				//panic(fmt.Sprintf("Could not get stats on directory %s", fullPath))
 			}
 			directory := NewDirectory()
 			directory.FileInfo = info
@@ -980,8 +981,8 @@ func (handler *FilesystemTracker) processEvent(event Event, pathName, fullPath s
 
 		if lock {
 			handler.fsLock.Unlock()
+			fmt.Println("FilesystemTracker:/+processEvent 1")
 		}
-		fmt.Println("FilesystemTracker:/+processEvent")
 		SendEvent(event, "")
 
 		fmt.Printf("notify.Remove: %s (%t)\n", pathName, exists)
@@ -1009,8 +1010,8 @@ func (handler *FilesystemTracker) processEvent(event Event, pathName, fullPath s
 
 	if lock {
 		handler.fsLock.Unlock()
+		fmt.Println("FilesystemTracker:/+processEvent 2")
 	}
-	fmt.Println("FilesystemTracker:/+processEvent")
 }
 
 // Scan for existing files and add them to the list of files that we have with create events. this has to be called outside of a lock
@@ -1036,7 +1037,23 @@ func (handler *FilesystemTracker) scanFolders() error {
 			absolutePath := filepath.Join(currentPath, entry.Name())
 			relativePath := absolutePath[len(handler.directory):]
 
-			event := Event{Name: "notify.Create", Path: relativePath, Source: globalSettings.Name}
+			event := Event{
+				Name: "notify.Create",
+				Path: relativePath,
+				Source: globalSettings.Name,
+				Time: time.Now(),
+				ModTime: entry.ModTime(),
+				IsDirectory: entry.IsDir(),
+				NetworkSource: globalSettings.Name,
+			}
+
+			// Since we are scanning our own folders, make sure we own them.
+			// This should deter others from trying to overwrite them
+			ownershipLock.Lock()
+			ownership[event.Path] = event
+			ownershipLock.Unlock()
+
+			fmt.Printf("About to call process event with: %v\n", event)
 			handler.processEvent(event, relativePath, absolutePath, false)
 
 			if entry.IsDir() {

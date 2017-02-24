@@ -42,6 +42,7 @@ type Event struct {
 	Path          string
 	SourcePath    string
 	Time          time.Time
+	ModTime		  time.Time
 	IsDirectory   bool
 	NetworkSource string
 }
@@ -112,7 +113,7 @@ func sendEvent(event *Event, fullPath string, address string, credentials string
 	}
 
 	url := "http://" + address + "/event/"
-	fmt.Printf("target url: %s\n", url)
+	fmt.Printf("target url: %s\nEvent is: %v\n", url, event)
 
 	jsonStr, _ := json.Marshal(event)
 	req, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonStr))
@@ -158,7 +159,7 @@ var ownershipLock = sync.RWMutex{}
 
 const (
 	// OWNERSHIP_EXPIRATION_TIMEOUT - Duration for a replicated change to hold ownership after they make changes. This leaves time for multiple filesystem events to come back without being reported to other nodes
-	OWNERSHIP_EXPIRATION_TIMEOUT = 5 * time.Second
+	OWNERSHIP_EXPIRATION_TIMEOUT = 20 * time.Second
 )
 
 func eventHandler(w http.ResponseWriter, r *http.Request) {
