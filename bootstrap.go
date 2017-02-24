@@ -185,7 +185,6 @@ var configUpdateMapLock = sync.RWMutex{}
 var configUpdateChannel = make(chan *map[string]*ReplicatServer, 100)
 
 func configHandler(_ http.ResponseWriter, r *http.Request) {
-	log.Println("configHandler called on bootstrap")
 	switch r.Method {
 	case "POST":
 		serverMapLock.Lock()
@@ -197,7 +196,6 @@ func configHandler(_ http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			fmt.Println(err)
 		}
-		log.Printf("configHandler serverMap read from webcat to: %v\n", newServerMap)
 
 		configUpdateMapLock.Lock()
 		defer configUpdateMapLock.Unlock()
@@ -230,7 +228,7 @@ func configUpdateProcessor(c chan *map[string]*ReplicatServer) {
 				serverMap[name] = newServerData
 				fmt.Println("Server data replaced with new server data")
 			} else {
-				fmt.Printf("Server data has not radically changed. ignoring.\nold: %v\nnew: %v\n", &serverData, &newServerData)
+				//fmt.Printf("Server data has not radically changed. ignoring.\nold: %v\nnew: %v\n", &serverData, &newServerData)
 			}
 		}
 
