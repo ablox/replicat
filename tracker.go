@@ -343,6 +343,11 @@ func (handler *FilesystemTracker) sendExistingFiles() {
 	//fmt.Println("FilesystemTracker:/init")
 	//defer fmt.Println("FilesystemTracker://init")
 
+	server, exists := serverMap[globalSettings.Name]
+	// Send the status if
+	if !exists || server != nil {
+		fmt.Println("Server is not defined. Skipping sending existing files")
+	}
 
 	folderList := handler.ListFolders(true)
 	fmt.Println("FilesystemTracker:sendExistingFiles Start folder listing *******************************")
@@ -359,7 +364,6 @@ func (handler *FilesystemTracker) sendExistingFiles() {
 		handler.processEvent(event, relativePath, absolutePath, true)
 	}
 
-	server := serverMap[globalSettings.Name]
 	server.SetStatus(REPLICAT_STATUS_ONLINE)
 }
 

@@ -38,8 +38,13 @@ func (server *ReplicatServer) GetStatus() string {
 }
 
 func (server *ReplicatServer) SetStatus(status string) {
-	server.Status = status
-	sendConfigToServer()
+	// adding an inline check to make sure the server is valid
+	// if the server is being shut down or at the end of a unit test)
+	// the assignment can crash without this check
+	if server != nil {
+		server.Status = status
+		sendConfigToServer()
+	}
 }
 
 const (
