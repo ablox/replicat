@@ -42,7 +42,7 @@ type Event struct {
 	Path          string
 	SourcePath    string
 	Time          time.Time
-	ModTime		  time.Time
+	ModTime       time.Time
 	IsDirectory   bool
 	NetworkSource string
 }

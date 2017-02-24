@@ -359,7 +359,7 @@ func (handler *FilesystemTracker) sendExistingFiles() {
 		fmt.Println("FilesystemTracker:/sendExistingFiles")
 
 		entry := handler.contents[relativePath]
-		event := Event{Name: "notify.Create", Path: relativePath, Source: globalSettings.Name, Time: time.Now(), ModTime:entry.ModTime(), IsDirectory:entry.IsDir(), NetworkSource: globalSettings.Name}
+		event := Event{Name: "notify.Create", Path: relativePath, Source: globalSettings.Name, Time: time.Now(), ModTime: entry.ModTime(), IsDirectory: entry.IsDir(), NetworkSource: globalSettings.Name}
 		handler.fsLock.Unlock()
 		fmt.Println("FilesystemTracker://sendExistingFiles")
 
@@ -369,10 +369,6 @@ func (handler *FilesystemTracker) sendExistingFiles() {
 
 	server.SetStatus(REPLICAT_STATUS_ONLINE)
 }
-
-
-
-
 
 func (handler *FilesystemTracker) cleanup() {
 	fmt.Println("FilesystemTracker:cleanup")
@@ -1038,12 +1034,12 @@ func (handler *FilesystemTracker) scanFolders() error {
 			relativePath := absolutePath[len(handler.directory):]
 
 			event := Event{
-				Name: "notify.Create",
-				Path: relativePath,
-				Source: globalSettings.Name,
-				Time: time.Now(),
-				ModTime: entry.ModTime(),
-				IsDirectory: entry.IsDir(),
+				Name:          "notify.Create",
+				Path:          relativePath,
+				Source:        globalSettings.Name,
+				Time:          time.Now(),
+				ModTime:       entry.ModTime(),
+				IsDirectory:   entry.IsDir(),
 				NetworkSource: globalSettings.Name,
 			}
 
