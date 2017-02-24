@@ -358,8 +358,12 @@ func (handler *FilesystemTracker) sendExistingFiles() {
 		handler.fsLock.Lock()
 		fmt.Println("FilesystemTracker:/sendExistingFiles")
 
-		entry := handler.contents[relativePath]
-		event := Event{Name: "notify.Create", Path: relativePath, Source: globalSettings.Name, Time: time.Now(), ModTime: entry.ModTime(), IsDirectory: entry.IsDir(), NetworkSource: globalSettings.Name}
+		entry, exists := handler.contents[relativePath]
+		event := Event{Name: "notify.Create", Path: relativePath, Source: globalSettings.Name, Time: time.Now(), NetworkSource: globalSettings.Name}
+		if exists {
+			event.ModTime = entry.ModTime()
+			event.IsDirectory = entry.IsDir()
+		}
 		handler.fsLock.Unlock()
 		fmt.Println("FilesystemTracker://sendExistingFiles")
 
