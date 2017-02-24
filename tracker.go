@@ -359,6 +359,8 @@ func (handler *FilesystemTracker) sendExistingFiles() {
 		handler.processEvent(event, relativePath, absolutePath, true)
 	}
 
+	server := serverMap[globalSettings.Name]
+	server.SetStatus(REPLICAT_STATUS_ONLINE)
 }
 
 

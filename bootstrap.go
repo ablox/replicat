@@ -106,7 +106,9 @@ func BootstrapAndServe(address string) {
 	if globalSettings.ManagerAddress != "" {
 		fmt.Printf("about to send config to server (%s)\nOur address is: (%s)", globalSettings.ManagerAddress, lsnr.Addr())
 
-		go simulateBootup(tracker)
+		server.SetStatus(REPLICAT_STATUS_INITIAL_SCAN)
+
+		//go simulateBootup(tracker)
 		//go sendConfigToServer()
 	}
 }
@@ -114,10 +116,8 @@ func BootstrapAndServe(address string) {
 func simulateBootup(tracker FilesystemTracker) {
 	server := serverMap[globalSettings.Name]
 	server.SetStatus(REPLICAT_STATUS_INITIAL_SCAN)
-	sendConfigToServer()
 	time.Sleep(time.Second * time.Duration(rand.Intn(10)))
 	server.SetStatus(REPLICAT_STATUS_JOINING_CLUSTER)
-	sendConfigToServer()
 
 	//serverMap[globalSettings.Name].Status =
 	//sendConfigToServer()
