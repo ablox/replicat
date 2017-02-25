@@ -1,0 +1,1 @@
+diff -r /tmp/NodeA /tmp/NodeB | wc -l

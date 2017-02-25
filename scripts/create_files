@@ -1,0 +1,4 @@
+for i in {1..100}
+do
+	dd if=/dev/zero bs=1024 count=100000 of=/tmp/NodeA/file_1GB$i
+done
