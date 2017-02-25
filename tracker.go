@@ -930,7 +930,7 @@ func (handler *FilesystemTracker) processEvent(event Event, pathName, fullPath s
 
 	switch event.Name {
 	case "notify.Create":
-		fmt.Printf("processEvent: About to assign from one path to the next. Original: %v   Event: %v\n", currentValue, event)
+		fmt.Printf("processEvent: About to assign from one path to the next. \n\tOriginal: %v \n\tEvent: %v\n", currentValue, event)
 		// make sure there is an entry in the DirTreeMap for this folder. Since an empty list will always be returned, we can use that
 		if !exists {
 			info, err := os.Stat(fullPath)
