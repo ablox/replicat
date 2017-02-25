@@ -624,17 +624,8 @@ func trackerTestNestedFastDirectoryCreation() {
 }
 
 func trackerTestDirectoryStorage() {
-	tmpFolder, err := ioutil.TempDir("", "blank")
-	defer os.RemoveAll(tmpFolder)
-
-	tracker := new(FilesystemTracker)
-	server := ReplicatServer{}
-	tracker.init(tmpFolder, &server)
-	defer tracker.cleanup()
-
-	testName := "trackerTestDirectoryStorage"
-	tracker.startTest(testName)
-	defer tracker.endTest(testName)
+	tracker := createTracker("monitored")
+	defer cleanupTracker(tracker)
 
 	empty := make([]string, 0)
 
@@ -664,7 +655,7 @@ func trackerTestDirectoryStorage() {
 		panic(fmt.Sprintf("Found: %v\nExpected: %v\n", folderList, folderTemplate))
 	}
 
-	err = tracker.DeleteFolder(folderTemplate[0])
+	err := tracker.DeleteFolder(folderTemplate[0])
 	if err != nil {
 		panic(err)
 	}

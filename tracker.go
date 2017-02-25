@@ -354,6 +354,8 @@ func (handler *FilesystemTracker) sendExistingFiles() {
 		absolutePath := filepath.Join(handler.directory, currentItem)
 		relativePath := absolutePath[len(handler.directory):]
 
+		fmt.Printf("sendExistingFiles: messing with paths: absolute: %s, relative: %s", absolutePath, relativePath)
+
 		fmt.Println("FilesystemTracker:sendExistingFiles")
 		handler.fsLock.Lock()
 		fmt.Println("FilesystemTracker:/sendExistingFiles")
@@ -1046,6 +1048,13 @@ func (handler *FilesystemTracker) scanFolders() error {
 				IsDirectory:   entry.IsDir(),
 				NetworkSource: globalSettings.Name,
 			}
+
+			//todo add hashing here.
+			//var hash [64]byte
+			//// try blake2hash of each file
+			//if !entry.IsDir() {
+			//	hash = blake2b.Sum512()
+			//}
 
 			// Since we are scanning our own folders, make sure we own them.
 			// This should deter others from trying to overwrite them
