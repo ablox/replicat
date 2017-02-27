@@ -189,7 +189,7 @@ func trackerTestFileChangeTrackerAddFolders() {
 
 	folderSeeking := strconv.Itoa(numberOfSubFolders)
 	fmt.Printf("***************>>>>>>>>>>> folder seeking: %s num: %d\n", folderSeeking, numberOfSubFolders)
-	if !WaitFor(tracker, string(numberOfSubFolders), true, helper) {
+	if !WaitFor(tracker, folderSeeking, true, helper) {
 		panic(fmt.Sprintf("did not find enough subfolders. Looking for: %d found: %d", numberOfSubFolders, len(tracker.ListFolders(true))))
 	}
 
