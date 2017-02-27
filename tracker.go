@@ -363,7 +363,7 @@ func (handler *FilesystemTracker) createPath(pathName string, isDirectory bool) 
 }
 
 // CreatePath tells the storage tracker to create a new path
-func (handler *FilesystemTracker) CreatePath(pathName string, isDirectory bool) (err error) {
+func (handler *FilesystemTracker) CreatePath(pathName string, isDirectory bool) (error) {
 	fmt.Printf("FilesystemTracker:CreatePath called with relativePath: %s isDirectory: %v\n", pathName, isDirectory)
 	handler.fsLock.Lock()
 	defer handler.fsLock.Unlock()
