@@ -34,6 +34,7 @@ type StorageTracker interface {
 	DeleteFolder(name string) (err error)
 	ListFolders(getLocks bool) (folderList []string)
 	SendCatalog()
+	ProcessCatalog(event Event)
 }
 
 // FilesystemTracker - Track a filesystem and keep it in sync
@@ -833,7 +834,6 @@ func (handler *FilesystemTracker) processEvent(event Event, pathName, fullPath s
 
 	default:
 		// do not send the event if we do not recognize it
-		//SendEvent(event)
 		fmt.Printf("%s: %s not known, skipping (%v)\n", event.Name, pathName, event)
 	}
 
@@ -843,7 +843,7 @@ func (handler *FilesystemTracker) processEvent(event Event, pathName, fullPath s
 	}
 }
 
-// Scan for existing files and add them to the list of files that we have with create events. this has to be called outside of a lock
+// Scan for existing files and add them to the list of files that we have with create events. this has to be called inside of a lock
 func (handler *FilesystemTracker) scanFolders() error {
 	fmt.Println("FileSystemTracker ScanFolders - start")
 	pendingPaths := make([]string, 0, 100)
@@ -890,7 +890,6 @@ func (handler *FilesystemTracker) scanFolders() error {
 			info, err := os.Stat(absolutePath)
 			if err != nil {
 				fmt.Printf("ScanFolders: Could not get stats on directory %s\n", absolutePath)
-				handler.fsLock.Unlock()
 				panic(err)
 			}
 
@@ -899,11 +898,12 @@ func (handler *FilesystemTracker) scanFolders() error {
 			directory.hash = hash
 			handler.contents[relativePath] = *directory
 
+			// TODO no longer think this is needed
 			// Since we are scanning our own folders, make sure we own them.
 			// This should deter others from trying to overwrite them
-			ownershipLock.Lock()
-			ownership[event.Path] = event
-			ownershipLock.Unlock()
+			//ownershipLock.Lock()
+			//ownership[event.Path] = event
+			//ownershipLock.Unlock()
 
 			if entry.IsDir() {
 				newDirectory := filepath.Join(currentPath, entry.Name())
@@ -943,6 +943,12 @@ func (handler *FilesystemTracker) SendCatalog() {
 	fmt.Printf("About to directly send out full catalog event with: %v\n", event)
 	sendCatalogToManagerAndSiblings(event)
 	fmt.Println("catalog sent")
+}
+
+func (handler *FilesystemTracker) ProcessCatalog(event Event) {
+	panic("in")
+
+
 }
 
 // old code that handled periodic scanning of the entire watched folder to change to match

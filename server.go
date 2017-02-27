@@ -216,14 +216,13 @@ func eventHandler(w http.ResponseWriter, r *http.Request) {
 			server.storage.CreatePath(relativePath, event.IsDirectory)
 			fmt.Println("eventHandler->/CreatePath")
 		case "notify.Remove":
+			fmt.Printf("notify.Remove: %s\n", pathName)
 			err = os.Remove(pathName)
 			if err != nil && !os.IsNotExist(err) {
 				panic(fmt.Sprintf("Error deleting folder %s: %v\n", pathName, err))
 			}
-			fmt.Printf("notify.Remove: %s\n", pathName)
 		case "notify.Rename":
 			fmt.Printf("notify.Rename: %s\n", pathName)
-
 			fmt.Println("eventHandler->CreatePath")
 			server.storage.CreatePath(relativePath, event.IsDirectory)
 			fmt.Println("eventHandler->/CreatePath")
@@ -233,7 +232,7 @@ func eventHandler(w http.ResponseWriter, r *http.Request) {
 			fmt.Println("eventHandler->/Rename")
 		case "replicat.Catalog":
 			fmt.Println("eventHandler->Catalog")
-
+			server.storage.ProcessCatalog(event)
 			fmt.Println("eventHandler->/Catalog")
 
 		default:
