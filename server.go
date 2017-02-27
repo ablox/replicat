@@ -423,11 +423,12 @@ func postFile(filename string, fullPath string, targetUrl string, credentials st
 
 	client := &http.Client{}
 	resp, err := client.Do(req)
-	defer resp.Body.Close()
-
 	if err != nil {
-		return err
+		fmt.Printf("Trouble sending a file using the http client: %v\n", resp)
+		panic(err)
 	}
+
+	resp.Body.Close()
 
 	return nil
 }
