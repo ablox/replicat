@@ -947,8 +947,6 @@ func (handler *FilesystemTracker) SendCatalog() (){
 	fmt.Println("catalog sent")
 }
 
-
-
 // old code that handled periodic scanning of the entire watched folder to change to match
 //dotCount := 0
 //sleepSeconds := time.Duration(25 + rand.Intn(10))

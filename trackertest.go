@@ -317,7 +317,15 @@ func trackerTestSmallFileCreationAndRename() {
 		panic(fmt.Sprintf("%s not found in contents\ncontents: %v\n", secondFilename, tracker.contents))
 	}
 
-	if len(tracker.renamesInProgress) > 0 {
+
+	helper = func(tracker *FilesystemTracker, path string) bool {
+		tracker.fsLock.Lock()
+		defer tracker.fsLock.Unlock()
+
+		return len(tracker.renamesInProgress) == 0
+	}
+
+	if !WaitFor(tracker, "", true, helper) {
 		panic(fmt.Sprint("6 tracker has renames in progress still"))
 	}
 
