@@ -14,6 +14,7 @@ import (
 	"sync"
 	"syscall"
 	"time"
+	"encoding/json"
 )
 
 // ChangeHandler - Listener for tracking changes that happen to a storage system
@@ -52,7 +53,7 @@ type FilesystemTracker struct {
 type Entry struct {
 	os.FileInfo
 	setup bool
-	hash  string
+	hash  []byte
 }
 
 // NewDirectory - creates and returns a new Directory
@@ -62,7 +63,7 @@ func NewDirectory() *Entry {
 
 // NewDirectoryFromFileInfo - creates and returns a new Directory based on a fileinfo structure
 func NewDirectoryFromFileInfo(info *os.FileInfo) *Entry {
-	return &Entry{*info, true, ""}
+	return &Entry{*info, true, nil}
 }
 
 func (handler *FilesystemTracker) printTracker() {
@@ -878,14 +879,28 @@ func (handler *FilesystemTracker) scanFolders() error {
 				NetworkSource: globalSettings.Name,
 			}
 
-			//todo add hashing here.
+			var hash []byte
 
+			if !event.IsDirectory {
+				hash, err := fileBlake2bHash(absolutePath)
+				if err != nil {
+					panic(err)
+					fmt.Printf("%v\n", hash)
+				}
+			}
 
-			//var hash [64]byte
-			//// try blake2hash of each file
-			//if !entry.IsDir() {
-			//	hash = blake2b.Sum512()
-			//}
+			// add to contents
+			info, err := os.Stat(absolutePath)
+			if err != nil {
+				fmt.Printf("ScanFolders: Could not get stats on directory %s\n", absolutePath)
+				handler.fsLock.Unlock()
+				panic(err)
+			}
+
+			directory := NewDirectory()
+			directory.FileInfo = info
+			directory.hash = hash
+			handler.contents[relativePath] = *directory
 
 			// Since we are scanning our own folders, make sure we own them.
 			// This should deter others from trying to overwrite them
@@ -894,7 +909,7 @@ func (handler *FilesystemTracker) scanFolders() error {
 			ownershipLock.Unlock()
 
 			fmt.Printf("About to call process event with: %v\n", event)
-			handler.processEvent(event, relativePath, absolutePath, false)
+			//handler.processEvent(event, relativePath, absolutePath, false)
 
 			if entry.IsDir() {
 				newDirectory := filepath.Join(currentPath, entry.Name())
@@ -908,9 +923,17 @@ func (handler *FilesystemTracker) scanFolders() error {
 		}
 	}
 
+	handler.server.SetStatus(REPLICAT_STATUS_JOINING_CLUSTER)
+
+	ownershipLock.RLock()
 	fmt.Printf("FileSystemTracker ScanFolders - end - Found %d items\n", len(handler.contents))
+	jsonStr, _ := json.Marshal(handler.contents)
+	fmt.Printf("Analyzed all files in the folder and the total size is: %d\n", len(jsonStr))
+	ownershipLock.RUnlock()
+
 	return nil
 }
+
 
 // old code that handled periodic scanning of the entire watched folder to change to match
 //dotCount := 0

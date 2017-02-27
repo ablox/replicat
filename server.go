@@ -20,6 +20,7 @@ import (
 	"sort"
 	"sync"
 	"time"
+	"github.com/minio/blake2b-simd"
 )
 
 // Settings - for this replicat server. This should include everything needed for this server to run and connect with
@@ -454,3 +455,25 @@ func fileMd5Hash(filePath string) (string, error) {
 	return returnMD5String, nil
 
 }
+
+func fileBlake2bHash(filePath string) ([]byte, error) {
+	var hashResult []byte
+	file, err := os.Open(filePath)
+	if err != nil {
+		return hashResult, err
+	}
+	defer file.Close()
+
+	hash := blake2b.New256()
+	_, err = io.Copy(hash, file)
+	if err != nil {
+		return hashResult, err
+	}
+
+	hashResult = hash.Sum(nil)
+
+	fmt.Printf("%v - %s\n", hex.EncodeToString(hashResult), filePath)
+
+	return hashResult, nil
+}
+
