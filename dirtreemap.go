@@ -167,7 +167,6 @@ func scanDirectoryContents() (DirTreeMap, error) {
 		listOfFileInfo[relativePath] = fileList
 	}
 
-
 	fmt.Println("scanning directory contents - end")
 	return listOfFileInfo, nil
 }

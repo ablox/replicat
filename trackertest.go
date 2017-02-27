@@ -317,7 +317,6 @@ func trackerTestSmallFileCreationAndRename() {
 		panic(fmt.Sprintf("%s not found in contents\ncontents: %v\n", secondFilename, tracker.contents))
 	}
 
-
 	helper = func(tracker *FilesystemTracker, path string) bool {
 		tracker.fsLock.Lock()
 		defer tracker.fsLock.Unlock()

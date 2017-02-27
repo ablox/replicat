@@ -234,7 +234,6 @@ func eventHandler(w http.ResponseWriter, r *http.Request) {
 		case "replicat.Catalog":
 			fmt.Println("eventHandler->Catalog")
 
-
 			fmt.Println("eventHandler->/Catalog")
 
 		default:

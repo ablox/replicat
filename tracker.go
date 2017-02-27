@@ -927,12 +927,10 @@ func (handler *FilesystemTracker) scanFolders() error {
 }
 
 // This needs to be called with handler.fsLock engaged
-func (handler *FilesystemTracker) SendCatalog() (){
-	//handler.fsLock.RLock()
+func (handler *FilesystemTracker) SendCatalog() {
 	fmt.Printf("FileSystemTracker ScanFolders - end - Found %d items\n", len(handler.contents))
 	jsonStr, _ := json.Marshal(handler.contents)
 	fmt.Printf("Analyzed all files in the folder and the total size is: %d\n", len(jsonStr))
-	//handler.fsLock.RUnlock()
 
 	event := Event{
 		Name:          "replicat.Catalog",
