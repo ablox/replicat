@@ -5,6 +5,7 @@
 package replicat
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/rjeczalik/notify"
 	"log"
@@ -14,7 +15,6 @@ import (
 	"sync"
 	"syscall"
 	"time"
-	"encoding/json"
 )
 
 // ChangeHandler - Listener for tracking changes that happen to a storage system
@@ -33,9 +33,8 @@ type StorageTracker interface {
 	Rename(sourcePath string, destinationPath string, isDirectory bool) (err error)
 	DeleteFolder(name string) (err error)
 	ListFolders(getLocks bool) (folderList []string)
-	sendExistingFiles()
+	SendCatalog()
 }
-
 
 // FilesystemTracker - Track a filesystem and keep it in sync
 type FilesystemTracker struct {
@@ -162,49 +161,47 @@ func (handler *FilesystemTracker) init(directory string, server *ReplicatServer)
 	server.SetStatus(REPLICAT_STATUS_JOINING_CLUSTER)
 	handler.printLockable(false)
 	handler.setup = true
-
-	go handler.sendExistingFiles()
 }
 
-func (handler *FilesystemTracker) sendExistingFiles() {
-	server, exists := serverMap[globalSettings.Name]
-	// Send the status if
-	if !exists || server != nil {
-		fmt.Println("Server is not defined. Skipping sending existing files")
-	}
-
-	folderList := handler.ListFolders(true)
-	fmt.Println("FilesystemTracker:sendExistingFiles Start folder listing *******************************")
-	for _, c := range folderList {
-		fmt.Printf("%s\n", c)
-	}
-	fmt.Println("FilesystemTracker:sendExistingFiles Completed listing folders **************************")
-
-	for _, currentItem := range folderList {
-		absolutePath := filepath.Join(handler.directory, currentItem)
-		relativePath := absolutePath[len(handler.directory):]
-
-		fmt.Printf("sendExistingFiles: messing with paths: absolute: %s, relative: %s", absolutePath, relativePath)
-
-		fmt.Println("FilesystemTracker:sendExistingFiles")
-		handler.fsLock.Lock()
-		fmt.Println("FilesystemTracker:/sendExistingFiles")
-
-		entry, exists := handler.contents[relativePath]
-		event := Event{Name: "notify.Create", Path: relativePath, Source: globalSettings.Name, Time: time.Now(), NetworkSource: globalSettings.Name}
-		if exists {
-			event.ModTime = entry.ModTime()
-			event.IsDirectory = entry.IsDir()
-		}
-		handler.fsLock.Unlock()
-		fmt.Println("FilesystemTracker://sendExistingFiles")
-
-		handler.processEvent(event, relativePath, absolutePath, false)
-		fmt.Println("FilesystemTracker://sendExistingFiles 2")
-	}
-
-	server.SetStatus(REPLICAT_STATUS_ONLINE)
-}
+//func (handler *FilesystemTracker) sendExistingFiles() {
+//	server, exists := serverMap[globalSettings.Name]
+//	// Send the status if
+//	if !exists || server != nil {
+//		fmt.Println("Server is not defined. Skipping sending existing files")
+//	}
+//
+//	folderList := handler.ListFolders(true)
+//	fmt.Println("FilesystemTracker:sendExistingFiles Start folder listing *******************************")
+//	for _, c := range folderList {
+//		fmt.Printf("%s\n", c)
+//	}
+//	fmt.Println("FilesystemTracker:sendExistingFiles Completed listing folders **************************")
+//
+//	for _, currentItem := range folderList {
+//		absolutePath := filepath.Join(handler.directory, currentItem)
+//		relativePath := absolutePath[len(handler.directory)+1:]
+//
+//		fmt.Printf("sendExistingFiles: messing with paths: absolute: %s, relative: %s", absolutePath, relativePath)
+//
+//		fmt.Println("FilesystemTracker:sendExistingFiles")
+//		handler.fsLock.Lock()
+//		fmt.Println("FilesystemTracker:/sendExistingFiles")
+//
+//		entry, exists := handler.contents[relativePath]
+//		event := Event{Name: "notify.Create", Path: relativePath, Source: globalSettings.Name, Time: time.Now(), NetworkSource: globalSettings.Name}
+//		if exists {
+//			event.ModTime = entry.ModTime()
+//			event.IsDirectory = entry.IsDir()
+//		}
+//		handler.fsLock.Unlock()
+//		fmt.Println("FilesystemTracker://sendExistingFiles")
+//
+//		handler.processEvent(event, relativePath, absolutePath, false)
+//		fmt.Println("FilesystemTracker://sendExistingFiles 2")
+//	}
+//
+//	server.SetStatus(REPLICAT_STATUS_ONLINE)
+//}
 
 func (handler *FilesystemTracker) cleanup() {
 	fmt.Println("FilesystemTracker:cleanup")
@@ -867,7 +864,7 @@ func (handler *FilesystemTracker) scanFolders() error {
 		for _, entry := range dirEntries {
 			// Determine the relative path for this file or folder
 			absolutePath := filepath.Join(currentPath, entry.Name())
-			relativePath := absolutePath[len(handler.directory):]
+			relativePath := absolutePath[len(handler.directory)+1:]
 
 			event := Event{
 				Name:          "notify.Create",
@@ -908,9 +905,6 @@ func (handler *FilesystemTracker) scanFolders() error {
 			ownership[event.Path] = event
 			ownershipLock.Unlock()
 
-			fmt.Printf("About to call process event with: %v\n", event)
-			//handler.processEvent(event, relativePath, absolutePath, false)
-
 			if entry.IsDir() {
 				newDirectory := filepath.Join(currentPath, entry.Name())
 				pendingPaths = append(pendingPaths, newDirectory)
@@ -923,16 +917,36 @@ func (handler *FilesystemTracker) scanFolders() error {
 		}
 	}
 
+	fmt.Println("About to set status of joining cluster")
 	handler.server.SetStatus(REPLICAT_STATUS_JOINING_CLUSTER)
-
-	ownershipLock.RLock()
-	fmt.Printf("FileSystemTracker ScanFolders - end - Found %d items\n", len(handler.contents))
-	jsonStr, _ := json.Marshal(handler.contents)
-	fmt.Printf("Analyzed all files in the folder and the total size is: %d\n", len(jsonStr))
-	ownershipLock.RUnlock()
+	fmt.Println("Done set status of joining cluster. About to send catalog")
+	handler.SendCatalog()
+	fmt.Println("Done sending catalog")
 
 	return nil
 }
+
+// This needs to be called with handler.fsLock engaged
+func (handler *FilesystemTracker) SendCatalog() (){
+	//handler.fsLock.RLock()
+	fmt.Printf("FileSystemTracker ScanFolders - end - Found %d items\n", len(handler.contents))
+	jsonStr, _ := json.Marshal(handler.contents)
+	fmt.Printf("Analyzed all files in the folder and the total size is: %d\n", len(jsonStr))
+	//handler.fsLock.RUnlock()
+
+	event := Event{
+		Name:          "replicat.Catalog",
+		Source:        globalSettings.Name,
+		Time:          time.Now(),
+		NetworkSource: globalSettings.Name,
+		RawData:       jsonStr,
+	}
+
+	fmt.Printf("About to directly send out full catalog event with: %v\n", event)
+	sendCatalogToManagerAndSiblings(event)
+	fmt.Println("catalog sent")
+}
+
 
 
 // old code that handled periodic scanning of the entire watched folder to change to match

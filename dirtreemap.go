@@ -76,18 +76,6 @@ func checkForChanges(originalState, newState DirTreeMap) (changed bool, updatedS
 	newPaths = make([]string, 0, 100)
 	matchingPaths = make([]string, 0, len(originalPaths))
 
-	//pp := func(name string, stringList []string) {
-	//	fmt.Println("***************************")
-	//	fmt.Println(name)
-	//	fmt.Println("***************************")
-	//	for index, value := range stringList {
-	//		fmt.Printf("[%3d]: %s\n", index, value)
-	//	}
-	//	fmt.Println("***************************")
-	//}
-	//pp("original paths", originalPaths)
-	//pp("updated Paths", updatedPaths)
-
 	for {
 		//fmt.Printf("Original Position %3d    Updated Position %3d\n", originalPosition, updatedPosition)
 		if originalPosition >= len(originalPaths) {
@@ -179,11 +167,6 @@ func scanDirectoryContents() (DirTreeMap, error) {
 		listOfFileInfo[relativePath] = fileList
 	}
 
-	//fmt.Printf("Export:\n")
-	//for dir, _ := range listOfFileInfo {
-	//	fmt.Printf("%s\n", dir)
-	//}
-	//fmt.Printf("Export done:\n")
 
 	fmt.Println("scanning directory contents - end")
 	return listOfFileInfo, nil

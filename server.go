@@ -11,6 +11,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"github.com/minio/blake2b-simd"
 	"io"
 	"io/ioutil"
 	"log"
@@ -20,7 +21,6 @@ import (
 	"sort"
 	"sync"
 	"time"
-	"github.com/minio/blake2b-simd"
 )
 
 // Settings - for this replicat server. This should include everything needed for this server to run and connect with
@@ -46,6 +46,7 @@ type Event struct {
 	ModTime       time.Time
 	IsDirectory   bool
 	NetworkSource string
+	RawData       []byte
 }
 
 var events = make([]Event, 0, 100)
@@ -58,6 +59,12 @@ func GetGlobalSettings() Settings {
 // SetGlobalSettings -- set the settings for the replicat server
 func SetGlobalSettings(newSettings Settings) {
 	globalSettings = newSettings
+}
+
+func sendCatalogToManagerAndSiblings(event Event) {
+	fmt.Println("sendCatalogToManagerAndSiblings")
+	sendEventToManagerAndSiblings(event, "")
+	fmt.Println("/sendCatalogToManagerAndSiblings")
 }
 
 // SendEvent gets events that have happened off to the peer servers so they can replicate the same change
@@ -94,6 +101,10 @@ func SendEvent(event Event, fullPath string) {
 	ownership[event.Path] = event
 	ownershipLock.Unlock()
 
+	sendEventToManagerAndSiblings(event, fullPath)
+}
+
+func sendEventToManagerAndSiblings(event Event, fullPath string) {
 	// sendEvent to manager
 	sendEvent(&event, fullPath, globalSettings.ManagerAddress, globalSettings.ManagerCredentials)
 
@@ -210,8 +221,6 @@ func eventHandler(w http.ResponseWriter, r *http.Request) {
 				panic(fmt.Sprintf("Error deleting folder %s: %v\n", pathName, err))
 			}
 			fmt.Printf("notify.Remove: %s\n", pathName)
-
-		// todo fix this to handle the two rename events to be one event
 		case "notify.Rename":
 			fmt.Printf("notify.Rename: %s\n", pathName)
 
@@ -219,10 +228,14 @@ func eventHandler(w http.ResponseWriter, r *http.Request) {
 			server.storage.CreatePath(relativePath, event.IsDirectory)
 			fmt.Println("eventHandler->/CreatePath")
 		case "replicat.Rename":
-			fmt.Printf("We have a new rename event!!!!!!")
 			fmt.Println("eventHandler->Rename")
 			server.storage.Rename(event.SourcePath, event.Path, event.IsDirectory)
 			fmt.Println("eventHandler->/Rename")
+		case "replicat.Catalog":
+			fmt.Println("eventHandler->Catalog")
+
+
+			fmt.Println("eventHandler->/Catalog")
 
 		default:
 			fmt.Printf("Unknown event found, doing nothing. Event: %v\n", event)
@@ -476,4 +489,3 @@ func fileBlake2bHash(filePath string) ([]byte, error) {
 
 	return hashResult, nil
 }
-

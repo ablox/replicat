@@ -232,8 +232,8 @@ func configUpdateProcessor(c chan *map[string]*ReplicatServer) {
 				}
 				serverMap[name] = newServerData
 				fmt.Println("Server data replaced with new server data")
-			} else {
-				//fmt.Printf("Server data has not radically changed. ignoring.\nold: %v\nnew: %v\n", &serverData, &newServerData)
+			//} else {
+			//	//fmt.Printf("Server data has not radically changed. ignoring.\nold: %v\nnew: %v\n", &serverData, &newServerData)
 			}
 		}
 
@@ -267,7 +267,7 @@ func configUpdateProcessor(c chan *map[string]*ReplicatServer) {
 		if sendData {
 			server := serverMap[globalSettings.Name]
 			fmt.Println("about to send existing files")
-			go server.storage.sendExistingFiles()
+			server.storage.SendCatalog()
 			fmt.Println("done sending existing files")
 		}
 		configUpdateMapLock.Unlock()

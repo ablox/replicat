@@ -6,8 +6,8 @@ package replicat
 
 import (
 	"fmt"
-	"sync"
 	"sort"
+	"sync"
 )
 
 // LogOnlyChangeHandler - sample change handler
