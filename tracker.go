@@ -5,10 +5,12 @@
 package replicat
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"github.com/rjeczalik/notify"
 	"log"
+	"math/rand"
 	"os"
 	"path/filepath"
 	"sort"
@@ -47,6 +49,7 @@ type FilesystemTracker struct {
 	renamesInProgress map[uint64]renameInformation // map from inode to source/destination of items being moved
 	fsLock            sync.RWMutex
 	server            *ReplicatServer
+	neededFiles       map[string]EntryJSON
 }
 
 // Entry - contains the data for a file
@@ -363,7 +366,7 @@ func (handler *FilesystemTracker) createPath(pathName string, isDirectory bool) 
 }
 
 // CreatePath tells the storage tracker to create a new path
-func (handler *FilesystemTracker) CreatePath(pathName string, isDirectory bool) (error) {
+func (handler *FilesystemTracker) CreatePath(pathName string, isDirectory bool) error {
 	fmt.Printf("FilesystemTracker:CreatePath called with relativePath: %s isDirectory: %v\n", pathName, isDirectory)
 	handler.fsLock.Lock()
 	defer handler.fsLock.Unlock()
@@ -879,10 +882,9 @@ func (handler *FilesystemTracker) scanFolders() error {
 			var hash []byte
 
 			if !event.IsDirectory {
-				hash, err := fileBlake2bHash(absolutePath)
+				hash, err = fileBlake2bHash(absolutePath)
 				if err != nil {
 					panic(err)
-					fmt.Printf("%v\n", hash)
 				}
 			}
 
@@ -897,6 +899,8 @@ func (handler *FilesystemTracker) scanFolders() error {
 			directory.FileInfo = info
 			directory.hash = hash
 			handler.contents[relativePath] = *directory
+
+			fmt.Printf("Packing up: %s = %#v\n", relativePath, directory)
 
 			// TODO no longer think this is needed
 			// Since we are scanning our own folders, make sure we own them.
@@ -926,18 +930,42 @@ func (handler *FilesystemTracker) scanFolders() error {
 	return nil
 }
 
+// EntryJSON
+type EntryJSON struct {
+	RelativePath string
+	IsDirectory  bool
+	Hash         []byte
+	ModTime      time.Time
+	Size         int64
+	ServerName   string
+}
+
 // This needs to be called with handler.fsLock engaged
 func (handler *FilesystemTracker) SendCatalog() {
 	fmt.Printf("FileSystemTracker ScanFolders - end - Found %d items\n", len(handler.contents))
-	jsonStr, _ := json.Marshal(handler.contents)
-	fmt.Printf("Analyzed all files in the folder and the total size is: %d\n", len(jsonStr))
+
+	// transfer the normal contents structure to the JSON friendly version
+	//rawData := make([]EntryJSON, 0, len(handler.contents))
+	rawData := make([]EntryJSON, 0, len(handler.contents))
+
+	for k, v := range handler.contents {
+		entry := EntryJSON{RelativePath: k, IsDirectory: v.IsDir(), Hash: v.hash, ModTime: v.ModTime(), Size: v.Size()}
+		fmt.Printf("Packing up: %s=%#v\n", k, entry)
+		rawData = append(rawData, entry)
+	}
+
+	jsonData, err := json.Marshal(rawData)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Printf("Analyzed all files in the folder and the total size is: %d\n", len(jsonData))
 
 	event := Event{
 		Name:          "replicat.Catalog",
 		Source:        globalSettings.Name,
 		Time:          time.Now(),
 		NetworkSource: globalSettings.Name,
-		RawData:       jsonStr,
+		RawData:       jsonData,
 	}
 
 	fmt.Printf("About to directly send out full catalog event with: %v\n", event)
@@ -945,9 +973,131 @@ func (handler *FilesystemTracker) SendCatalog() {
 	fmt.Println("catalog sent")
 }
 
+// ProcessCatalog - handle a catalog passed from another replicat node
 func (handler *FilesystemTracker) ProcessCatalog(event Event) {
-	panic("in")
+	fmt.Printf("FilesystemTracker ProcessCatalog from Server: %s\n", event.Source)
 
+	// pull the directory tree from the payload
+	remoteContents := make([]EntryJSON, 0)
+	err := json.Unmarshal(event.RawData, &remoteContents)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Printf("Done unmarshalling event. len %d\n", len(remoteContents))
+
+	// Let's go through the other side's files and see if any of them are more up to date than what we have.
+	handler.fsLock.Lock()
+
+	fmt.Printf("Data retrieved from: %s\n%#v\n", event.Source, remoteContents)
+
+	for _, remoteEntry := range remoteContents {
+		// Get the path out
+		path := remoteEntry.RelativePath
+
+		// check for a local value
+		local, exists := handler.contents[path]
+
+		fmt.Printf("ProcCat(%s) %s\nconsidering: %v\nexists:      %v\n", remoteEntry.ServerName, path, remoteEntry, local)
+
+		// Request transfer of the file if we do not have a local copy already
+		transfer := !exists
+
+		// Make missing directories immediately so we have a place to put the files
+		if !exists && remoteEntry.IsDirectory {
+			fmt.Printf("ProcCat(%s) %s\nIs a directory, creating now\n", remoteEntry.ServerName, path)
+			// Make a missing directory
+			handler.createPath(path, true)
+			continue
+		}
+
+		if !transfer {
+			// Request transfer if the remote side has a newer mod time.
+			transfer = local.ModTime().Before(remoteEntry.ModTime)
+			fmt.Printf("ProcCat(%s) %s\nconsidering: %v\nexists:      %v\n", remoteEntry.ServerName, path, remoteEntry, local)
+		}
+
+		hashSame := bytes.Equal(remoteEntry.Hash, local.hash)
+
+		// If the hashes differ, we need to do something
+		if !transfer && !hashSame {
+			//todo something more graceful here.
+			panic(fmt.Sprintf("We have a problem. file: %s\nremoteHash: %s\nlocalHash:  %s\n", path, remoteEntry.Hash, local.hash))
+		}
+
+		if transfer {
+			currentEntry := handler.neededFiles[path]
+			// If the current one is more recent, use it
+			useNew := currentEntry.ModTime.After(remoteEntry.ModTime)
+
+			// If the hash and time are the same, randomly decide which
+			if hashSame {
+				useNew = rand.Intn(1) == 1
+			}
+
+			if useNew {
+				fmt.Println("decided to use new")
+				currentEntry.ModTime = remoteEntry.ModTime
+				currentEntry.Hash = remoteEntry.Hash
+				currentEntry.Size = remoteEntry.Size
+				currentEntry.ServerName = remoteEntry.ServerName
+
+				handler.neededFiles[path] = currentEntry
+			} else {
+				fmt.Println("decided to use old")
+
+			}
+
+		}
+	}
+	handler.fsLock.Unlock()
+
+	// Now we need to fetch a bunch of files from our friends.
+
+	//pendingPaths := make([]string, 0, 100)
+	//pendingPaths = append(pendingPaths, globalSettings.Directory)
+	//listOfFileInfo := make(DirTreeMap)
+	//
+	//for len(pendingPaths) > 0 {
+	//	currentPath := pendingPaths[0]
+	//	// Strip off of the base path before adding it to the list of folders
+	//	//paths = append(paths, currentPath[len(globalSettings.Directory)+1:])
+	//	fileList := make([]string, 0, 100)
+	//	//fileList := make([]os.FileInfo, 0, 100)
+	//	pendingPaths = pendingPaths[1:]
+	//
+	//	// Read the directories in the path
+	//	f, err := os.Open(currentPath)
+	//	if err != nil {
+	//		return nil, err
+	//	}
+	//	dirEntries, err := f.Readdir(-1)
+	//	for _, entry := range dirEntries {
+	//		if entry.IsDir() {
+	//			newDirectory := filepath.Join(currentPath, entry.Name())
+	//			pendingPaths = append(pendingPaths, newDirectory)
+	//		} else {
+	//			fileList = append(fileList, entry.Name())
+	//		}
+	//	}
+	//	f.Close()
+	//	if err != nil {
+	//		return nil, err
+	//	}
+	//
+	//	sort.Strings(fileList)
+	//
+	//	// Strip the base path off of the current path
+	//	// make sure all of the paths are still '/' prefixed
+	//	relativePath := currentPath[len(globalSettings.Directory):]
+	//	if relativePath == "" {
+	//		relativePath = "/"
+	//	}
+	//
+	//	listOfFileInfo[relativePath] = fileList
+	//}
+	//
+	//fmt.Println("scanning directory contents - end")
+	//return listOfFileInfo, nil
 
 }
 

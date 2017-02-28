@@ -231,7 +231,7 @@ func eventHandler(w http.ResponseWriter, r *http.Request) {
 			server.storage.Rename(event.SourcePath, event.Path, event.IsDirectory)
 			fmt.Println("eventHandler->/Rename")
 		case "replicat.Catalog":
-			fmt.Println("eventHandler->Catalog")
+			fmt.Printf("eventHandler->Catalog\n%#v\n", event)
 			server.storage.ProcessCatalog(event)
 			fmt.Println("eventHandler->/Catalog")
 
