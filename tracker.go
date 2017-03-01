@@ -1037,6 +1037,7 @@ func (handler *FilesystemTracker) ProcessCatalog(event Event) {
 			// If the current modification time is before the remote modification time, use the remote one
 			useNew := currentEntry.ModTime.Before(remoteEntry.ModTime)
 			fmt.Printf("Use New: %v HashSame: %v\n", useNew, hashSame)
+
 			// If the hash and time are the same, randomly decide which one to use
 			if !useNew && hashSame {
 				useNew = rand.Intn(1) == 1
@@ -1062,14 +1063,17 @@ func (handler *FilesystemTracker) ProcessCatalog(event Event) {
 
 	// Collect the files needed for each server.
 	fmt.Printf("start collecting what we need from each server %#v\n", handler.neededFiles)
-	//var filesToFetch map[string]map[string]EntryJSON
+	filesToFetch := make(map[string]map[string]EntryJSON)
 
 	for path, entry := range handler.neededFiles {
 		fmt.Printf("%s: %s (%#v)\n", entry.ServerName, path, entry)
-		//server := entry.ServerName
-		//fileMap := filesToFetch[server]
-		//fileMap[path] = entry
-		//filesToFetch[server] = fileMap
+		server := entry.ServerName
+		fileMap := filesToFetch[server]
+		if fileMap == nil {
+			fileMap = make(map[string]EntryJSON)
+		}
+		fileMap[path] = entry
+		filesToFetch[server] = fileMap
 	}
 
 	//for server, files := range filesToFetch {
@@ -1079,12 +1083,12 @@ func (handler *FilesystemTracker) ProcessCatalog(event Event) {
 	//	}
 	//}
 
-	//for server, fileMap := range handler.neededFiles {
-	//	fmt.Printf("Files needed from: %s\n", server)
-	//	for filename, entry := range fileMap {
-	//		fmt.Printf("\t%s - %s (%d)\n", filename, entry.Hash, entry.Size)
-	//	}
-	//}
+	for server, fileMap := range filesToFetch {
+		fmt.Printf("Files needed from: %s\n", server)
+		for filename, entry := range fileMap {
+			fmt.Printf("\t%s(%d) - %v\n", filename, entry.Size, entry.Hash)
+		}
+	}
 	fmt.Println("done collecting what we need from each server")
 
 	handler.fsLock.Unlock()
