@@ -1061,12 +1061,12 @@ func (handler *FilesystemTracker) ProcessCatalog(event Event) {
 		fileMap[path] = entry
 	}
 
-	for server, fileMap := range handler.neededFiles {
-		fmt.Printf("Files needed from: %s\n", server)
-		for filename, entry := range fileMap {
-			fmt.Printf("\t%s - %s (%d)\n", filename, entry.Hash, entry.Size)
-		}
-	}
+	//for server, fileMap := range handler.neededFiles {
+	//	fmt.Printf("Files needed from: %s\n", server)
+	//	for filename, entry := range fileMap {
+	//		fmt.Printf("\t%s - %s (%d)\n", filename, entry.Hash, entry.Size)
+	//	}
+	//}
 	fmt.Printf("done collecting what we need from each server\n")
 
 	handler.fsLock.Unlock()
