@@ -1002,38 +1002,46 @@ func (handler *FilesystemTracker) ProcessCatalog(event Event) {
 		// Request transfer of the file if we do not have a local copy already
 		transfer := !exists
 
+		fmt.Printf("Considering: %s\nexists: %v\nlocal: %#v\nremote:%#v\n", path, exists, local, remoteEntry)
 		// Make missing directories immediately so we have a place to put the files
-		if !exists && remoteEntry.IsDirectory {
-			fmt.Printf("ProcCat(%s) %s\nIs a directory, creating now\n", remoteEntry.ServerName, path)
-			// Make a missing directory
-			handler.createPath(path, true)
-			continue
+		if !exists {
+			if remoteEntry.IsDirectory {
+				fmt.Printf("ProcCat(%s) %s\nIs a directory, creating now\n", remoteEntry.ServerName, path)
+				// Make a missing directory
+				handler.createPath(path, true)
+				continue
+			}
 		}
 
 		if !transfer {
-			// Request transfer if the remote side has a newer mod time.
-			transfer = local.ModTime().Before(remoteEntry.ModTime)
+
+			//if local != nil|| local.ModTime() != nil {
+			//	transfer = true
+			//} else {
+				transfer = local.ModTime().Before(remoteEntry.ModTime)
+			//}
 			fmt.Printf("ProcCat(%s) %s\nconsidering: %v\nexists:      %v\n", remoteEntry.ServerName, path, remoteEntry, local)
 		}
 
 		hashSame := bytes.Equal(remoteEntry.Hash, local.hash)
 
-		// If the hashes differ, we need to do something
-		if !transfer && !hashSame {
-			//todo something more graceful here.
-			panic(fmt.Sprintf("We have a problem. file: %s\nremoteHash: %s\nlocalHash:  %s\n", path, remoteEntry.Hash, local.hash))
-		}
+		// If the hashes differ, we need to do something -- unless the other side is the older one
+		//if !transfer && !hashSame {
+		//	//todo something more graceful here.
+		//	panic(fmt.Sprintf("We have a problem. file: %s\nremoteHash: %s\nlocalHash:  %s\n", path, remoteEntry.Hash, local.hash))
+		//}
 
 		if transfer {
 			currentEntry := handler.neededFiles[path]
 			// If the current one is more recent, use it
 			useNew := currentEntry.ModTime.After(remoteEntry.ModTime)
 
-			// If the hash and time are the same, randomly decide which
+			// If the hash and time are the same, randomly decide which one to use
 			if hashSame {
 				useNew = rand.Intn(1) == 1
 			}
 
+			// If we are going to use the new file, update the information
 			if useNew {
 				fmt.Println("decided to use new")
 				currentEntry.ModTime = remoteEntry.ModTime
@@ -1052,7 +1060,7 @@ func (handler *FilesystemTracker) ProcessCatalog(event Event) {
 
 
 	// Collect the files needed for each server.
-	fmt.Printf("start collecting what we need from each server\n")
+	fmt.Println("start collecting what we need from each server")
 	var filesToFetch map[string]map[string]EntryJSON
 
 	for path, entry := range handler.neededFiles {
@@ -1067,7 +1075,7 @@ func (handler *FilesystemTracker) ProcessCatalog(event Event) {
 	//		fmt.Printf("\t%s - %s (%d)\n", filename, entry.Hash, entry.Size)
 	//	}
 	//}
-	fmt.Printf("done collecting what we need from each server\n")
+	fmt.Println("done collecting what we need from each server")
 
 	handler.fsLock.Unlock()
 
