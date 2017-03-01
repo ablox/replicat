@@ -1049,6 +1049,26 @@ func (handler *FilesystemTracker) ProcessCatalog(event Event) {
 
 		}
 	}
+
+
+	// Collect the files needed for each server.
+	fmt.Printf("start collecting what we need from each server\n")
+	var filesToFetch map[string]map[string]EntryJSON
+
+	for path, entry := range handler.neededFiles {
+		server := entry.ServerName
+		fileMap := filesToFetch[server]
+		fileMap[path] = entry
+	}
+
+	for server, fileMap := range handler.neededFiles {
+		fmt.Printf("Files needed from: %s\n", server)
+		for filename, entry := range fileMap {
+			fmt.Printf("\t%s - %s (%d)\n", filename, entry.Hash, entry.Size)
+		}
+	}
+	fmt.Printf("done collecting what we need from each server\n")
+
 	handler.fsLock.Unlock()
 
 	// Now we need to fetch a bunch of files from our friends.
