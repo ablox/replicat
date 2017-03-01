@@ -1076,96 +1076,39 @@ func (handler *FilesystemTracker) ProcessCatalog(event Event) {
 		filesToFetch[server] = fileMap
 	}
 
-	//for server, files := range filesToFetch {
-	//	fmt.Printf("Server: %s\n", server)
-	//	for k, v := range files {
-	//		fmt.Printf("%s: %s\n", k, v)
-	//	}
-	//}
-
 	for server, fileMap := range filesToFetch {
 		fmt.Printf("Files needed from: %s\n", server)
 		for filename, entry := range fileMap {
 			fmt.Printf("\t%s(%d) - %v\n", filename, entry.Size, entry.Hash)
 		}
+		handler.SendRequestForFiles(server, fileMap)
 	}
 	fmt.Println("done collecting what we need from each server")
 
 	handler.fsLock.Unlock()
-
-	// Now we need to fetch a bunch of files from our friends.
-
-	//pendingPaths := make([]string, 0, 100)
-	//pendingPaths = append(pendingPaths, globalSettings.Directory)
-	//listOfFileInfo := make(DirTreeMap)
-	//
-	//for len(pendingPaths) > 0 {
-	//	currentPath := pendingPaths[0]
-	//	// Strip off of the base path before adding it to the list of folders
-	//	//paths = append(paths, currentPath[len(globalSettings.Directory)+1:])
-	//	fileList := make([]string, 0, 100)
-	//	//fileList := make([]os.FileInfo, 0, 100)
-	//	pendingPaths = pendingPaths[1:]
-	//
-	//	// Read the directories in the path
-	//	f, err := os.Open(currentPath)
-	//	if err != nil {
-	//		return nil, err
-	//	}
-	//	dirEntries, err := f.Readdir(-1)
-	//	for _, entry := range dirEntries {
-	//		if entry.IsDir() {
-	//			newDirectory := filepath.Join(currentPath, entry.Name())
-	//			pendingPaths = append(pendingPaths, newDirectory)
-	//		} else {
-	//			fileList = append(fileList, entry.Name())
-	//		}
-	//	}
-	//	f.Close()
-	//	if err != nil {
-	//		return nil, err
-	//	}
-	//
-	//	sort.Strings(fileList)
-	//
-	//	// Strip the base path off of the current path
-	//	// make sure all of the paths are still '/' prefixed
-	//	relativePath := currentPath[len(globalSettings.Directory):]
-	//	if relativePath == "" {
-	//		relativePath = "/"
-	//	}
-	//
-	//	listOfFileInfo[relativePath] = fileList
-	//}
-	//
-	//fmt.Println("scanning directory contents - end")
-	//return listOfFileInfo, nil
-
 }
 
-// old code that handled periodic scanning of the entire watched folder to change to match
-//dotCount := 0
-//sleepSeconds := time.Duration(25 + rand.Intn(10))
-//fmt.Printf("Full Sync time set to: %d seconds\n", sleepSeconds)
-//for {
-//	// Randomize the sync time to decrease oscillation
-//	time.Sleep(time.Second * sleepSeconds)
-//	changed, updatedState, newPaths, deletedPaths, matchingPaths := checkForChanges(listOfFileInfo, nil)
-//	if changed {
-//		fmt.Println("\nWe have changes, ship it (also updating saved state now that the changes were tracked)")
-//		fmt.Printf("@Path report: new %d, deleted %d, matching %d, original %d, updated %d\n", len(newPaths), len(deletedPaths), len(matchingPaths), len(listOfFileInfo), len(updatedState))
-//		fmt.Printf("@New paths: %v\n", newPaths)
-//		fmt.Printf("@Deleted paths: %v\n", deletedPaths)
-//		fmt.Println("******************************************************")
-//		listOfFileInfo = updatedState
-//
-//		// Post the changes to the other side.
-//		//sendFolderTree(listOfFileInfo)
-//	} else {
-//		fmt.Print(".")
-//		dotCount++
-//		if dotCount%100 == 0 {
-//			fmt.Println("")
-//		}
-//	}
-//}
+
+// This needs to be called with handler.fsLock engaged
+func (handler *FilesystemTracker) SendRequestForFiles(server string, fileMap map[string]EntryJSON) {
+	fmt.Printf("FileSystemTracker SendRequestForFiles - end - Found %d items\n", len(handler.contents))
+
+	jsonData, err := json.Marshal(fileMap)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Printf("Files needed from %s: %d    Data: %d\n", server, len(fileMap), len(jsonData))
+
+	event := Event{
+		Name:          "replicat.FileRequest",
+		Source:        globalSettings.Name,
+		Time:          time.Now(),
+		NetworkSource: globalSettings.Name,
+		RawData:       jsonData,
+	}
+
+	fmt.Printf("About to directly send out request for files from %s: %v\n", server, event)
+	sendFileRequestToServer(server, event)
+	fmt.Println("request sent")
+}
+

@@ -106,7 +106,7 @@ func SendEvent(event Event, fullPath string) {
 
 func sendEventToManagerAndSiblings(event Event, fullPath string) {
 	// sendEvent to manager
-	sendEvent(&event, fullPath, globalSettings.ManagerAddress, globalSettings.ManagerCredentials)
+	go sendEvent(&event, fullPath, globalSettings.ManagerAddress, globalSettings.ManagerCredentials)
 
 	// SendEvent to all peers
 	for k, v := range serverMap {
@@ -116,6 +116,17 @@ func sendEventToManagerAndSiblings(event Event, fullPath string) {
 			sendEvent(&event, fullPath, v.Address, globalSettings.ManagerCredentials)
 		}
 	}
+}
+
+func sendFileRequestToServer(serverName string, event Event) {
+	go sendEvent(&event, "", globalSettings.ManagerAddress, globalSettings.ManagerCredentials)
+
+	server := serverMap[serverName]
+	if server == nil {
+		panic("Server no longer exists when trying to send a file request\n")
+	}
+
+	go sendEvent(&event, "", server.Address, globalSettings.ManagerCredentials)
 }
 
 func sendEvent(event *Event, fullPath string, address string, credentials string) {
