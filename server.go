@@ -11,7 +11,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"github.com/minio/blake2b-simd"
+	"golang.org/x/crypto/blake2b"
 	"io"
 	"io/ioutil"
 	"log"
@@ -475,7 +475,7 @@ func fileBlake2bHash(filePath string) ([]byte, error) {
 	}
 	defer file.Close()
 
-	hash := blake2b.New256()
+	hash, _ := blake2b.New256(nil)
 	_, err = io.Copy(hash, file)
 	if err != nil {
 		return hashResult, err
