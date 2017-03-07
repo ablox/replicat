@@ -160,7 +160,6 @@ func sendConfigToServer() {
 }
 
 func uploadHandler(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("method: ", r.Method)
 	if r.Method == "POST" {
 		r.ParseMultipartForm(32 << 20)
 		file, handler, err := r.FormFile("uploadfile")
