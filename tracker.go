@@ -1019,6 +1019,7 @@ func (handler *FilesystemTracker) ProcessCatalog(event Event) {
 		}
 
 		if !transfer {
+			fmt.Printf("ProcCat(%s) \nlocal: %#vremoteEntry: %#v\n", remoteEntry.ServerName, local, remoteEntry)
 			fmt.Printf("ProcCat(%s) %s\nconsidering: %v\nexists:      %v\n", remoteEntry.ServerName, path, remoteEntry, local)
 			transfer = local.ModTime().Before(remoteEntry.ModTime)
 		}

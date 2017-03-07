@@ -265,10 +265,9 @@ func sendRequestedFiles(fileMap map[string]EntryJSON, targetServerName string) {
 	currentPath := globalSettings.Directory
 	for p, _ := range fileMap {
 		fullPath := filepath.Join(currentPath, p)
-		postHelper(p, fullPath, serverAddress, globalSettings.ManagerCredentials)
+		go postHelper(p, fullPath, serverAddress, globalSettings.ManagerCredentials)
 	}
 }
-
 
 /*
 Send the folder tree from this node to another node for comparison
