@@ -265,7 +265,7 @@ func validatePath(directory string) (fullPath string) {
 
 func createPath(pathName string, absolutePathName string) (pathCreated bool, stat os.FileInfo, err error) {
 	for maxCycles := 0; maxCycles < 5 && pathName != ""; maxCycles++ {
-		stat, err = os.Stat(pathName)
+		stat, err = os.Stat(absolutePathName)
 
 		if err == nil {
 			fmt.Printf("Path existed: %s\n", absolutePathName)
@@ -281,12 +281,13 @@ func createPath(pathName string, absolutePathName string) (pathCreated bool, sta
 		if err == nil {
 			fmt.Printf("Path was created or existed: %s\n", absolutePathName)
 			pathCreated = true
-			stat, err = os.Stat(pathName)
+			stat, err = os.Stat(absolutePathName)
+			fmt.Printf("os.Stat returned stat: %#v, err: %#v\n", stat, err)
 			return
 		} else if os.IsExist(err) {
 			fmt.Printf("Path already exists: %s\n", absolutePathName)
 			pathCreated = true
-			stat, err = os.Stat(pathName)
+			stat, err = os.Stat(absolutePathName)
 			return
 		}
 
@@ -871,19 +872,9 @@ func (handler *FilesystemTracker) scanFolders() error {
 			absolutePath := filepath.Join(currentPath, entry.Name())
 			relativePath := absolutePath[len(handler.directory)+1:]
 
-			event := Event{
-				Name:          "notify.Create",
-				Path:          relativePath,
-				Source:        globalSettings.Name,
-				Time:          time.Now(),
-				ModTime:       entry.ModTime(),
-				IsDirectory:   entry.IsDir(),
-				NetworkSource: globalSettings.Name,
-			}
-
 			var hash []byte
 
-			if !event.IsDirectory {
+			if !entry.IsDir() {
 				hash, err = fileBlake2bHash(absolutePath)
 				if err != nil {
 					panic(err)
