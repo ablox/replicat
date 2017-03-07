@@ -21,6 +21,7 @@ import (
 	"sort"
 	"sync"
 	"time"
+	"path/filepath"
 )
 
 // Settings - for this replicat server. This should include everything needed for this server to run and connect with
@@ -169,6 +170,7 @@ func sendEvent(event *Event, fullPath string, address string, credentials string
 			postHelper(event.Path, fullPath, address, credentials)
 		}
 	}
+
 }
 
 func postHelper(path, fullPath, address, credentials string) {
@@ -245,7 +247,11 @@ func eventHandler(w http.ResponseWriter, r *http.Request) {
 			fmt.Printf("eventHandler->Catalog\n%#v\n", event)
 			server.storage.ProcessCatalog(event)
 			fmt.Println("eventHandler->/Catalog")
-
+		case "replicat.FileRequest":
+			fmt.Printf("Received request to send files from: %s\n", event.Source)
+			fileMap := make(map[string]EntryJSON)
+			json.Unmarshal(event.RawData, &fileMap)
+			go sendRequestedFiles(fileMap, event.Source)
 		default:
 			fmt.Printf("Unknown event found, doing nothing. Event: %v\n", event)
 		}
@@ -253,6 +259,16 @@ func eventHandler(w http.ResponseWriter, r *http.Request) {
 		events = append([]Event{event}, events...)
 	}
 }
+
+func sendRequestedFiles(fileMap map[string]EntryJSON, targetServerName string) {
+	serverAddress := serverMap[targetServerName].Address
+	currentPath := globalSettings.Directory
+	for p, _ := range fileMap {
+		fullPath := filepath.Join(currentPath, p)
+		postHelper(p, fullPath, serverAddress, globalSettings.ManagerCredentials)
+	}
+}
+
 
 /*
 Send the folder tree from this node to another node for comparison
@@ -402,7 +418,7 @@ func folderTreeHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func postFile(filename string, fullPath string, targetUrl string, credentials string) error {
+func postFile(filename string, fullPath string, address string, credentials string) error {
 	fmt.Printf("postFile: filename: %s, fullPath: %s\n", filename, fullPath)
 	body := &bytes.Buffer{}
 	bodyWriter := multipart.NewWriter(body)
@@ -437,7 +453,7 @@ func postFile(filename string, fullPath string, targetUrl string, credentials st
 		return err
 	}
 
-	req, err := http.NewRequest("POST", targetUrl, body)
+	req, err := http.NewRequest("POST", address, body)
 	req.Header.Set("Content-Type", contentType)
 
 	data := []byte(credentials)
@@ -447,7 +463,7 @@ func postFile(filename string, fullPath string, targetUrl string, credentials st
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
-		fmt.Printf("Trouble sending a file using the http client: %v\n", resp)
+		//fmt.Printf("Trouble sending a file using the http client\nrequest: %#v\nresponse: %#v\n", req, resp)
 		panic(err)
 	}
 
