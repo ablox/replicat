@@ -1,4 +1,6 @@
-for i in {1..100}
+for i in {1..20}
 do
-	dd if=/dev/zero bs=1024 count=100000 of=/tmp/NodeA/file_1GB$i
+	dd if=/dev/zero bs=1024 count=10000 of=/tmp/NodeA/file_1GB$i
 done
+
+# diff -r /tmp/NodeA /tmp/NodeB | wc -l

@@ -1,0 +1,6 @@
+ .git*
+ .DS*
+ .idea
+ */temp*
+ */*/temp*
+ temp?
