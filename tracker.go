@@ -265,13 +265,12 @@ func validatePath(directory string) (fullPath string) {
 
 func createPath(pathName string, absolutePathName string) (pathCreated bool, stat os.FileInfo, err error) {
 	for maxCycles := 0; maxCycles < 5 && pathName != ""; maxCycles++ {
-		localStat, err := os.Stat(pathName)
-		stat = localStat
+		stat, err = os.Stat(pathName)
 
 		if err == nil {
 			fmt.Printf("Path existed: %s\n", absolutePathName)
 			pathCreated = true
-			break
+			return
 		} else {
 			// if there is an error, go to create the path
 			fmt.Printf("Creating path: %s\n", absolutePathName)
@@ -282,17 +281,20 @@ func createPath(pathName string, absolutePathName string) (pathCreated bool, sta
 		if err == nil {
 			fmt.Printf("Path was created or existed: %s\n", absolutePathName)
 			pathCreated = true
-			break
+			stat, err = os.Stat(pathName)
+			return
 		} else if os.IsExist(err) {
 			fmt.Printf("Path already exists: %s\n", absolutePathName)
 			pathCreated = true
-			break
+			stat, err = os.Stat(pathName)
+			return
 		}
 
 		fmt.Printf("Error (%v) encountered creating path, going to try again. Attempt: %d\n", err, maxCycles)
 		time.Sleep(20 * time.Millisecond)
 	}
 
+	pathCreated = false
 	return pathCreated, stat, err
 }
 
@@ -601,7 +603,7 @@ func getiNodeFromStat(stat os.FileInfo) uint64 {
 
 const (
 	// TRACKER_RENAME_TIMEOUT - the amount of time to sleep while waiting for the second event in a rename process
-	TRACKER_RENAME_TIMEOUT = time.Millisecond * 25
+	TRACKER_RENAME_TIMEOUT = time.Millisecond * 250
 )
 
 // WaitFor - a helper function that will politely wait until the helper argument function evaluates to the value of waitingFor.
@@ -1020,7 +1022,10 @@ func (handler *FilesystemTracker) ProcessCatalog(event Event) {
 
 		if !transfer {
 			fmt.Printf("ProcCat(%s) \nlocal: %#vremoteEntry: %#v\n", remoteEntry.ServerName, local, remoteEntry)
-			fmt.Printf("ProcCat(%s) %s\nconsidering: %v\nexists:      %v\n", remoteEntry.ServerName, path, remoteEntry, local)
+			fmt.Printf("ProcCatb(%s) %s\nconsidering: %v\nexists:      %v\n", remoteEntry.ServerName, path, remoteEntry, local)
+			if local.hash == nil {
+				transfer = true
+			}
 			transfer = local.ModTime().Before(remoteEntry.ModTime)
 		}
 

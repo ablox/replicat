@@ -76,8 +76,12 @@ func SendEvent(event Event, fullPath string) {
 	event.Time = time.Now()
 
 	// Get the current owner of this entry if any
+	path := event.Path
+	if path == "" {
+		path = event.SourcePath
+	}
 	ownershipLock.RLock()
-	originalEntry, exists := ownership[event.Path]
+	originalEntry, exists := ownership[path]
 	ownershipLock.RUnlock()
 
 	if exists {
@@ -156,8 +160,8 @@ func sendEvent(event *Event, fullPath string, address string, credentials string
 
 	defer resp.Body.Close()
 
-	fmt.Println("response Status:", resp.Status)
-	fmt.Println("response Headers:", resp.Header)
+	//fmt.Println("response Status:", resp.Status)
+	//fmt.Println("response Headers:", resp.Header)
 	body, _ := ioutil.ReadAll(resp.Body)
 	fmt.Println("response Body:", string(body))
 
@@ -204,14 +208,20 @@ func eventHandler(w http.ResponseWriter, r *http.Request) {
 		log.Printf("Event info: %#v\n", event)
 
 		// At this point, the other side should have ownership of this path.
+
+		path := event.Path
+		if path == "" {
+			path = event.SourcePath
+		}
+
 		ownershipLock.Lock()
-		originalEntry, exists := ownership[event.Path]
+		originalEntry, exists := ownership[path]
 		if exists {
 			log.Printf("Original ownership: %#v\n", originalEntry)
 		} else {
 			log.Println("No original ownership found")
 		}
-		ownership[event.Path] = event
+		ownership[path] = event
 		ownershipLock.Unlock()
 
 		pathName := globalSettings.Directory + "/" + event.Path
