@@ -663,7 +663,8 @@ func (handler *FilesystemTracker) completeRenameIfAbandoned(iNode uint64) {
 		handler.contents[relativePath] = *NewDirectoryFromFileInfo(&inProgress.destinationStat)
 
 		// tell the other nodes that a rename was done.
-		event := Event{Name: "replicat.Rename", Source: globalSettings.Name, Path: relativePath}
+		event := Event{Name: "replicat.Rename", Source: globalSettings.Name, Path: relativePath, ModTime: inProgress.destinationStat.ModTime(),
+			IsDirectory: inProgress.destinationStat.IsDir()}
 		SendEvent(event, inProgress.destinationPath)
 
 		// find the source if the destination is an iNode in our system
