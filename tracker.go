@@ -1019,8 +1019,8 @@ func (handler *FilesystemTracker) ProcessCatalog(event Event) {
 		}
 
 		if !transfer {
-			transfer = local.ModTime().Before(remoteEntry.ModTime)
 			fmt.Printf("ProcCat(%s) %s\nconsidering: %v\nexists:      %v\n", remoteEntry.ServerName, path, remoteEntry, local)
+			transfer = local.ModTime().Before(remoteEntry.ModTime)
 		}
 
 		hashSame := bytes.Equal(remoteEntry.Hash, local.hash)
