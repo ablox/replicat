@@ -37,6 +37,7 @@ type StorageTracker interface {
 	ListFolders(getLocks bool) (folderList []string)
 	SendCatalog()
 	ProcessCatalog(event Event)
+	sendRequestedPaths(pathEntries map[string]EntryJSON, targetServerName string)
 }
 
 // FilesystemTracker - Track a filesystem and keep it in sync
@@ -131,8 +132,6 @@ func (handler *FilesystemTracker) init(directory string, server *ReplicatServer)
 	if handler.setup {
 		return
 	}
-
-	server.SetStatus(REPLICAT_STATUS_INITIAL_SCAN)
 
 	fmt.Printf("FilesystemTracker:init called with %s\n", directory)
 	handler.directory = directory
@@ -297,6 +296,24 @@ func createPath(pathName string, absolutePathName string) (pathCreated bool, sta
 
 	pathCreated = false
 	return pathCreated, stat, err
+}
+
+func (handler *FilesystemTracker) sendRequestedPaths(pathEntries map[string]EntryJSON, targetServerName string) {
+	serverAddress := serverMap[targetServerName].Address
+	currentPath := globalSettings.Directory
+
+	handler.fsLock.RLock()
+	defer handler.fsLock.RUnlock()
+
+	for p, entry := range pathEntries {
+		fullPath := filepath.Join(currentPath, p)
+		realEntry := handler.contents[p]
+		fmt.Printf("File info for: %s\nProvided: %#v\nFile info for: %s\nStorege : %#v\n", p, entry, p, realEntry)
+		if !entry.IsDirectory {
+			fmt.Printf("Requested file information: %s\n%#v\n", p, entry)
+			go postHelper(p, fullPath, serverAddress, globalSettings.ManagerCredentials)
+		}
+	}
 }
 
 // createPath implements the new path/file creation. Locking is done outside this call.
@@ -753,6 +770,18 @@ func (handler *FilesystemTracker) handleRename(event Event, pathName, fullPath s
 	}
 }
 
+
+//Create pile of folders with other servers offline
+//stop C
+//Duplicate all of C
+//Start C
+//Remove all of the duplicates in C
+//C says, we do not own this, do not send
+//2017/03/06 23:36:20.917030 server.go:88: Original ownership: main.Event{Source:"NodeA", Name:"notify.Create", Path:"trackertest copy.go", SourcePath:"", Time:time.Time{sec:63624468969, nsec:768126848, loc:(*time.Location)(0x45168c0)}, ModTime:time.Time{sec:0, nsec:0, loc:(*time.Location)(0x4512d60)}, IsDirectory:false, NetworkSource:"", RawData:[]uint8(nil)}
+//
+//let them replicate
+
+
 func (handler *FilesystemTracker) processEvent(event Event, pathName, fullPath string, lock bool) {
 	fmt.Println("FilesystemTracker:processEvent")
 	if lock {
@@ -996,32 +1025,30 @@ func (handler *FilesystemTracker) ProcessCatalog(event Event) {
 		// check for a local value
 		local, exists := handler.contents[path]
 
-		fmt.Printf("ProcCat(%s) %s\nconsidering: %v\nexists:      %v\n", remoteEntry.ServerName, path, remoteEntry, local)
-
 		// Request transfer of the file if we do not have a local copy already
 		transfer := !exists
 
-		fmt.Printf("Considering: %s\nexists: %v\nlocal: %#v\nremote:%#v\n", path, exists, local, remoteEntry)
+		fmt.Printf("Considering: %s\nexists: %v\nremote: %#v\nlocal:  %#v\n", path, exists, remoteEntry, local)
 		// Make missing directories immediately so we have a place to put the files
-		if !exists {
-			if remoteEntry.IsDirectory {
-				fmt.Printf("ProcCat(%s) %s\nIs a directory, creating now\n", remoteEntry.ServerName, path)
-				// Make a missing directory
-				handler.createPath(path, true)
-				continue
-			}
+		if !exists && remoteEntry.IsDirectory {
+			fmt.Printf("ProcessCatalog(%s) %s\nIs a directory, creating now\n", remoteEntry.ServerName, path)
+			// Make a missing directory
+			handler.createPath(path, true)
+			// Skip to the next entry
+			continue
 		}
 
 		if !transfer {
-			fmt.Printf("ProcCat(%s) \nlocal: %#vremoteEntry: %#v\n", remoteEntry.ServerName, local, remoteEntry)
-			fmt.Printf("ProcCatb(%s) %s\nconsidering: %v\nexists:      %v\n", remoteEntry.ServerName, path, remoteEntry, local)
-			if local.hash == nil {
+			fmt.Printf("ProcessCatalog(%s) %s\remote: %v\nlocal:  %v\n", remoteEntry.ServerName, path, remoteEntry, local)
+			fmt.Printf("Comparing times for (%s) remote: %v local: %v\n", path, remoteEntry.ModTime, local.ModTime())
+			if local.hash == nil || local.ModTime().Before(remoteEntry.ModTime){
 				transfer = true
 			}
-			transfer = local.ModTime().Before(remoteEntry.ModTime)
 		}
 
 		hashSame := bytes.Equal(remoteEntry.Hash, local.hash)
+		fmt.Printf("Done considering(%s) transfer is: %s\n", path, transfer)
+		//todo should we do something if the transfer is set to true yet the hash is the same?
 
 		// If the hashes differ, we need to do something -- unless the other side is the older one
 		//if !transfer && !hashSame {
@@ -1055,10 +1082,21 @@ func (handler *FilesystemTracker) ProcessCatalog(event Event) {
 				fmt.Println("decided to use old")
 
 			}
-
 		}
 	}
 
+	if len(handler.neededFiles) > 0 {
+		handler.server.SetStatus(REPLICAT_STATUS_JOINING_CLUSTER)
+		handler.requestNeededFiles()
+	} else {
+		handler.server.SetStatus(REPLICAT_STATUS_ONLINE)
+	}
+
+	handler.fsLock.Unlock()
+}
+
+// send out the actual requests for needed files when necessary. Call when inside of a lock!
+func (handler *FilesystemTracker) requestNeededFiles() {
 	// Collect the files needed for each server.
 	fmt.Printf("start collecting what we need from each server %#v\n", handler.neededFiles)
 	filesToFetch := make(map[string]map[string]EntryJSON)
@@ -1083,7 +1121,6 @@ func (handler *FilesystemTracker) ProcessCatalog(event Event) {
 	}
 	fmt.Println("done collecting what we need from each server")
 
-	handler.fsLock.Unlock()
 }
 
 

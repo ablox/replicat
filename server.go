@@ -21,7 +21,6 @@ import (
 	"sort"
 	"sync"
 	"time"
-	"path/filepath"
 )
 
 // Settings - for this replicat server. This should include everything needed for this server to run and connect with
@@ -115,7 +114,6 @@ func sendEventToManagerAndSiblings(event Event, fullPath string) {
 
 	// SendEvent to all peers
 	for k, v := range serverMap {
-		fmt.Printf("Considering sending to: %s\n", k)
 		if k != globalSettings.Name {
 			fmt.Printf("sending to peer %s at %s\n", k, v.Address)
 			sendEvent(&event, fullPath, v.Address, globalSettings.ManagerCredentials)
@@ -261,21 +259,12 @@ func eventHandler(w http.ResponseWriter, r *http.Request) {
 			fmt.Printf("Received request to send files from: %s\n", event.Source)
 			fileMap := make(map[string]EntryJSON)
 			json.Unmarshal(event.RawData, &fileMap)
-			go sendRequestedFiles(fileMap, event.Source)
+			go server.storage.sendRequestedPaths(fileMap, event.Source)
 		default:
 			fmt.Printf("Unknown event found, doing nothing. Event: %v\n", event)
 		}
 
 		events = append([]Event{event}, events...)
-	}
-}
-
-func sendRequestedFiles(fileMap map[string]EntryJSON, targetServerName string) {
-	serverAddress := serverMap[targetServerName].Address
-	currentPath := globalSettings.Directory
-	for p, _ := range fileMap {
-		fullPath := filepath.Join(currentPath, p)
-		go postHelper(p, fullPath, serverAddress, globalSettings.ManagerCredentials)
 	}
 }
 
@@ -445,7 +434,8 @@ func postFile(filename string, fullPath string, address string, credentials stri
 
 	_, err = io.Copy(fileWriter, file)
 	if err != nil {
-		fmt.Println("error copying file")
+		fmt.Printf("error copying file: %s (%s)\n", filename, err)
+		panic("again?")
 		return err
 	}
 
@@ -472,12 +462,11 @@ func postFile(filename string, fullPath string, address string, credentials stri
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
-		//fmt.Printf("Trouble sending a file using the http client\nrequest: %#v\nresponse: %#v\n", req, resp)
-		panic(err)
+		log.Printf("Error sending a file (%s) to another node(%s) error(%s)\n", filename, address, err)
+		return err
 	}
 
 	resp.Body.Close()
-
 	return nil
 }
 
