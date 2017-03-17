@@ -16,6 +16,7 @@ import (
 	"net/http"
 	"os"
 	"sync"
+	"time"
 )
 
 // ReplicatServer is a structure that contains the definition of the servers in a cluster. Each node has a name and this
@@ -148,17 +149,51 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 		defer file.Close()
 		fmt.Fprint(w, handler.Header)
 
-		hash := r.Form.Get("HASH")
-		myHash, _ := fileMd5Hash(globalSettings.Directory + "/" + handler.Filename)
-		if hash != myHash {
-			f, err := os.OpenFile(globalSettings.Directory+"/"+handler.Filename, os.O_WRONLY|os.O_CREATE, 0666)
+		hash := []byte(r.Form.Get("HASH"))
+
+		storage := serverMap[globalSettings.Name].storage
+		local, _ := storage.getEntryJSON(handler.Filename)
+
+		if !bytes.Equal(hash, local.Hash) {
+			fullPath := globalSettings.Directory + "/" + handler.Filename
+			f, err := os.OpenFile(fullPath, os.O_WRONLY | os.O_CREATE, 0666)
 
 			if err != nil {
 				fmt.Println(err)
 				return
 			}
-			defer f.Close()
-			io.Copy(f, file)
+
+			bytesWritten, err := io.Copy(f, file)
+			if err != nil {
+				log.Printf("Error copying file: %s, error(%#v)\n", handler.Filename, err)
+				w.WriteHeader(http.StatusInternalServerError)
+				w.Write([]byte("500 - Error copying file"))
+				f.Close()
+				return
+			}
+			fmt.Printf("Wrote out (%s) bytes (%d)\n", handler.Filename, bytesWritten)
+			f.Close()
+
+			// Get the old entry
+			entryString := r.Form.Get("entryJSON")
+			if entryString != "" {
+				var entry EntryJSON
+				err := json.Unmarshal([]byte(entryString), &entry)
+				if err != nil {
+					log.Fatalf("Error copying file (Entry handling): %s, error(%#v)\n", handler.Filename, err)
+					w.WriteHeader(http.StatusInternalServerError)
+					w.Write([]byte("500 - Error copying file"))
+					return
+				}
+
+				err = os.Chtimes(fullPath, time.Now(), entry.ModTime)
+				if err != nil {
+					log.Fatalf("Error copying file (Changing times): %s, error(%#v)\n", handler.Filename, err)
+					w.WriteHeader(http.StatusInternalServerError)
+					w.Write([]byte("500 - Error copying file"))
+					return
+				}
+			}
 
 		}
 	}

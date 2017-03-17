@@ -126,7 +126,9 @@ func sendFileRequestToServer(serverName string, event Event) {
 
 	server := serverMap[serverName]
 	if server == nil {
-		panic("Server no longer exists when trying to send a file request\n")
+		//panic("Server no longer exists when trying to send a file request\n")
+		fmt.Printf("Server cannot be reached, skipping sending file: (%s) %s\n", serverName, event.Path)
+		return
 	}
 
 	go sendEvent(&event, "", server.Address, globalSettings.ManagerCredentials)
@@ -432,18 +434,28 @@ func postFile(filename string, fullPath string, address string, credentials stri
 	}
 	defer file.Close()
 
-	_, err = io.Copy(fileWriter, file)
+	// Copy the file to the request
+	_, err = io.CopyBuffer(fileWriter, file, nil)
 	if err != nil {
 		fmt.Printf("error copying file: %s (%s)\n", filename, err)
-		panic("again?")
+		//panic("again?")
 		return err
 	}
+
+	// File data
+	server := serverMap[globalSettings.Name]
+	entryJSON, err := server.storage.getEntryJSON(filename)
+	entryString, err := json.Marshal(&entryJSON)
+	bodyWriter.WriteField("EntryJSON", string(entryString))
 
 	myHash, err := fileMd5Hash(fullPath)
 	if err != nil {
 		fmt.Printf("failed to calculate MD5 Hash for %s\n", fullPath)
 		return err
 	}
+
+	// Get the mod time and blake2 and filesize from the contents
+
 
 	bodyWriter.WriteField("HASH", myHash)
 	contentType := bodyWriter.FormDataContentType()

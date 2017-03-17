@@ -17,6 +17,7 @@ import (
 	"sync"
 	"syscall"
 	"time"
+	"errors"
 )
 
 // ChangeHandler - Listener for tracking changes that happen to a storage system
@@ -38,6 +39,7 @@ type StorageTracker interface {
 	SendCatalog()
 	ProcessCatalog(event Event)
 	sendRequestedPaths(pathEntries map[string]EntryJSON, targetServerName string)
+	getEntryJSON(relativePath string) (EntryJSON, error)
 }
 
 // FilesystemTracker - Track a filesystem and keep it in sync
@@ -315,6 +317,31 @@ func (handler *FilesystemTracker) sendRequestedPaths(pathEntries map[string]Entr
 		}
 	}
 }
+
+func (handler *FilesystemTracker) getEntryJSON(relativePath string) (EntryJSON, error) {
+	handler.fsLock.RLock()
+	defer handler.fsLock.RUnlock()
+
+	// get the current entry
+	currentEntry, exists := handler.contents[relativePath]
+	if exists == false {
+		return EntryJSON{}, errors.New("File Does Not Exist")
+	}
+
+	if currentEntry.setup == false {
+		return EntryJSON{}, errors.New("File information is unset")
+	}
+
+	result := EntryJSON{RelativePath: relativePath,
+		IsDirectory: currentEntry.IsDir(),
+		Hash: currentEntry.hash,
+		ModTime: currentEntry.ModTime(),
+		Size: currentEntry.Size(),
+		ServerName:globalSettings.Name}
+
+	return result, nil
+}
+
 
 // createPath implements the new path/file creation. Locking is done outside this call.
 func (handler *FilesystemTracker) createPath(pathName string, isDirectory bool) (err error) {
@@ -924,13 +951,6 @@ func (handler *FilesystemTracker) scanFolders() error {
 			handler.contents[relativePath] = *directory
 
 			fmt.Printf("Packing up: %s = %#v\n", relativePath, directory)
-
-			// TODO no longer think this is needed
-			// Since we are scanning our own folders, make sure we own them.
-			// This should deter others from trying to overwrite them
-			//ownershipLock.Lock()
-			//ownership[event.Path] = event
-			//ownershipLock.Unlock()
 
 			if entry.IsDir() {
 				newDirectory := filepath.Join(currentPath, entry.Name())
