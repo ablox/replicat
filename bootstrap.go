@@ -93,6 +93,13 @@ func BootstrapAndServe(address string) {
 	serverMap[globalSettings.Name] = server
 	tracker.init(directory, server)
 
+	go func(tracker FilesystemTracker) {
+		for true {
+			tracker.GetStatistics()
+			time.Sleep(30 * time.Second)
+		}
+	}(tracker)
+
 	var c ChangeHandler
 	c = &logOnlyHandler
 	tracker.watchDirectory(&c)
@@ -156,7 +163,7 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 
 		if !bytes.Equal(hash, local.Hash) {
 			fullPath := globalSettings.Directory + "/" + handler.Filename
-			f, err := os.OpenFile(fullPath, os.O_WRONLY | os.O_CREATE, 0666)
+			f, err := os.OpenFile(fullPath, os.O_WRONLY|os.O_CREATE, 0666)
 
 			if err != nil {
 				fmt.Println(err)

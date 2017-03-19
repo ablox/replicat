@@ -7,6 +7,7 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/rjeczalik/notify"
 	"log"
@@ -14,10 +15,10 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"sync"
 	"syscall"
 	"time"
-	"errors"
 )
 
 // ChangeHandler - Listener for tracking changes that happen to a storage system
@@ -32,7 +33,7 @@ type ChangeHandler interface {
 
 // StorageTracker - Listener that allows you to tell the tracker what has happened elsewhere so it can mirror the changes
 type StorageTracker interface {
-	CreatePath(relativePath string, isDirectory bool) (err error)
+	CreatePath(pathName string, isDirectory bool) error
 	Rename(sourcePath string, destinationPath string, isDirectory bool) (err error)
 	DeleteFolder(name string) (err error)
 	ListFolders(getLocks bool) (folderList []string)
@@ -40,6 +41,7 @@ type StorageTracker interface {
 	ProcessCatalog(event Event)
 	sendRequestedPaths(pathEntries map[string]EntryJSON, targetServerName string)
 	getEntryJSON(relativePath string) (EntryJSON, error)
+	GetStatistics() map[string]string
 }
 
 // FilesystemTracker - Track a filesystem and keep it in sync
@@ -53,7 +55,28 @@ type FilesystemTracker struct {
 	fsLock            sync.RWMutex
 	server            *ReplicatServer
 	neededFiles       map[string]EntryJSON
+	stats             TrackerStats
 }
+
+type TrackerStats struct {
+	TotalFiles       int
+	TotalFolders     int
+	FilesSent        int
+	FilesReceived    int
+	FilesDeleted     int
+	CatalogsSent     int
+	CatalogsReceived int
+}
+
+const (
+	TRACKER_TOTAL_FILES       = "TotalFiles"
+	TRACKER_TOTAL_FOLDERS     = "TotalFolders"
+	TRACKER_FILES_SENT        = "FilesSent"
+	TRACKER_FILES_RECEIVED    = "FilesReceived"
+	TRACKER_FILES_DELETED     = "FilesDeleted"
+	TRACKER_CATALOGS_SENT     = "CatalogsSent"
+	TRACKER_CATALOGS_RECEIVED = "CatalogsRecieved"
+)
 
 // Entry - contains the data for a file
 type Entry struct {
@@ -122,6 +145,20 @@ func (handler *FilesystemTracker) validate() {
 	}
 
 	fmt.Println("~~~~~~~~~~~~~~~~~~~~~~~")
+}
+
+func (handler *FilesystemTracker) GetStatistics() (stats map[string]string) {
+	stats[TRACKER_TOTAL_FILES] = strconv.Itoa(handler.stats.TotalFiles)
+	stats[TRACKER_TOTAL_FOLDERS] = strconv.Itoa(handler.stats.TotalFolders)
+	stats[TRACKER_FILES_SENT] = strconv.Itoa(handler.stats.FilesSent)
+	stats[TRACKER_FILES_RECEIVED] = strconv.Itoa(handler.stats.FilesReceived)
+	stats[TRACKER_FILES_DELETED] = strconv.Itoa(handler.stats.FilesDeleted)
+	stats[TRACKER_CATALOGS_SENT] = strconv.Itoa(handler.stats.CatalogsSent)
+	stats[TRACKER_CATALOGS_RECEIVED] = strconv.Itoa(handler.stats.CatalogsReceived)
+
+	fmt.Printf("Files: %d\tFolders:%d\tFiles Sent: %d\tReceived %d\tDeleted: %d\tCatalogs Sent: %d\tReceived: %d\n", handler.stats.TotalFiles, handler.stats.TotalFolders, handler.stats.FilesSent, handler.stats.FilesReceived, handler.stats.FilesDeleted, handler.stats.CatalogsSent, handler.stats.CatalogsReceived)
+
+	return
 }
 
 func (handler *FilesystemTracker) init(directory string, server *ReplicatServer) {
@@ -334,14 +371,13 @@ func (handler *FilesystemTracker) getEntryJSON(relativePath string) (EntryJSON, 
 
 	result := EntryJSON{RelativePath: relativePath,
 		IsDirectory: currentEntry.IsDir(),
-		Hash: currentEntry.hash,
-		ModTime: currentEntry.ModTime(),
-		Size: currentEntry.Size(),
-		ServerName:globalSettings.Name}
+		Hash:        currentEntry.hash,
+		ModTime:     currentEntry.ModTime(),
+		Size:        currentEntry.Size(),
+		ServerName:  globalSettings.Name}
 
 	return result, nil
 }
-
 
 // createPath implements the new path/file creation. Locking is done outside this call.
 func (handler *FilesystemTracker) createPath(pathName string, isDirectory bool) (err error) {
@@ -797,7 +833,6 @@ func (handler *FilesystemTracker) handleRename(event Event, pathName, fullPath s
 	}
 }
 
-
 //Create pile of folders with other servers offline
 //stop C
 //Duplicate all of C
@@ -807,7 +842,6 @@ func (handler *FilesystemTracker) handleRename(event Event, pathName, fullPath s
 //2017/03/06 23:36:20.917030 server.go:88: Original ownership: main.Event{Source:"NodeA", Name:"notify.Create", Path:"trackertest copy.go", SourcePath:"", Time:time.Time{sec:63624468969, nsec:768126848, loc:(*time.Location)(0x45168c0)}, ModTime:time.Time{sec:0, nsec:0, loc:(*time.Location)(0x4512d60)}, IsDirectory:false, NetworkSource:"", RawData:[]uint8(nil)}
 //
 //let them replicate
-
 
 func (handler *FilesystemTracker) processEvent(event Event, pathName, fullPath string, lock bool) {
 	fmt.Println("FilesystemTracker:processEvent")
@@ -931,11 +965,14 @@ func (handler *FilesystemTracker) scanFolders() error {
 
 			var hash []byte
 
-			if !entry.IsDir() {
+			if entry.IsDir() {
+				handler.stats.TotalFolders++
+			} else {
 				hash, err = fileBlake2bHash(absolutePath)
 				if err != nil {
 					panic(err)
 				}
+				handler.stats.TotalFiles++
 			}
 
 			// add to contents
@@ -987,6 +1024,7 @@ type EntryJSON struct {
 func (handler *FilesystemTracker) SendCatalog() {
 	fmt.Printf("FileSystemTracker ScanFolders - end - Found %d items\n", len(handler.contents))
 
+	handler.stats.CatalogsSent++
 	// transfer the normal contents structure to the JSON friendly version
 	//rawData := make([]EntryJSON, 0, len(handler.contents))
 	rawData := make([]EntryJSON, 0, len(handler.contents))
@@ -1020,6 +1058,7 @@ func (handler *FilesystemTracker) SendCatalog() {
 func (handler *FilesystemTracker) ProcessCatalog(event Event) {
 	fmt.Printf("FilesystemTracker ProcessCatalog from Server: %s\n", event.Source)
 
+	handler.stats.CatalogsReceived++
 	remoteServer := event.Source
 	// pull the directory tree from the payload
 	remoteContents := make([]EntryJSON, 0)
@@ -1061,7 +1100,7 @@ func (handler *FilesystemTracker) ProcessCatalog(event Event) {
 		if !transfer {
 			fmt.Printf("ProcessCatalog(%s) %s\remote: %v\nlocal:  %v\n", remoteEntry.ServerName, path, remoteEntry, local)
 			fmt.Printf("Comparing times for (%s) remote: %v local: %v\n", path, remoteEntry.ModTime, local.ModTime())
-			if local.hash == nil || local.ModTime().Before(remoteEntry.ModTime){
+			if local.hash == nil || local.ModTime().Before(remoteEntry.ModTime) {
 				transfer = true
 			}
 		}
@@ -1143,7 +1182,6 @@ func (handler *FilesystemTracker) requestNeededFiles() {
 
 }
 
-
 // This needs to be called with handler.fsLock engaged
 func (handler *FilesystemTracker) SendRequestForFiles(server string, fileMap map[string]EntryJSON) {
 	fmt.Printf("FileSystemTracker SendRequestForFiles - end - Found %d items\n", len(handler.contents))
@@ -1166,4 +1204,3 @@ func (handler *FilesystemTracker) SendRequestForFiles(server string, fileMap map
 	sendFileRequestToServer(server, event)
 	fmt.Println("request sent")
 }
-
