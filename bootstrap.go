@@ -93,12 +93,12 @@ func BootstrapAndServe(address string) {
 	serverMap[globalSettings.Name] = server
 	tracker.init(directory, server)
 
-	go func(tracker FilesystemTracker) {
+	go func(tracker StorageTracker) {
 		for true {
 			tracker.GetStatistics()
 			time.Sleep(30 * time.Second)
 		}
-	}(tracker)
+	}(&tracker)
 
 	var c ChangeHandler
 	c = &logOnlyHandler
