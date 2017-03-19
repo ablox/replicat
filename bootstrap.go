@@ -104,8 +104,8 @@ func BootstrapAndServe(address string) {
 	c = &logOnlyHandler
 	tracker.watchDirectory(&c)
 
-	go func(lsnr net.Listener) {
-		err = http.Serve(lsnr, nil)
+	go func(listener net.Listener) {
+		err = http.Serve(listener, nil)
 		if err != nil {
 			panic(err)
 		}
