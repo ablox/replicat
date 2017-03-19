@@ -148,6 +148,7 @@ func (handler *FilesystemTracker) validate() {
 }
 
 func (handler *FilesystemTracker) GetStatistics() (stats map[string]string) {
+	stats = make(map[string]string, 7)
 	stats[TRACKER_TOTAL_FILES] = strconv.Itoa(handler.stats.TotalFiles)
 	stats[TRACKER_TOTAL_FOLDERS] = strconv.Itoa(handler.stats.TotalFolders)
 	stats[TRACKER_FILES_SENT] = strconv.Itoa(handler.stats.FilesSent)
@@ -204,46 +205,6 @@ func (handler *FilesystemTracker) init(directory string, server *ReplicatServer)
 	handler.printLockable(false)
 	handler.setup = true
 }
-
-//func (handler *FilesystemTracker) sendExistingFiles() {
-//	server, exists := serverMap[globalSettings.Name]
-//	// Send the status if
-//	if !exists || server != nil {
-//		fmt.Println("Server is not defined. Skipping sending existing files")
-//	}
-//
-//	folderList := handler.ListFolders(true)
-//	fmt.Println("FilesystemTracker:sendExistingFiles Start folder listing *******************************")
-//	for _, c := range folderList {
-//		fmt.Printf("%s\n", c)
-//	}
-//	fmt.Println("FilesystemTracker:sendExistingFiles Completed listing folders **************************")
-//
-//	for _, currentItem := range folderList {
-//		absolutePath := filepath.Join(handler.directory, currentItem)
-//		relativePath := absolutePath[len(handler.directory)+1:]
-//
-//		fmt.Printf("sendExistingFiles: messing with paths: absolute: %s, relative: %s", absolutePath, relativePath)
-//
-//		fmt.Println("FilesystemTracker:sendExistingFiles")
-//		handler.fsLock.Lock()
-//		fmt.Println("FilesystemTracker:/sendExistingFiles")
-//
-//		entry, exists := handler.contents[relativePath]
-//		event := Event{Name: "notify.Create", Path: relativePath, Source: globalSettings.Name, Time: time.Now(), NetworkSource: globalSettings.Name}
-//		if exists {
-//			event.ModTime = entry.ModTime()
-//			event.IsDirectory = entry.IsDir()
-//		}
-//		handler.fsLock.Unlock()
-//		fmt.Println("FilesystemTracker://sendExistingFiles")
-//
-//		handler.processEvent(event, relativePath, absolutePath, false)
-//		fmt.Println("FilesystemTracker://sendExistingFiles 2")
-//	}
-//
-//	server.SetStatus(REPLICAT_STATUS_ONLINE)
-//}
 
 func (handler *FilesystemTracker) cleanup() {
 	fmt.Println("FilesystemTracker:cleanup")
