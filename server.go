@@ -160,10 +160,7 @@ func sendEvent(event *Event, fullPath string, address string, credentials string
 
 	defer resp.Body.Close()
 
-	//fmt.Println("response Status:", resp.Status)
-	//fmt.Println("response Headers:", resp.Header)
 	_, _ = ioutil.ReadAll(resp.Body)
-	//fmt.Println("response Body:", string(body))
 
 	switch event.Name {
 	case "replicat.Rename", "notify.Create", "notify.Write":
@@ -316,11 +313,7 @@ func sendFolderTree(initialTree DirTreeMap) {
 			continue
 		}
 
-		//fmt.Println("response Status:", resp.Status)
-		//fmt.Println("response Headers:", resp.Header)
 		_, _ = ioutil.ReadAll(resp.Body)
-		//body, _ := ioutil.ReadAll(resp.Body)
-		//fmt.Println("response Body:", string(body))
 		resp.Body.Close()
 	}
 }
@@ -374,8 +367,8 @@ func addPaths(newPaths []string) {
 		if err != nil && !os.IsExist(err) {
 			panic(err)
 		}
-		serverMap[globalSettings.Name].storage.IncrementStatistic(TRACKER_TOTAL_FOLDERS, 1)
 	}
+	serverMap[globalSettings.Name].storage.IncrementStatistic(TRACKER_TOTAL_FOLDERS, len(newPaths))
 }
 
 func folderTreeHandler(w http.ResponseWriter, r *http.Request) {

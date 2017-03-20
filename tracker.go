@@ -192,7 +192,18 @@ func (handler *FilesystemTracker) GetStatistics() (stats map[string]string) {
 	stats[TRACKER_CATALOGS_SENT] = strconv.Itoa(handler.stats.CatalogsSent)
 	stats[TRACKER_CATALOGS_RECEIVED] = strconv.Itoa(handler.stats.CatalogsReceived)
 
-	fmt.Printf("Files: %d\tFolders:%d\tFiles Sent: %d\tReceived %d\tDeleted: %d\tCatalogs Sent: %d\tReceived: %d\n", handler.stats.TotalFiles, handler.stats.TotalFolders, handler.stats.FilesSent, handler.stats.FilesReceived, handler.stats.FilesDeleted, handler.stats.CatalogsSent, handler.stats.CatalogsReceived)
+	address := serverMap[globalSettings.Name].Address
+
+	// Build a list of the entire cluster. Make that list into a string for printing out later
+	var cluster string
+	serverMapLock.RLock()
+	for _, v := range(serverMap) {
+		cluster += fmt.Sprintf("name: %s\taddress: %s\n", v.Name, v.Address)
+	}
+
+	serverMapLock.RUnlock()
+
+	fmt.Printf("Address: %s\tFiles: %d\tFolders:%d\tFiles Sent: %d\tReceived %d\tDeleted: %d\tCatalogs Sent: %d\tReceived: %d\n%s", address, handler.stats.TotalFiles, handler.stats.TotalFolders, handler.stats.FilesSent, handler.stats.FilesReceived, handler.stats.FilesDeleted, handler.stats.CatalogsSent, handler.stats.CatalogsReceived, cluster)
 
 	return
 }

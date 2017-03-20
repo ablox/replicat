@@ -55,6 +55,8 @@ const (
 var serverMap = make(map[string]*ReplicatServer)
 var serverMapLock sync.RWMutex
 
+var lastConfigPing = time.Now()
+
 // BootstrapAndServe - Start the server
 func BootstrapAndServe(address string) {
 	//trackerTestDual()
@@ -113,11 +115,26 @@ func BootstrapAndServe(address string) {
 
 	fmt.Println("Starting config update processor")
 	go configUpdateProcessor(configUpdateChannel)
+	go keepConfigCurrent()
 
 	if globalSettings.ManagerAddress != "" {
 		fmt.Printf("about to send config to server (%s)\nOur address is: (%s)", globalSettings.ManagerAddress, lsnr.Addr())
 	}
 }
+
+
+func keepConfigCurrent() {
+	for {
+		if time.Since(lastConfigPing) > 30 * time.Second {
+			log.Printf("Manager Contact Overdue, attempting to contact: %s\n", globalSettings.ManagerAddress)
+			sendConfigToServer()
+		} else {
+			fmt.Println("No Update Required")
+		}
+		time.Sleep(30 * time.Second)
+	}
+}
+
 
 func sendConfigToServer() {
 	// This field will be empty during testing
@@ -206,32 +223,32 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-var configUpdateMapLock = sync.RWMutex{}
 var configUpdateChannel = make(chan *map[string]*ReplicatServer, 100)
 
 func configHandler(_ http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case "POST":
-		serverMapLock.Lock()
-		defer serverMapLock.Unlock()
-
+		lastConfigPing = time.Now()
+		fmt.Println("configHandler: 3")
 		decoder := json.NewDecoder(r.Body)
+		fmt.Println("configHandler: 4")
 		var newServerMap map[string]*ReplicatServer
 		err := decoder.Decode(&newServerMap)
+		fmt.Println("configHandler: 5")
 		if err != nil {
 			fmt.Println(err)
 		}
 
-		configUpdateMapLock.Lock()
-		defer configUpdateMapLock.Unlock()
+		fmt.Println("configHandler: 6")
 		configUpdateChannel <- &newServerMap
+		fmt.Println("configHandler: 8")
 	}
 }
 
 func configUpdateProcessor(c chan *map[string]*ReplicatServer) {
 	for {
 		newServerMap := <-c
-		configUpdateMapLock.Lock()
+		serverMapLock.Lock()
 
 		sendData := false
 
@@ -252,8 +269,6 @@ func configUpdateProcessor(c chan *map[string]*ReplicatServer) {
 				}
 				serverMap[name] = newServerData
 				fmt.Println("Server data replaced with new server data")
-				//} else {
-				//	//fmt.Printf("Server data has not radically changed. ignoring.\nold: %v\nnew: %v\n", &serverData, &newServerData)
 			}
 		}
 
@@ -290,6 +305,7 @@ func configUpdateProcessor(c chan *map[string]*ReplicatServer) {
 			server.storage.SendCatalog()
 			fmt.Println("done sending existing files")
 		}
-		configUpdateMapLock.Unlock()
+
+		serverMapLock.Unlock()
 	}
 }
