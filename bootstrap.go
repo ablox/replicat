@@ -131,7 +131,7 @@ func keepConfigCurrent() {
 		} else {
 			fmt.Println("No Update Required")
 		}
-		time.Sleep(30 * time.Second)
+		time.Sleep(45 * time.Second)
 	}
 }
 
