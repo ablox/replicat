@@ -42,6 +42,7 @@ type StorageTracker interface {
 	sendRequestedPaths(pathEntries map[string]EntryJSON, targetServerName string)
 	getEntryJSON(relativePath string) (EntryJSON, error)
 	GetStatistics() map[string]string
+	IncrementStatistic(name string, delta int)
 }
 
 // FilesystemTracker - Track a filesystem and keep it in sync
@@ -93,6 +94,40 @@ func NewDirectory() *Entry {
 // NewDirectoryFromFileInfo - creates and returns a new Directory based on a fileinfo structure
 func NewDirectoryFromFileInfo(info *os.FileInfo) *Entry {
 	return &Entry{*info, true, nil}
+}
+
+func (handler *FilesystemTracker) IncrementStatistic(name string, delta int) {
+	go func() {
+		fmt.Printf("FilesystemTracker:IncrementStatistic(name %s, delta %d)\n", name, delta)
+		handler.fsLock.Lock()
+		fmt.Println("FilesystemTracker:/IncrementStatistic")
+		defer handler.fsLock.Unlock()
+		defer fmt.Println("FilesystemTracker://IncrementStatistic")
+
+		switch name {
+		case TRACKER_TOTAL_FILES:
+			handler.stats.TotalFiles += delta
+			break
+		case TRACKER_TOTAL_FOLDERS:
+			handler.stats.TotalFolders += delta
+			break
+		case TRACKER_FILES_SENT:
+			handler.stats.FilesSent += delta
+			break
+		case TRACKER_FILES_RECEIVED:
+			handler.stats.FilesReceived += delta
+			break
+		case TRACKER_FILES_DELETED:
+			handler.stats.FilesDeleted += delta
+			break
+		case TRACKER_CATALOGS_SENT:
+			handler.stats.CatalogsSent += delta
+			break
+		case TRACKER_CATALOGS_RECEIVED:
+			handler.stats.CatalogsReceived += delta
+			break
+		}
+	}()
 }
 
 func (handler *FilesystemTracker) printTracker() {

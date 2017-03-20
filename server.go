@@ -360,6 +360,8 @@ func deletePaths(deletedPaths []string) {
 		if err != nil && !os.IsNotExist(err) {
 			panic(err)
 		}
+		serverMap[globalSettings.Name].storage.IncrementStatistic(TRACKER_FILES_DELETED, 1)
+
 		fmt.Printf("%s: done removing (err = %v)\n", fullPath, err)
 	}
 }
@@ -372,6 +374,7 @@ func addPaths(newPaths []string) {
 		if err != nil && !os.IsExist(err) {
 			panic(err)
 		}
+		serverMap[globalSettings.Name].storage.IncrementStatistic(TRACKER_TOTAL_FOLDERS, 1)
 	}
 }
 
@@ -478,6 +481,9 @@ func postFile(filename string, fullPath string, address string, credentials stri
 	}
 
 	resp.Body.Close()
+
+	serverMap[globalSettings.Name].storage.IncrementStatistic(TRACKER_FILES_SENT, 1)
+
 	return nil
 }
 
