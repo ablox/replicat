@@ -32,10 +32,12 @@ type ReplicatServer struct {
 	storage       StorageTracker
 }
 
+// GetStatus - get the current status of the server
 func (server *ReplicatServer) GetStatus() string {
 	return server.Status
 }
 
+// SetStatus - set the current status of the server
 func (server *ReplicatServer) SetStatus(status string) {
 	// adding an inline check to make sure the server is valid
 	// if the server is being shut down or at the end of a unit test)
