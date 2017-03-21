@@ -17,7 +17,6 @@ package main
 
 import (
 	"fmt"
-	"sort"
 	"sync"
 )
 
@@ -72,6 +71,7 @@ type countingChangeHandler struct {
 	fsLock         sync.RWMutex
 }
 
+// GetFolderStats - get folder statistics
 func (handler *countingChangeHandler) GetFolderStats() (created, deleted, updated int) {
 	handler.fsLock.Lock()
 	defer handler.fsLock.Unlock()
@@ -79,6 +79,7 @@ func (handler *countingChangeHandler) GetFolderStats() (created, deleted, update
 	return handler.FoldersCreated, handler.FoldersDeleted, handler.FoldersUpdated
 }
 
+// GetFileStats - get file statistics
 func (handler *countingChangeHandler) GetFileStats() (created, deleted, updated int) {
 	handler.fsLock.Lock()
 	defer handler.fsLock.Unlock()
@@ -86,6 +87,7 @@ func (handler *countingChangeHandler) GetFileStats() (created, deleted, updated 
 	return handler.FilesCreated, handler.FilesDeleted, handler.FilesUpdated
 }
 
+// FolderCreated - folder is created
 func (handler *countingChangeHandler) FolderCreated(name string) error {
 	handler.fsLock.Lock()
 	defer handler.fsLock.Unlock()
@@ -96,6 +98,7 @@ func (handler *countingChangeHandler) FolderCreated(name string) error {
 	return nil
 }
 
+// FolderDeleted - folder was deleted
 func (handler *countingChangeHandler) FolderDeleted(name string) error {
 	handler.fsLock.Lock()
 	defer handler.fsLock.Unlock()
@@ -106,6 +109,7 @@ func (handler *countingChangeHandler) FolderDeleted(name string) error {
 	return nil
 }
 
+// FolderUpdated - folder was updated
 func (handler *countingChangeHandler) FolderUpdated(name string) error {
 	handler.fsLock.Lock()
 	defer handler.fsLock.Unlock()
@@ -116,6 +120,7 @@ func (handler *countingChangeHandler) FolderUpdated(name string) error {
 	return nil
 }
 
+// FileCreated -- a file was created
 func (handler *countingChangeHandler) FileCreated(name string) error {
 	handler.fsLock.Lock()
 	defer handler.fsLock.Unlock()
@@ -146,49 +151,3 @@ func (handler *countingChangeHandler) FileUpdated(name string) error {
 	return nil
 }
 
-// MemoryTracker - Track a pool of memory for testing - i.e. memory only object store
-type MemoryTracker struct {
-	fsLock    sync.RWMutex
-	contents  map[string]Entry  // the typical stat object information
-	fullData  map[string][]byte // the actual data of the object
-	directory string
-	setup     bool
-}
-
-func (tracker *MemoryTracker) CreatePath(relativePath string, isDirectory bool) (err error) {
-	return nil
-}
-
-func (tracker *MemoryTracker) Rename(sourcePath string, destinationPath string, isDirectory bool) (err error) {
-	return nil
-}
-
-func (tracker *MemoryTracker) DeleteFolder(name string) (err error) {
-	return nil
-}
-
-func (tracker *MemoryTracker) ListFolders() (folderList []string) {
-	return nil
-}
-
-func (tracker *MemoryTracker) printLockable(lock bool) {
-	if lock {
-		fmt.Println("FilesystemTracker:print")
-		tracker.fsLock.RLock()
-		fmt.Println("FilesystemTracker:/print")
-		defer tracker.fsLock.RUnlock()
-		defer fmt.Println("FilesystemTracker://print")
-	}
-
-	folders := make([]string, 0, len(tracker.contents))
-	for dir := range tracker.contents {
-		folders = append(folders, dir)
-	}
-	sort.Strings(folders)
-
-	fmt.Println("~~~~~~~~~~~~~~~~~~~~~~~")
-	fmt.Printf("~~~~%s MemoryTracker report setup(%v)\n", tracker.directory, tracker.setup)
-	fmt.Printf("~~~~contents: %v\n", tracker.contents)
-	fmt.Printf("~~~~folders: %v\n", folders)
-	fmt.Println("~~~~~~~~~~~~~~~~~~~~~~~")
-}
