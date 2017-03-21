@@ -98,6 +98,9 @@ const (
 	TRACKER_CATALOGS_RECEIVED = "CatalogsRecieved"
 )
 
+// TRACKER_ERROR_NO_STATS - Could not run stat on an item
+var TRACKER_ERROR_NO_STATS error = errors.New("Replicat: Could not get stats on directory")
+
 // Entry - contains the data for a file
 type Entry struct {
 	os.FileInfo
@@ -794,8 +797,8 @@ func (handler *FilesystemTracker) completeRenameIfAbandoned(iNode uint64) {
 	delete(handler.renamesInProgress, iNode)
 }
 
-func (handler *FilesystemTracker) handleRename(event Event, pathName, fullPath string) {
-	fmt.Printf("FilesystemTracker:handleRename: pathname: %s fullPath: %s\n", pathName, fullPath)
+func (handler *FilesystemTracker) handleNotifyRename(event Event, pathName, fullPath string) (err error) {
+	fmt.Printf("FilesystemTracker:handleNotifyRename: pathname: %s fullPath: %s\n", pathName, fullPath)
 	// Either the path should exist in the filesystem or it should exist in the stored tree. Find it.
 
 	// check to see if this folder currently exists. If it does, it is the destination
@@ -859,7 +862,77 @@ func (handler *FilesystemTracker) handleRename(event Event, pathName, fullPath s
 		handler.renamesInProgress[iNode] = inProgress
 		go handler.completeRenameIfAbandoned(iNode)
 	}
+
+	return
 }
+
+
+
+func (handler *FilesystemTracker) handleNotifyCreate(event Event, pathName, fullPath string) (err error) {
+	currentValue, exists := handler.contents[pathName]
+
+	log.Printf("processEvent: About to assign from one path to the next. \n\tOriginal: %v \n\tEvent: %v\n", currentValue, event)
+	// make sure there is an entry in the DirTreeMap for this folder. Since an empty list will always be returned, we can use that
+	if !exists {
+		info, err := os.Stat(fullPath)
+		if err != nil {
+			log.Printf("Could not get stats on directory %s\n", fullPath)
+			return TRACKER_ERROR_NO_STATS
+		}
+		directory := NewDirectory()
+		directory.FileInfo = info
+		handler.contents[pathName] = *directory
+	}
+
+	updatedValue, exists := handler.contents[pathName]
+
+	if handler.watcher != nil {
+		if event.IsDirectory {
+			(*handler.watcher).FolderCreated(pathName)
+		} else {
+			(*handler.watcher).FileCreated(pathName)
+		}
+	}
+
+	log.Printf("notify.Create: Updated value for %s: %v (%t)\n", pathName, updatedValue, exists)
+
+	// sendEvent to manager
+	go SendEvent(event, fullPath)
+
+	return
+}
+
+func (handler *FilesystemTracker) handleNotifyRemove(event Event, pathName, fullPath string) (err error) {
+	_, exists := handler.contents[pathName]
+
+	delete(handler.contents, pathName)
+
+	if handler.watcher != nil && exists {
+		(*handler.watcher).FolderDeleted(pathName)
+	} else {
+		log.Println("In the notify.Remove section but did not see a watcher")
+	}
+
+	go SendEvent(event, "")
+
+	log.Printf("notify.Remove: %s (%t)\n", pathName, exists)
+	return
+}
+
+func (handler *FilesystemTracker) handleNotifyWrite(event Event, pathName, fullPath string) (err error) {
+	log.Printf("File Write detected: %v\n", event)
+	if handler.watcher != nil {
+		if event.IsDirectory {
+			(*handler.watcher).FolderUpdated(pathName)
+		} else {
+			(*handler.watcher).FileUpdated(pathName)
+		}
+	}
+
+	go SendEvent(event, fullPath)
+	return
+}
+
 
 //Create pile of folders with other servers offline
 //stop C
@@ -879,88 +952,27 @@ func (handler *FilesystemTracker) processEvent(event Event, pathName, fullPath s
 	fmt.Println("FilesystemTracker:/processEvent")
 	defer fmt.Println("FilesystemTracker://processEvent")
 
-	fmt.Printf("*********************************************************\nhandleFilsystemEvent name: %s pathName: %s\n*********************************************************\n", event.Name, pathName)
-
-	currentValue, exists := handler.contents[pathName]
+	log.Printf("handleFilsystemEvent name: %s pathName: %s\n", event.Name, pathName)
+	var err error
 
 	switch event.Name {
 	case "notify.Create":
-		fmt.Printf("processEvent: About to assign from one path to the next. \n\tOriginal: %v \n\tEvent: %v\n", currentValue, event)
-		// make sure there is an entry in the DirTreeMap for this folder. Since an empty list will always be returned, we can use that
-		if !exists {
-			info, err := os.Stat(fullPath)
-			if err != nil {
-				fmt.Printf("Could not get stats on directory %s\n", fullPath)
-				if lock {
-					handler.fsLock.Unlock()
-				}
-				//todo send error event up
-				return
-			}
-			directory := NewDirectory()
-			directory.FileInfo = info
-			handler.contents[pathName] = *directory
-		}
-
-		updatedValue, exists := handler.contents[pathName]
-
-		if lock {
-			handler.fsLock.Unlock()
-		}
-		fmt.Println("FilesystemTracker:/+processEvent")
-
-		if handler.watcher != nil {
-			if event.IsDirectory {
-				(*handler.watcher).FolderCreated(pathName)
-			} else {
-				(*handler.watcher).FileCreated(pathName)
-			}
-		}
-
-		fmt.Printf("notify.Create: Updated value for %s: %v (%t)\n", pathName, updatedValue, exists)
-
-		// sendEvent to manager
-		SendEvent(event, fullPath)
-		return
-
+		err = handler.handleNotifyCreate(event, pathName, fullPath)
 	case "notify.Remove":
-		_, exists := handler.contents[pathName]
-
-		delete(handler.contents, pathName)
-
-		if handler.watcher != nil && exists {
-			(*handler.watcher).FolderDeleted(pathName)
-		} else {
-			fmt.Println("In the notify.Remove section but did not see a watcher")
-		}
-
-		if lock {
-			handler.fsLock.Unlock()
-			fmt.Println("FilesystemTracker:/+processEvent 1")
-		}
-		SendEvent(event, "")
-
-		fmt.Printf("notify.Remove: %s (%t)\n", pathName, exists)
-		return
+		err = handler.handleNotifyRemove(event, pathName, fullPath)
 	case "notify.Rename":
-		fmt.Printf("Rename attempted %v\n", event)
-		handler.handleRename(event, pathName, fullPath)
+		err = handler.handleNotifyRename(event, pathName, fullPath)
 	case "notify.Write":
-		fmt.Printf("File updated %v\n", event)
-		if handler.watcher != nil {
-			if event.IsDirectory {
-				(*handler.watcher).FolderUpdated(pathName)
-			} else {
-				(*handler.watcher).FileUpdated(pathName)
-			}
-		}
-
-		SendEvent(event, fullPath)
-
+		err = handler.handleNotifyWrite(event, pathName, fullPath)
 	default:
 		// do not send the event if we do not recognize it
 		fmt.Printf("%s: %s not known, skipping (%v)\n", event.Name, pathName, event)
 	}
+
+	if err != nil {
+		log.Printf("Error encountered when processing: %v\n")
+	}
+
 
 	if lock {
 		handler.fsLock.Unlock()
