@@ -141,7 +141,7 @@ func keepConfigCurrent() {
 		} else {
 			fmt.Println("No Update Required")
 		}
-		time.Sleep((rand.Intn(10) - 5 + managerCheckSleepTime) * time.Second)
+		time.Sleep(time.Duration(rand.Intn(10)-5+managerCheckSleepTime) * time.Second)
 	}
 }
 
@@ -167,6 +167,7 @@ func sendConfigToServer() {
 	client := &http.Client{}
 	_, err = client.Do(req)
 	if err != nil {
+		log.Fatalf("Alert, going down in flames: %s\n", err)
 		panic(err)
 	}
 }
