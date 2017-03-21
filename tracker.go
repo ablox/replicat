@@ -72,17 +72,17 @@ type TrackerStats struct {
 
 const (
 	// TRACKER_TOTAL_FILES - The count of files in the tracker's inventory
-	TRACKER_TOTAL_FILES       = "TotalFiles"
+	TRACKER_TOTAL_FILES = "TotalFiles"
 	// TRACKER_TOTAL_FOLDERS - The count of folders in the tracker's inventory
-	TRACKER_TOTAL_FOLDERS     = "TotalFolders"
+	TRACKER_TOTAL_FOLDERS = "TotalFolders"
 	// TRACKER_FILES_SENT - Number of files sent to other nodes
-	TRACKER_FILES_SENT        = "FilesSent"
+	TRACKER_FILES_SENT = "FilesSent"
 	// TRACKER_FILES_RECEIVED - Number of files received from other nodes
-	TRACKER_FILES_RECEIVED    = "FilesReceived"
+	TRACKER_FILES_RECEIVED = "FilesReceived"
 	// TRACKER_FILES_DELETED - Number of files deleted
-	TRACKER_FILES_DELETED     = "FilesDeleted"
+	TRACKER_FILES_DELETED = "FilesDeleted"
 	// TRACKER_CATALOGS_SENT - Number of times we have sent out our catalog
-	TRACKER_CATALOGS_SENT     = "CatalogsSent"
+	TRACKER_CATALOGS_SENT = "CatalogsSent"
 	// TRACKER_CATALOGS_RECEIVED - Number of times we have received a catalog from someone else
 	TRACKER_CATALOGS_RECEIVED = "CatalogsRecieved"
 )
