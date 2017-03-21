@@ -56,17 +56,16 @@ func waitForTrackerFolderExists(tracker *FilesystemTracker, folder string) bool 
 }
 
 func waitForEmptyRenamesInProgress(tracker *FilesystemTracker, _ string) bool {
-		tracker.fsLock.Lock()
-		defer tracker.fsLock.Unlock()
-		return len(tracker.renamesInProgress) == 0
+	tracker.fsLock.Lock()
+	defer tracker.fsLock.Unlock()
+	return len(tracker.renamesInProgress) == 0
 }
 
 func waitForTrackerFolderCount(tracker *FilesystemTracker, numberOfFolders string) bool {
-		folderCount, _ := strconv.Atoi(numberOfFolders)
-		fmt.Printf("* looking for: %d currently have: %d\n", folderCount, len(tracker.ListFolders(true)))
-		return len(tracker.ListFolders(true)) == folderCount
+	folderCount, _ := strconv.Atoi(numberOfFolders)
+	fmt.Printf("* looking for: %d currently have: %d\n", folderCount, len(tracker.ListFolders(true)))
+	return len(tracker.ListFolders(true)) == folderCount
 }
-
 
 func trackerTestEmptyDirectoryMovesInOutAround() {
 	outsideFolder := createExtraFolder("outside")
@@ -163,7 +162,6 @@ func trackerTestFileChangeTrackerAddFolders() {
 		}
 	}
 	fmt.Printf("done with creating %d different subfolders. \n", numberOfSubFolders)
-
 
 	folderSeeking := strconv.Itoa(numberOfSubFolders)
 	fmt.Printf("***************>>>>>>>>>>> folder seeking: %s num: %d\n", folderSeeking, numberOfSubFolders)
