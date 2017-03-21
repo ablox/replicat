@@ -197,7 +197,7 @@ func (handler *FilesystemTracker) GetStatistics() (stats map[string]string) {
 	// Build a list of the entire cluster. Make that list into a string for printing out later
 	var cluster string
 	serverMapLock.RLock()
-	for _, v := range(serverMap) {
+	for _, v := range serverMap {
 		cluster += fmt.Sprintf("name: %s\taddress: %s\n", v.Name, v.Address)
 	}
 

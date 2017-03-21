@@ -122,10 +122,9 @@ func BootstrapAndServe(address string) {
 	}
 }
 
-
 func keepConfigCurrent() {
 	for {
-		if time.Since(lastConfigPing) > 30 * time.Second {
+		if time.Since(lastConfigPing) > 30*time.Second {
 			log.Printf("Manager Contact Overdue, attempting to contact: %s\n", globalSettings.ManagerAddress)
 			sendConfigToServer()
 		} else {
@@ -134,7 +133,6 @@ func keepConfigCurrent() {
 		time.Sleep(45 * time.Second)
 	}
 }
-
 
 func sendConfigToServer() {
 	// This field will be empty during testing
