@@ -121,11 +121,13 @@ func BootstrapAndServe(address string) {
 
 	fmt.Println("Starting config update processor")
 	go configUpdateProcessor(configUpdateChannel)
-	go keepConfigCurrent()
 
 	if globalSettings.ManagerAddress != "" {
-		fmt.Printf("about to send config to server (%s)\nOur address is: (%s)", globalSettings.ManagerAddress, lsnr.Addr())
+		fmt.Printf("about to send config to server (%s)\nOur address is: (%s)\n", globalSettings.ManagerAddress, lsnr.Addr())
 	}
+
+	// we need something to keep us running.
+	keepConfigCurrent()
 }
 
 const (
@@ -165,11 +167,18 @@ func sendConfigToServer() {
 	req.Header.Add("Authorization", "Basic "+authHash)
 
 	client := &http.Client{}
-	_, err = client.Do(req)
+	resp, err := client.Do(req)
 	if err != nil {
-		log.Fatalf("Alert, going down in flames: %s\n", err)
-		panic(err)
+		log.Printf("Unable to reach server. Data could be lost: %s\n", err)
 	}
+
+	newServerMap, err := extractServerMapFromConfig(resp.Body)
+	if err != nil {
+		fmt.Printf("Config update failed due to error: %s\n", err)
+		return
+	}
+	configUpdateChannel <- newServerMap
+
 }
 
 func uploadHandler(w http.ResponseWriter, r *http.Request) {
@@ -236,23 +245,18 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 var configUpdateChannel = make(chan *map[string]*ReplicatServer, 100)
 
 func configHandler(_ http.ResponseWriter, r *http.Request) {
-	switch r.Method {
-	case "POST":
-		lastConfigPing = time.Now()
-		fmt.Println("configHandler: 3")
-		decoder := json.NewDecoder(r.Body)
-		fmt.Println("configHandler: 4")
-		var newServerMap map[string]*ReplicatServer
-		err := decoder.Decode(&newServerMap)
-		fmt.Println("configHandler: 5")
-		if err != nil {
-			fmt.Println(err)
-		}
-
-		fmt.Println("configHandler: 6")
-		configUpdateChannel <- &newServerMap
-		fmt.Println("configHandler: 8")
+	newServerMap, err := extractServerMapFromConfig(r.Body)
+	if err != nil {
+		fmt.Printf("Config update failed due to error: %s\n", err)
+		return
 	}
+	configUpdateChannel <- newServerMap
+}
+
+func extractServerMapFromConfig(sourceReader io.Reader) (newServerMap *map[string]*ReplicatServer, err error) {
+	decoder := json.NewDecoder(sourceReader)
+	err = decoder.Decode(&newServerMap)
+	return
 }
 
 func configUpdateProcessor(c chan *map[string]*ReplicatServer) {
@@ -260,9 +264,10 @@ func configUpdateProcessor(c chan *map[string]*ReplicatServer) {
 		newServerMap := <-c
 		serverMapLock.Lock()
 
+		lastConfigPing = time.Now()
 		sendData := false
 
-		// find any nodes that have been deleted
+		// find any nodes that have been deleted and update ones that have changed
 		for name, serverData := range serverMap {
 			newServerData, exists := (*newServerMap)[name]
 			if !exists {
