@@ -49,9 +49,12 @@ func (server *ReplicatServer) SetStatus(status string) {
 }
 
 const (
-	REPLICAT_STATUS_INITIAL_SCAN    = "Initial Scan"			// The server is scanning its local storage
-	REPLICAT_STATUS_JOINING_CLUSTER = "Joining Cluster"			// The server has started to join the cluster and get up to date
-	REPLICAT_STATUS_ONLINE          = "Online"					// The server is up to date and part of the cluster
+	// The server is scanning its local storage
+	REPLICAT_STATUS_INITIAL_SCAN = "Initial Scan"
+	// The server has started to join the cluster and get up to date
+	REPLICAT_STATUS_JOINING_CLUSTER = "Joining Cluster"
+	// The server is up to date and part of the cluster
+	REPLICAT_STATUS_ONLINE = "Online"
 )
 
 var serverMap = make(map[string]*ReplicatServer)
