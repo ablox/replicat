@@ -150,4 +150,3 @@ func (handler *countingChangeHandler) FileUpdated(name string) error {
 	fmt.Printf("countingChangeHandler:FileUpdated: %s (%d)\n", name, handler.FilesUpdated)
 	return nil
 }
-
