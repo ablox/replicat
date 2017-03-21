@@ -1,7 +1,18 @@
-// Package replicat is a server for n way synchronization of content (rsync for the cloud).
-// More information at: http://replic.at
-// Copyright 2016 Jacob Taylor jacob@ablox.io
-// License: Apache2 - http://www.apache.org/licenses/LICENSE-2.0
+// Package replicat is a server for n way synchronization of content (Replication for the cloud).
+// Copyright 2016 Jacob Taylor jacob@replic.at       More Info: http://replic.at
+//
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU Affero General Public License as
+// published by the Free Software Foundation, either version 3 of the
+// License, or (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU Affero General Public License for more details.
+//
+// You should have received a copy of the GNU Affero General Public License
+// along with this program.  If not, see <http://www.gnu.org/licenses/>.
 package main
 
 import (
