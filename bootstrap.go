@@ -12,6 +12,7 @@ import (
 	"github.com/goji/httpauth"
 	"io"
 	"log"
+	"math/rand"
 	"net"
 	"net/http"
 	"os"
@@ -127,15 +128,20 @@ func BootstrapAndServe(address string) {
 	}
 }
 
+const (
+	managerOverdueSeconds = 30
+	managerCheckSleepTime = 45
+)
+
 func keepConfigCurrent() {
 	for {
-		if time.Since(lastConfigPing) > 30*time.Second {
+		if time.Since(lastConfigPing) > managerOverdueSeconds*time.Second {
 			log.Printf("Manager Contact Overdue, attempting to contact: %s\n", globalSettings.ManagerAddress)
 			sendConfigToServer()
 		} else {
 			fmt.Println("No Update Required")
 		}
-		time.Sleep(45 * time.Second)
+		time.Sleep((rand.Intn(10) - 5 + managerCheckSleepTime) * time.Second)
 	}
 }
 
