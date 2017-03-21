@@ -1113,7 +1113,7 @@ func (handler *FilesystemTracker) ProcessCatalog(event Event) {
 		}
 
 		hashSame := bytes.Equal(remoteEntry.Hash, local.hash)
-		fmt.Printf("Done considering(%s) transfer is: %s\n", path, transfer)
+		fmt.Printf("Done considering(%s) transfer is: %t\n", path, transfer)
 		//todo should we do something if the transfer is set to true yet the hash is the same?
 
 		// If the hashes differ, we need to do something -- unless the other side is the older one
