@@ -47,29 +47,26 @@ func cleanupExtraFolder(name string) {
 	os.RemoveAll(name)
 }
 
-//func trackerTestDual() {
-//	outsideFolder := createExtraFolder("outside")
-//	defer cleanupExtraFolder(outsideFolder)
-//
-//	tracker := createTracker("monitored")
-//	defer cleanupTracker(tracker)
-//
-//	tracker2 := createTracker("monitored2")
-//	defer cleanupTracker(tracker2)
-//
-//	logger := &LogOnlyChangeHandler{}
-//	var loggerInterface ChangeHandler = logger
-//	tracker.watchDirectory(&loggerInterface)
-//
-//	fmt.Println("tracker1")
-//	tracker.printTracker()
-//	fmt.Println("tracker2")
-//	tracker2.printTracker()
-//
-//	fmt.Printf("tracker 1 (%s) tracker2 (%s)\n", tracker.server.Address, tracker2.server.Address)
-//
-//
-//}
+func waitForTrackerFolderExists(tracker *FilesystemTracker, folder string) bool {
+	tracker.fsLock.Lock()
+	defer tracker.fsLock.Unlock()
+	_, exists := tracker.contents[folder]
+	fmt.Printf("Checking the value of exists: %v\n", exists)
+	return exists
+}
+
+func waitForEmptyRenamesInProgress(tracker *FilesystemTracker, _ string) bool {
+		tracker.fsLock.Lock()
+		defer tracker.fsLock.Unlock()
+		return len(tracker.renamesInProgress) == 0
+}
+
+func waitForTrackerFolderCount(tracker *FilesystemTracker, numberOfFolders string) bool {
+		folderCount, _ := strconv.Atoi(numberOfFolders)
+		fmt.Printf("* looking for: %d currently have: %d\n", folderCount, len(tracker.ListFolders(true)))
+		return len(tracker.ListFolders(true)) == folderCount
+}
+
 
 func trackerTestEmptyDirectoryMovesInOutAround() {
 	outsideFolder := createExtraFolder("outside")
@@ -96,15 +93,7 @@ func trackerTestEmptyDirectoryMovesInOutAround() {
 	stats, _ := os.Stat(targetMonitoredPath)
 	fmt.Printf("stats for: %s\n%v\n", targetMonitoredPath, stats)
 
-	helper := func(tracker *FilesystemTracker, folder string) bool {
-		tracker.fsLock.Lock()
-		defer tracker.fsLock.Unlock()
-		_, exists := tracker.contents[folder]
-		fmt.Printf("Checking the value of exists: %v\n", exists)
-		return exists
-	}
-
-	if !WaitFor(tracker, folderName, true, helper) {
+	if !WaitFor(tracker, folderName, true, waitForTrackerFolderExists) {
 		panic(fmt.Sprintf("%s not found in contents\ncontents: %v\n", folderName, tracker.contents))
 	}
 
@@ -122,20 +111,14 @@ func trackerTestEmptyDirectoryMovesInOutAround() {
 	fmt.Printf("About to move file \nfrom: %s\n  to: %s\n", moveSourcePath, moveDestinationPath)
 	os.Rename(moveSourcePath, moveDestinationPath)
 
-	if !WaitFor(tracker, originalFolderName, false, helper) {
+	if !WaitFor(tracker, originalFolderName, false, waitForTrackerFolderExists) {
 		panic(fmt.Sprintf("Still finding originalFolderName %s after rename timeout \ncontents: %v\n", originalFolderName, tracker.contents))
 	}
 
-	if !WaitFor(tracker, folderName, true, helper) {
+	if !WaitFor(tracker, folderName, true, waitForTrackerFolderExists) {
 		panic(fmt.Sprintf("%s not found after renamte timout\ncontents: %v\n", folderName, tracker.contents))
 	}
 	tracker.printTracker()
-
-	waitForEmptyRenamesInProgress := func(tracker *FilesystemTracker, folder string) bool {
-		tracker.fsLock.Lock()
-		defer tracker.fsLock.Unlock()
-		return len(tracker.renamesInProgress) == 0
-	}
 
 	if !WaitFor(tracker, folderName, true, waitForEmptyRenamesInProgress) {
 		tracker.printTracker()
@@ -151,7 +134,7 @@ func trackerTestEmptyDirectoryMovesInOutAround() {
 	fmt.Printf("About to move file \nfrom: %s\n  to: %s\n", moveSourcePath, moveDestinationPath)
 	os.Rename(moveSourcePath, moveDestinationPath)
 
-	if !WaitFor(tracker, folderName, false, helper) {
+	if !WaitFor(tracker, folderName, false, waitForTrackerFolderExists) {
 		fmt.Printf("Tracker contents: %v\n", tracker.contents)
 		panic(fmt.Sprintf("%s not cleared from contents\ncontents: %v\n", folderName, tracker.contents))
 	}
@@ -181,15 +164,10 @@ func trackerTestFileChangeTrackerAddFolders() {
 	}
 	fmt.Printf("done with creating %d different subfolders. \n", numberOfSubFolders)
 
-	helper := func(tracker *FilesystemTracker, numberOfSubFolders string) bool {
-		folderCount, _ := strconv.Atoi(numberOfSubFolders)
-		fmt.Printf("* looking for: %d currently have: %d\n", folderCount, len(tracker.ListFolders(true)))
-		return len(tracker.ListFolders(true)) == folderCount
-	}
 
 	folderSeeking := strconv.Itoa(numberOfSubFolders)
 	fmt.Printf("***************>>>>>>>>>>> folder seeking: %s num: %d\n", folderSeeking, numberOfSubFolders)
-	if !WaitFor(tracker, folderSeeking, true, helper) {
+	if !WaitFor(tracker, folderSeeking, true, waitForTrackerFolderCount) {
 		panic(fmt.Sprintf("did not find enough subfolders. Looking for: %d found: %d", numberOfSubFolders, len(tracker.ListFolders(true))))
 	}
 
@@ -286,15 +264,7 @@ func trackerTestSmallFileCreationAndRename() {
 		panic(err)
 	}
 
-	helper := func(tracker *FilesystemTracker, path string) bool {
-		tracker.fsLock.Lock()
-		defer tracker.fsLock.Unlock()
-
-		_, exists := tracker.contents[path]
-		return exists
-	}
-
-	if !WaitFor(tracker, fileName, true, helper) {
+	if !WaitFor(tracker, fileName, true, waitForTrackerFolderExists) {
 		panic(fmt.Sprintf("%s not found in contents\ncontents: %v\n", fileName, tracker.contents))
 	}
 
@@ -309,22 +279,15 @@ func trackerTestSmallFileCreationAndRename() {
 	}
 	fmt.Printf("stats for: %s\n%v\n", targetMonitoredPath, stats)
 
-	if !WaitFor(tracker, fileName, false, helper) {
+	if !WaitFor(tracker, fileName, false, waitForTrackerFolderExists) {
 		panic(fmt.Sprintf("%s found in contents\ncontents: %v\n", fileName, tracker.contents))
 	}
 
-	if !WaitFor(tracker, secondFilename, true, helper) {
+	if !WaitFor(tracker, secondFilename, true, waitForTrackerFolderExists) {
 		panic(fmt.Sprintf("%s not found in contents\ncontents: %v\n", secondFilename, tracker.contents))
 	}
 
-	helper = func(tracker *FilesystemTracker, path string) bool {
-		tracker.fsLock.Lock()
-		defer tracker.fsLock.Unlock()
-
-		return len(tracker.renamesInProgress) == 0
-	}
-
-	if !WaitFor(tracker, "", true, helper) {
+	if !WaitFor(tracker, "", true, waitForEmptyRenamesInProgress) {
 		panic(fmt.Sprint("6 tracker has renames in progress still"))
 	}
 
@@ -369,20 +332,7 @@ func trackerTestSmallFileCreationAndUpdate() {
 		panic(err)
 	}
 
-	helper := func(tracker *FilesystemTracker, path string) bool {
-		tracker.fsLock.Lock()
-		defer tracker.fsLock.Unlock()
-		entry, exists := tracker.contents[path]
-		if !exists {
-			return false
-		}
-
-		fmt.Printf("entry is: %#v\npath: %s\n", entry, path)
-
-		return true
-	}
-
-	if !WaitFor(tracker, fileName, true, helper) {
+	if !WaitFor(tracker, fileName, true, waitForTrackerFolderExists) {
 		panic(fmt.Sprintf("%s not found in contents\ncontents: %v\n", fileName, tracker.contents))
 	}
 

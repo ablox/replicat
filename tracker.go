@@ -319,7 +319,7 @@ func validatePath(directory string) (fullPath string) {
 }
 
 func createPath(pathName string, absolutePathName string) (pathCreated bool, stat os.FileInfo, err error) {
-	for maxCycles := 0; maxCycles < 5 && pathName != ""; maxCycles++ {
+	for maxCycles := 0; maxCycles < 20 && pathName != ""; maxCycles++ {
 		stat, err = os.Stat(absolutePathName)
 
 		if err == nil {
@@ -330,7 +330,7 @@ func createPath(pathName string, absolutePathName string) (pathCreated bool, sta
 
 		// if there is an error, go to create the path
 		fmt.Printf("Creating path: %s\n", absolutePathName)
-		//err = os.MkdirAll(absolutePathName, os.ModeDir+os.ModePerm)
+		err = os.MkdirAll(absolutePathName, os.ModeDir+os.ModePerm)
 
 		// after attempting to create the path, check the err again
 		if err == nil {
@@ -469,8 +469,8 @@ func (handler *FilesystemTracker) createPath(pathName string, isDirectory bool) 
 func (handler *FilesystemTracker) CreatePath(pathName string, isDirectory bool) error {
 	fmt.Printf("FilesystemTracker:CreatePath called with relativePath: %s isDirectory: %v\n", pathName, isDirectory)
 	handler.fsLock.Lock()
-	defer handler.fsLock.Unlock()
 	fmt.Println("FilesystemTracker:/CreatePath")
+	defer handler.fsLock.Unlock()
 	defer fmt.Println("FilesystemTracker://CreatePath")
 
 	if !handler.setup {
