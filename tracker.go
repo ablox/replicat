@@ -191,6 +191,7 @@ func (handler *FilesystemTracker) validate() {
 	fmt.Println("~~~~~~~~~~~~~~~~~~~~~~~")
 }
 
+// GetStatistics - Return the tracked statistics for the replicat node.
 func (handler *FilesystemTracker) GetStatistics() (stats map[string]string) {
 	stats = make(map[string]string, 7)
 	stats[TRACKER_TOTAL_FILES] = strconv.Itoa(handler.stats.TotalFiles)
