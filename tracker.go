@@ -59,7 +59,7 @@ type FilesystemTracker struct {
 	stats             TrackerStats
 }
 
-// TrackerStats - Basic staticts that the tracker will monitor and report on.
+// TrackerStats - Basic statistics that the tracker will monitor and report on.
 type TrackerStats struct {
 	TotalFiles       int
 	TotalFolders     int
