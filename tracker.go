@@ -59,6 +59,7 @@ type FilesystemTracker struct {
 	stats             TrackerStats
 }
 
+// TrackerStats - Basic staticts that the tracker will monitor and report on.
 type TrackerStats struct {
 	TotalFiles       int
 	TotalFolders     int
@@ -70,12 +71,19 @@ type TrackerStats struct {
 }
 
 const (
+	// TRACKER_TOTAL_FILES - The count of files in the tracker's inventory
 	TRACKER_TOTAL_FILES       = "TotalFiles"
+	// TRACKER_TOTAL_FOLDERS - The count of folders in the tracker's inventory
 	TRACKER_TOTAL_FOLDERS     = "TotalFolders"
+	// TRACKER_FILES_SENT - Number of files sent to other nodes
 	TRACKER_FILES_SENT        = "FilesSent"
+	// TRACKER_FILES_RECEIVED - Number of files received from other nodes
 	TRACKER_FILES_RECEIVED    = "FilesReceived"
+	// TRACKER_FILES_DELETED - Number of files deleted
 	TRACKER_FILES_DELETED     = "FilesDeleted"
+	// TRACKER_CATALOGS_SENT - Number of times we have sent out our catalog
 	TRACKER_CATALOGS_SENT     = "CatalogsSent"
+	// TRACKER_CATALOGS_RECEIVED - Number of times we have received a catalog from someone else
 	TRACKER_CATALOGS_RECEIVED = "CatalogsRecieved"
 )
 
@@ -96,6 +104,7 @@ func NewDirectoryFromFileInfo(info *os.FileInfo) *Entry {
 	return &Entry{*info, true, nil}
 }
 
+// IncrementStatistic - Increment one of the named statistics on the tracker.
 func (handler *FilesystemTracker) IncrementStatistic(name string, delta int) {
 	go func() {
 		fmt.Printf("FilesystemTracker:IncrementStatistic(name %s, delta %d)\n", name, delta)
@@ -316,11 +325,11 @@ func createPath(pathName string, absolutePathName string) (pathCreated bool, sta
 			fmt.Printf("Path existed: %s\n", absolutePathName)
 			pathCreated = true
 			return
-		} else {
-			// if there is an error, go to create the path
-			fmt.Printf("Creating path: %s\n", absolutePathName)
-			err = os.MkdirAll(absolutePathName, os.ModeDir+os.ModePerm)
 		}
+
+		// if there is an error, go to create the path
+		fmt.Printf("Creating path: %s\n", absolutePathName)
+		//err = os.MkdirAll(absolutePathName, os.ModeDir+os.ModePerm)
 
 		// after attempting to create the path, check the err again
 		if err == nil {
@@ -1017,7 +1026,7 @@ func (handler *FilesystemTracker) scanFolders() error {
 	return nil
 }
 
-// EntryJSON
+// EntryJSON - a JSON friendly version of the entry object. It does not have a native filesystem object inside of it.
 type EntryJSON struct {
 	RelativePath string
 	IsDirectory  bool
@@ -1027,7 +1036,7 @@ type EntryJSON struct {
 	ServerName   string
 }
 
-// This needs to be called with handler.fsLock engaged
+// SendCatalog - Send our catalog out for other nodes to compare. This needs to be called with handler.fsLock engaged
 func (handler *FilesystemTracker) SendCatalog() {
 	fmt.Printf("FileSystemTracker ScanFolders - end - Found %d items\n", len(handler.contents))
 
@@ -1189,7 +1198,7 @@ func (handler *FilesystemTracker) requestNeededFiles() {
 
 }
 
-// This needs to be called with handler.fsLock engaged
+// SendRequestForFiles - Request files you need from another Replicat This needs to be called with handler.fsLock engaged
 func (handler *FilesystemTracker) SendRequestForFiles(server string, fileMap map[string]EntryJSON) {
 	fmt.Printf("FileSystemTracker SendRequestForFiles - end - Found %d items\n", len(handler.contents))
 
