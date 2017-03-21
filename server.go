@@ -87,14 +87,12 @@ func SendEvent(event Event, fullPath string) {
 		log.Printf("Original ownership: %#v\n", originalEntry)
 		timeDelta := time.Since(originalEntry.Time)
 		if timeDelta > OWNERSHIP_EXPIRATION_TIMEOUT {
-			log.Printf("Owndership expired. Delta is: %v\n", timeDelta)
-		} else {
+			log.Printf("Ownership expired. Delta is: %v\n", timeDelta)
+		} else if originalEntry.Source != globalSettings.Name {
 			// At this point, someone owns this item.
 			// If we are not the owner, we are done.
-			if originalEntry.Source != globalSettings.Name {
-				log.Println("We do not own this. Do not send")
-				return
-			}
+			log.Println("We do not own this. Do not send")
+			return
 		}
 	} else {
 		log.Printf("Send event called. No prior ownership: %s\n", fullPath)
@@ -108,21 +106,23 @@ func SendEvent(event Event, fullPath string) {
 	sendEventToManagerAndSiblings(event, fullPath)
 }
 
+// REPLICAT_MANAGER_NAME - the name passed on event send to explicitly send the event to the manager.
+const REPLICAT_MANAGER_NAME = "Manager"
+
 func sendEventToManagerAndSiblings(event Event, fullPath string) {
 	// sendEvent to manager
-	go sendEvent(&event, fullPath, globalSettings.ManagerAddress, globalSettings.ManagerCredentials)
+	go sendEvent(REPLICAT_MANAGER_NAME, &event, fullPath, globalSettings.ManagerAddress, globalSettings.ManagerCredentials)
 
 	// SendEvent to all peers
 	for k, v := range serverMap {
 		if k != globalSettings.Name {
-			fmt.Printf("sending to peer %s at %s\n", k, v.Address)
-			sendEvent(&event, fullPath, v.Address, globalSettings.ManagerCredentials)
+			sendEvent(v.Name, &event, fullPath, v.Address, globalSettings.ManagerCredentials)
 		}
 	}
 }
 
 func sendFileRequestToServer(serverName string, event Event) {
-	go sendEvent(&event, "", globalSettings.ManagerAddress, globalSettings.ManagerCredentials)
+	go sendEvent(serverName, &event, "", globalSettings.ManagerAddress, globalSettings.ManagerCredentials)
 
 	server := serverMap[serverName]
 	if server == nil {
@@ -131,17 +131,17 @@ func sendFileRequestToServer(serverName string, event Event) {
 		return
 	}
 
-	go sendEvent(&event, "", server.Address, globalSettings.ManagerCredentials)
+	go sendEvent(serverName, &event, "", server.Address, globalSettings.ManagerCredentials)
 }
 
-func sendEvent(event *Event, fullPath string, address string, credentials string) {
+func sendEvent(serverName string, event *Event, fullPath string, address string, credentials string) {
 	if address == "" {
 		fmt.Println("No address for manager, returning")
 		return
 	}
 
 	url := "http://" + address + "/event/"
-	fmt.Printf("target url: %s\nEvent is: %v\n", url, event)
+	log.Printf("target url: %s (%s)\nEvent is: %v\n", url, serverName, event)
 
 	jsonStr, _ := json.Marshal(event)
 	req, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonStr))
