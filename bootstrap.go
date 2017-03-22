@@ -167,16 +167,8 @@ func sendConfigToServer() {
 	url := "http://" + globalSettings.ManagerAddress + "/config/"
 	log.Printf("sendConfigToServer: Manager location: %s\n", url)
 
-	//storage := make([]byte, 0, 10000)
-	//buff := bytes.NewBuffer(storage)
-	//encoder := json.NewEncoder(buff)
-
-
-	//test := make(map[string])
-
 	server := serverMap[globalSettings.Name]
 	jsonStr, _ := json.Marshal(server)
-
 	jsonStr2, _ := json.Marshal(server.storage.GetStatistics())
 
 	// marshal the stats as well
