@@ -159,18 +159,35 @@ func keepConfigCurrent() {
 }
 
 func sendConfigToServer() {
-	// This field will be empty during testing
+	// This field will be empty during testing. We have to abort during testing since the manager is not reachable.
 	if globalSettings.ManagerAddress == "" {
 		return
 	}
 
 	url := "http://" + globalSettings.ManagerAddress + "/config/"
-	fmt.Printf("Manager location: %s\n", url)
+	log.Printf("sendConfigToServer: Manager location: %s\n", url)
 
-	jsonStr, _ := json.Marshal(serverMap[globalSettings.Name])
-	fmt.Printf("jsonStr: %s\n", jsonStr)
+	//storage := make([]byte, 0, 10000)
+	//buff := bytes.NewBuffer(storage)
+	//encoder := json.NewEncoder(buff)
 
-	req, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonStr))
+
+	//test := make(map[string])
+
+	server := serverMap[globalSettings.Name]
+	jsonStr, _ := json.Marshal(server)
+
+	jsonStr2, _ := json.Marshal(server.storage.GetStatistics())
+
+	// marshal the stats as well
+	//statsJSON := json.NewEncoder()
+
+	byteArraysToMarshal := [][]byte{jsonStr, jsonStr2}
+	byteData := bytes.Join(byteArraysToMarshal, []byte{})
+	log.Printf("jasonstr: %s\n", string(byteData))
+	jsonData := bytes.NewBuffer(byteData)
+
+	req, err := http.NewRequest("POST", url, jsonData)
 	req.Header.Set("Content-Type", "application/json")
 
 	data := []byte(globalSettings.ManagerCredentials)
@@ -185,7 +202,7 @@ func sendConfigToServer() {
 
 	newServerMap, err := extractServerMapFromConfig(resp.Body)
 	if err != nil {
-		fmt.Printf("Config update failed due to error: %s\n", err)
+		log.Printf("Config update failed due to error: %s\n", err)
 		return
 	}
 	configUpdateChannel <- newServerMap
