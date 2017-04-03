@@ -967,7 +967,7 @@ func (handler *FilesystemTracker) processEvent(event Event, pathName, fullPath s
 	}
 
 	if err != nil {
-		log.Printf("Error encountered when processing: %v\n")
+		log.Printf("Error encountered when processing: %v\n", err)
 	}
 
 	if lock {
