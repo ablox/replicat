@@ -27,7 +27,7 @@ import (
 func SetupCli() {
 	app := cli.NewApp()
 	app.Name = "Replicat"
-	app.Usage = "rsync for the cloud"
+	app.Usage = "Replication For the Cloud"
 	app.Action = func(c *cli.Context) error {
 		globalSettings := GetGlobalSettings()
 		if c.GlobalString("name") != "" {
@@ -63,6 +63,7 @@ func SetupCli() {
 		if c.GlobalString("address") != "" {
 			globalSettings.Address = c.GlobalString("address")
 		}
+
 		if c.GlobalString("directory") != "" {
 			globalSettings.Directory = c.GlobalString("directory")
 		}

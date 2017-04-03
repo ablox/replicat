@@ -147,11 +147,16 @@ func sendFileRequestToServer(serverName string, event Event) {
 
 func sendEvent(serverName string, event *Event, fullPath string, address string, credentials string) {
 	if address == "" {
-		fmt.Println("No address for manager, returning")
+		fmt.Println("sendEvent: no address sepcified. Skipping, returning")
 		return
 	}
 
-	url := "http://" + address + "/event/"
+	protocolString := "http://"
+	if address == globalSettings.ManagerAddress {
+		protocolString = "https://"
+	}
+
+	url := protocolString + address + "/event/"
 	log.Printf("target url: %s (%s)\nEvent is: %v\n", url, serverName, event)
 
 	jsonStr, _ := json.Marshal(event)
@@ -186,8 +191,13 @@ func sendEvent(serverName string, event *Event, fullPath string, address string,
 }
 
 func postHelper(path, fullPath, address, credentials string) {
-	fmt.Printf("Sending file to: %s\npath: %s\n", address, path)
-	url := "http://" + address + "/upload/"
+	protocolString := "http://"
+	if address == globalSettings.ManagerAddress {
+		protocolString = "https://"
+	}
+	url := protocolString + address + "/upload/"
+
+	fmt.Printf("Sending file to: %s\npath: %s URL: %s\n", address, path, url)
 	postFile(path, fullPath, url, credentials)
 }
 
@@ -480,7 +490,7 @@ func postFile(filename string, fullPath string, address string, credentials stri
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
-		log.Printf("Error sending a file (%s) to another node(%s) error(%s)\n", filename, address, err)
+		log.Printf("PostFile - Error sending a file (%s) to another node(%s) error(%s)\n", filename, address, err)
 		return err
 	}
 

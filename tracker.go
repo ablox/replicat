@@ -866,8 +866,6 @@ func (handler *FilesystemTracker) handleNotifyRename(event Event, pathName, full
 	return
 }
 
-
-
 func (handler *FilesystemTracker) handleNotifyCreate(event Event, pathName, fullPath string) (err error) {
 	currentValue, exists := handler.contents[pathName]
 
@@ -933,7 +931,6 @@ func (handler *FilesystemTracker) handleNotifyWrite(event Event, pathName, fullP
 	return
 }
 
-
 //Create pile of folders with other servers offline
 //stop C
 //Duplicate all of C
@@ -972,7 +969,6 @@ func (handler *FilesystemTracker) processEvent(event Event, pathName, fullPath s
 	if err != nil {
 		log.Printf("Error encountered when processing: %v\n")
 	}
-
 
 	if lock {
 		handler.fsLock.Unlock()

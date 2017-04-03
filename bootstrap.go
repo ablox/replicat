@@ -164,7 +164,7 @@ func sendConfigToServer() {
 		return
 	}
 
-	url := "http://" + globalSettings.ManagerAddress + "/config/"
+	url := "https://" + globalSettings.ManagerAddress + "/config/"
 	log.Printf("sendConfigToServer: Manager location: %s\n", url)
 
 	server := serverMap[globalSettings.Name]

@@ -1,6 +1,5 @@
 {
-  "ManagerAddress": "localhost:8100",
+  "ManagerAddress": "local.replic.at:8100",
   "ManagerCredentials": "replicat:isthecat",
   "ClusterCredentials": "test:test"
-
 }
