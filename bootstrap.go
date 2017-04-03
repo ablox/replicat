@@ -190,6 +190,7 @@ func sendConfigToServer() {
 	resp, err := client.Do(req)
 	if err != nil {
 		log.Printf("Unable to reach server. Data could be lost: %s\n", err)
+		return
 	}
 
 	newServerMap, err := extractServerMapFromConfig(resp.Body)
