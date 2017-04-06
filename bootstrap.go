@@ -171,9 +171,6 @@ func sendConfigToServer() {
 	jsonStr, _ := json.Marshal(server)
 	jsonStr2, _ := json.Marshal(server.storage.GetStatistics())
 
-	// marshal the stats as well
-	//statsJSON := json.NewEncoder()
-
 	byteArraysToMarshal := [][]byte{jsonStr, jsonStr2}
 	byteData := bytes.Join(byteArraysToMarshal, []byte{})
 	log.Printf("jasonstr: %s\n", string(byteData))
