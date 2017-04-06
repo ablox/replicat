@@ -193,12 +193,16 @@ func sendConfigToServer() {
 		return
 	}
 
+	//log.Printf("response: \n%#v\n", resp)
+
 	newServerMap, err := extractServerMapFromConfig(resp.Body)
-	if err != nil {
+	if err == io.EOF {
+		log.Printf("EOF unexpected Config update failed\n")
+	} else if err != nil {
 		log.Printf("Config update failed due to error: %s\n", err)
-		return
+	} else {
+		configUpdateChannel <- newServerMap
 	}
-	configUpdateChannel <- newServerMap
 
 }
 
