@@ -190,8 +190,6 @@ func sendConfigToServer() {
 		return
 	}
 
-	//log.Printf("response: \n%#v\n", resp)
-
 	newServerMap, err := extractServerMapFromConfig(resp.Body)
 	if err == io.EOF {
 		log.Printf("EOF unexpected Config update failed\n")
