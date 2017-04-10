@@ -127,7 +127,7 @@ func sendEventToManagerAndSiblings(event Event, fullPath string) {
 	// SendEvent to all peers
 	for k, v := range serverMap {
 		if k != globalSettings.Name {
-			sendEvent(v.Name, &event, fullPath, v.Address, globalSettings.ManagerCredentials)
+			go sendEvent(v.Name, &event, fullPath, v.Address, globalSettings.ManagerCredentials)
 		}
 	}
 }
@@ -308,35 +308,40 @@ func sendFolderTree(initialTree DirTreeMap) {
 	if err != nil {
 		panic(err)
 	}
-	buffer := bytes.NewBuffer(jsonStr)
-	client := &http.Client{}
 
 	data := []byte(globalSettings.ManagerCredentials)
 	authHash := base64.StdEncoding.EncodeToString(data)
 
-	for k, v := range serverMap {
+	for _, v := range serverMap {
 		// don't send an update to ourselves
-		if k == globalSettings.Name {
-			continue
-		}
+		go sendFolderTreeHelper(v, authHash, jsonStr)
 
-		url := "http://" + v.Address + "/tree/"
-		fmt.Printf("Posting folder tree to node: %s at URL: %s\n", k, url)
-
-		req, err := http.NewRequest("POST", url, buffer)
-		req.Header.Set("Content-Type", "application/json")
-		req.Header.Set("Authorization", "Basic "+authHash)
-
-		resp, err := client.Do(req)
-		if err != nil {
-			fmt.Printf("we encountered an error!\n%s\n", err)
-			//panic(err)
-			continue
-		}
-
-		_, _ = ioutil.ReadAll(resp.Body)
-		resp.Body.Close()
 	}
+}
+
+func sendFolderTreeHelper(server *ReplicatServer, authHash string, jsonData []byte) {
+	if server.Name == globalSettings.Name {
+		return
+	}
+
+	buffer := bytes.NewBuffer(jsonData)
+	client := &http.Client{}
+
+	url := "http://" + server.Address + "/tree/"
+	fmt.Printf("Posting folder tree to node: %s at URL: %s\n", server.Name, url)
+
+	req, err := http.NewRequest("POST", url, buffer)
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Basic "+authHash)
+
+	resp, err := client.Do(req)
+	if err != nil {
+		fmt.Printf("we encountered an error!\n%s\n", err)
+		return
+	}
+
+	_, _ = ioutil.ReadAll(resp.Body)
+	resp.Body.Close()
 }
 
 func getListOfFolders(w http.ResponseWriter) {
