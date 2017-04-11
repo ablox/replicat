@@ -978,7 +978,7 @@ func (handler *FilesystemTracker) processEvent(event Event, pathName, fullPath s
 
 // Scan for existing files and add them to the list of files that we have with create events. this has to be called inside of a lock
 func (handler *FilesystemTracker) scanFolders() error {
-	fmt.Println("FileSystemTracker ScanFolders - start")
+	log.Printf("FileSystemTracker ScanFolders - start. File Root: '%s'\n", handler.directory)
 	pendingPaths := make([]string, 0, 100)
 	pendingPaths = append(pendingPaths, handler.directory)
 	handler.contents = make(map[string]Entry)
@@ -987,9 +987,11 @@ func (handler *FilesystemTracker) scanFolders() error {
 		currentPath := pendingPaths[0]
 		pendingPaths = pendingPaths[1:]
 
+		log.Printf("scanFolders: scanning path: %s\n", currentPath)
 		// Read the directories in the path
 		f, err := os.Open(currentPath)
 		if err != nil {
+			log.Printf("Error opening '%s': %s\n", currentPath, err)
 			return err
 		}
 
@@ -1006,6 +1008,8 @@ func (handler *FilesystemTracker) scanFolders() error {
 			} else {
 				hash, err = fileBlake2bHash(absolutePath)
 				if err != nil {
+					log.Printf("Error getting Blake2 Hash for %s: %s\n", absolutePath, err)
+
 					panic(err)
 				}
 				handler.stats.TotalFiles++
