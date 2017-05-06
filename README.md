@@ -18,7 +18,7 @@ Start Replicat with my custom key
 // Instances are using tmp folder for testing. Switch to a permanant folder for production or long term use.
 
 go get golang.org/x/crypto/blake2b
-
+#making sure changes can still send
 
 
 
