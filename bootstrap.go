@@ -95,86 +95,7 @@ func BootstrapAndServe(address string) {
 	http.Handle("/config/", httpauth.SimpleBasicAuth("replicat", "isthecat")(http.HandlerFunc(configHandler)))
 	http.Handle("/upload/", httpauth.SimpleBasicAuth("replicat", "isthecat")(http.HandlerFunc(uploadHandler)))
 
-	// quick test of Minio
-	suffix := rand.Int31n(10000)
-	tempFolder := fmt.Sprintf("replicat-test-%05d", suffix)
-	fmt.Printf("temporary path name: %s\n", tempFolder)
-	tracker2 := &minioTracker{}
-	tracker2.Initialize()
-	//folderList, err := tracker2.ListFolders(false)
-	//for _, v := range folderList {
-	//	fmt.Printf("bucket: %s\n", v)
-	//}
-
-	objectName := "babySloth"
-	secondObjectName := "cuteBabySloth"
-
-	err := tracker2.CreatePath(tempFolder, true)
-	if err != nil {
-		panic(err)
-	}
-
-	folderlist, err := tracker2.ListFolders(false)
-
-	found := false
-	for _, v := range folderlist {
-		//fmt.Printf("Comparing %s and %s\n", v, tempFolder)
-		if v == tempFolder {
-			found = true
-			break
-		}
-	}
-	if found == false {
-		fmt.Printf("Could not find the directory we should have just created: %s\n", tempFolder)
-	}
-
-	// Time to create file!
-	err = tracker2.CreateObject(tempFolder, objectName, "/testdata/LargeSampleImages/baby sloth on a rail.jpg", "")
-	if err != nil {
-		panic(err)
-	}
-
-//Just have list buckets and delete working (buckets and objects). Also have create object from file working.
-//Now it is time to have a little more fun. Finish out the methods and start to add watchers
-
-	time.Sleep(time.Second * 30)
-
-	err = tracker2.RenameObject(tempFolder, secondObjectName, tempFolder + "/" + objectName)
-	if err != nil {
-		panic(err)
-	}
-
-	time.Sleep(time.Second * 15)
-
-	err = tracker2.DeleteObject(tempFolder, secondObjectName)
-	if err != nil {
-		panic(err)
-	}
-
-	err = tracker2.DeleteFolder(tempFolder)
-	if err != nil {
-		panic(err)
-	}
-
-	folderlist, err = tracker2.ListFolders(true)
-
-	found = false
-	for _, v := range folderlist {
-		if v == tempFolder {
-			found = true
-			break
-		}
-	}
-
-	if found == true {
-		fmt.Printf("We found our folder after it should have been deleted: %s\n", tempFolder)
-	}
-
-	fmt.Println("YAY - Made it to the end")
-
-	if tracker2 != nil {
-		panic("nobody knows the trouble I've seen?\n")
-	}
+	//exerciseMinio()
 
 	lsnr, err := net.Listen("tcp4", address)
 	if err != nil {
@@ -220,6 +141,91 @@ func BootstrapAndServe(address string) {
 
 	// we need something to keep us running.
 	keepConfigCurrent()
+}
+
+
+func exerciseMinio() {
+	// quick test of Minio
+	suffix := rand.Int31n(10000)
+	tempFolder := fmt.Sprintf("replicat-test-%05d", suffix)
+	fmt.Printf("temporary path name: %s\n", tempFolder)
+	tracker2 := &minioTracker{}
+	tracker2.Initialize()
+	//folderList, err := tracker2.ListFolders(false)
+	//for _, v := range folderList {
+	//	fmt.Printf("bucket: %s\n", v)
+	//}
+
+	objectName := "babySloth"
+	secondObjectName := "cuteBabySloth"
+
+	err := tracker2.CreatePath(tempFolder, true)
+	if err != nil {
+		panic(err)
+	}
+
+	folderlist, err := tracker2.ListFolders(false)
+
+	found := false
+	for _, v := range folderlist {
+		//fmt.Printf("Comparing %s and %s\n", v, tempFolder)
+		if v == tempFolder {
+			found = true
+			break
+		}
+	}
+	if found == false {
+		fmt.Printf("Could not find the directory we should have just created: %s\n", tempFolder)
+	}
+
+	// Time to create file!
+	err = tracker2.CreateObject(tempFolder, objectName, "/testdata/LargeSampleImages/baby sloth on a rail.jpg", "")
+	if err != nil {
+		panic(err)
+	}
+
+	//Just have list buckets and delete working (buckets and objects). Also have create object from file working.
+	//Now it is time to have a little more fun. Finish out the methods and start to add watchers
+
+	//time.Sleep(time.Second * 30)
+
+	err = tracker2.RenameObject(tempFolder, secondObjectName, tempFolder + "/" + objectName)
+	if err != nil {
+		panic(err)
+	}
+
+	//time.Sleep(time.Second * 15)
+
+	err = tracker2.DeleteObject(tempFolder, secondObjectName)
+	if err != nil {
+		panic(err)
+	}
+
+	err = tracker2.DeleteFolder(tempFolder)
+	if err != nil {
+		panic(err)
+	}
+
+	folderlist, err = tracker2.ListFolders(true)
+
+	found = false
+	for _, v := range folderlist {
+		if v == tempFolder {
+			found = true
+			break
+		}
+	}
+
+	if found == true {
+		fmt.Printf("We found our folder after it should have been deleted: %s\n", tempFolder)
+	}
+
+	fmt.Println("YAY - Made it to the end")
+
+	if tracker2 != nil {
+		panic("nobody knows the trouble I've seen?\n")
+	}
+
 }
 
 const (
