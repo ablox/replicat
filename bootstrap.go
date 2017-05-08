@@ -101,14 +101,14 @@ func BootstrapAndServe(address string) {
 	fmt.Printf("temporary path name: %s\n", tempFolder)
 	tracker2 := &minioTracker{}
 	tracker2.Initialize()
-	folderList, err := tracker2.ListFolders(false)
-	for _, v := range folderList {
-		fmt.Printf("bucket: %s\n", v)
-	}
+	//folderList, err := tracker2.ListFolders(false)
+	//for _, v := range folderList {
+	//	fmt.Printf("bucket: %s\n", v)
+	//}
 
 	objectName := "babySloth"
 
-	err = tracker2.CreatePath(tempFolder, true)
+	err := tracker2.CreatePath(tempFolder, true)
 	if err != nil {
 		panic(err)
 	}
@@ -132,6 +132,8 @@ func BootstrapAndServe(address string) {
 	if err != nil {
 		panic(err)
 	}
+
+
 
 	err = tracker2.DeleteObject(tempFolder, objectName)
 	if err != nil {
