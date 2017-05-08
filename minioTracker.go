@@ -20,8 +20,8 @@ import (
 	"fmt"
 	"github.com/minio/minio-go"
 	"os"
-	"sync"
 	"strings"
+	"sync"
 )
 
 // FilesystemTracker - Track a filesystem and keep it in sync
@@ -110,20 +110,21 @@ func (tracker *minioTracker) CreatePath(pathName string, isDirectory bool) (err 
 		panic(err)
 	}
 
-	if isDirectory == true {
-		err = tracker.minioSDK.MakeBucket(pathName, "")
-		if err != nil {
-			fmt.Println(err)
-			return
-		}
-	} else {
+	if isDirectory == false {
 		panic("Not implemented yet")
+	}
+
+	err = tracker.minioSDK.MakeBucket(pathName, "")
+	if err != nil {
+		fmt.Println(err)
+		return
 	}
 
 	return
 }
 
 func (tracker *minioTracker) Rename(sourcePath string, destinationPath string, isDirectory bool) (err error) {
+
 	return
 }
 
@@ -134,23 +135,47 @@ func (tracker *minioTracker) RenameObject(bucketName string, objectName string, 
 		panic(err)
 	}
 
-	// todo find out if this changes on windows
 	err = tracker.minioSDK.CopyObject(bucketName, objectName, sourceObjectName, minio.NewCopyConditions())
 	if err != nil {
 		panic(err)
 	}
 
-	// find the first instance of a path separator
-	splitResults := strings.SplitN(sourceObjectName, string(os.PathSeparator), 2)
-	if len(splitResults) != 2 {
-		panic(fmt.Sprintf("Could not separate (%s) bucket info from object name. Source: %s output: %#v\n", string(os.PathSeparator), sourceObjectName, splitResults))
-	}
-
-	err = tracker.minioSDK.RemoveObject(splitResults[0], splitResults[1])
+	sourceBucketName, sourceObjectName, err := splitBucketObjectName(sourceObjectName)
 	if err != nil {
 		panic(err)
 	}
 
+	err = tracker.minioSDK.RemoveObject(sourceBucketName, sourceObjectName)
+	if err != nil {
+		panic(err)
+	}
+
+	return
+}
+
+// splitBucketObjectNames - Take a bucket followed by a separator and an object name and split it into two components
+// Valid bucket names must be at least one character long. Valid path names must be at least one character long
+func splitBucketObjectName(bucketObjectName string) (bucketName string, objectName string, err error) {
+	// find the first instance of a path separator
+	splitResults := strings.SplitN(bucketObjectName, "/", 2)
+	if len(splitResults) != 2 || len(splitResults[0]) == 0 || len(splitResults[1]) == 0 {
+		err = error(fmt.Sprintf("minioTracker:splitBucketObjectNames panic Could not separate (%s) bucket info from object name. Source: %s output: %#v\n", string(os.PathSeparator), bucketObjectName, splitResults))
+		return
+	}
+
+	bucketName = splitResults[0]
+	objectName = splitResults[1]
+	return splitResults[0], splitResults[1], err
+}
+
+// joinBucketNames - Take a bucket name and object name and combine them into one string
+func joinBucketObjectName(bucketName string, objectName string) (bucketObjectName string, err error) {
+	if len(bucketName) < 1 || len(objectName) < 1 {
+		err = error(fmt.Sprintf("minioTracker:joinBucketObjectName panic Could not join bucket: %s object: %s\n", bucketName, objectName))
+		return
+	}
+
+	bucketObjectName = bucketName + "/" + objectName
 	return
 }
 
