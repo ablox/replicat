@@ -19,8 +19,8 @@ package main
 import (
 	"fmt"
 	"github.com/minio/minio-go"
-	"sync"
 	"os"
+	"sync"
 )
 
 // FilesystemTracker - Track a filesystem and keep it in sync
@@ -126,8 +126,6 @@ func (tracker *minioTracker) Rename(sourcePath string, destinationPath string, i
 	return
 }
 
-
-
 func (tracker *minioTracker) DeleteObject(bucket, name string) (err error) {
 	fmt.Printf("minioTracker::DeleteObject bucket: %s, name: %s\n", bucket, name)
 
@@ -137,7 +135,6 @@ func (tracker *minioTracker) DeleteObject(bucket, name string) (err error) {
 	}
 	return
 }
-
 
 func (tracker *minioTracker) DeleteFolder(name string) (err error) {
 	err = tracker.verifyInitialized()
@@ -154,13 +151,6 @@ func (tracker *minioTracker) DeleteFolder(name string) (err error) {
 	// todo add support for this to be either a bucket or an object based on the metadata
 	return
 }
-
-//type BucketInfo struct {
-//	// The name of the bucket.
-//	Name string `json:"name"`
-//	// Date the bucket was created.
-//	CreationDate time.Time `json:"creationDate"`
-//}
 
 func (tracker *minioTracker) ListFolders(getLocks bool) (folderList []string, err error) {
 	err = tracker.verifyInitialized()

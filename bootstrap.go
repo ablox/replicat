@@ -157,13 +157,6 @@ func BootstrapAndServe(address string) {
 		fmt.Printf("We found our folder after it should have been deleted: %s\n", tempFolder)
 	}
 
-
-
-
-
-
-
-
 	fmt.Println("YAY - Made it to the end")
 
 	if tracker2 != nil {
