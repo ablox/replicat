@@ -97,11 +97,18 @@ func BootstrapAndServe(address string) {
 
 	// quick test of Minio
 	suffix := rand.Int31n(10000)
-	tempFolder := fmt.Sprintf("thisisanam3azingtest%05d", suffix)
+	tempFolder := fmt.Sprintf("replicat-test-%05d", suffix)
 	fmt.Printf("temporary path name: %s\n", tempFolder)
 	tracker2 := &minioTracker{}
 	tracker2.Initialize()
-	err := tracker2.CreatePath(tempFolder, true)
+	folderList, err := tracker2.ListFolders(false)
+	for _, v := range folderList {
+		fmt.Printf("bucket: %s\n", v)
+	}
+
+	objectName := "babySloth"
+
+	err = tracker2.CreatePath(tempFolder, true)
 	if err != nil {
 		panic(err)
 	}
@@ -110,7 +117,7 @@ func BootstrapAndServe(address string) {
 
 	found := false
 	for _, v := range folderlist {
-		fmt.Printf("Comparing %s and %s\n", v, tempFolder)
+		//fmt.Printf("Comparing %s and %s\n", v, tempFolder)
 		if v == tempFolder {
 			found = true
 			break
@@ -118,6 +125,17 @@ func BootstrapAndServe(address string) {
 	}
 	if found == false {
 		fmt.Printf("Could not find the directory we should have just created: %s\n", tempFolder)
+	}
+
+	// Time to create file!
+	err = tracker2.CreateObject(tempFolder, objectName, "/testdata/LargeSampleImages/baby sloth on a rail.jpg", "")
+	if err != nil {
+		panic(err)
+	}
+
+	err = tracker2.DeleteObject(tempFolder, objectName)
+	if err != nil {
+		panic(err)
 	}
 
 	err = tracker2.DeleteFolder(tempFolder)
@@ -138,6 +156,13 @@ func BootstrapAndServe(address string) {
 	if found == true {
 		fmt.Printf("We found our folder after it should have been deleted: %s\n", tempFolder)
 	}
+
+
+
+
+
+
+
 
 	fmt.Println("YAY - Made it to the end")
 

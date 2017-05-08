@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"github.com/minio/minio-go"
 	"sync"
+	"os"
 )
 
 // FilesystemTracker - Track a filesystem and keep it in sync
@@ -38,7 +39,7 @@ type minioTracker struct {
 }
 
 const (
-	minioLocation  = "https://play.minio.io:9000"
+	//minioLocation  = "https://play.minio.io:9000"
 	minioAddress   = "play.minio.io:9000"
 	minioAccessKey = "Q3AM3UQ867SPQQA43P2F"
 	minioSecretKey = "zuf+tfteSlswRu7BJ86wekitnifILbZam1KYY3TG"
@@ -73,6 +74,35 @@ func (tracker *minioTracker) verifyInitialized() (err error) {
 	return
 }
 
+//func (tracker *minioTracker) getEntryJSON(relativePath string) (entry EntryJSON, err error) {
+//	type EntryJSON struct {
+//		RelativePath string
+//		IsDirectory  bool
+//		Hash         []byte
+//		ModTime      time.Time
+//		Size         int64
+//		ServerName   string
+
+func (tracker *minioTracker) CreateObject(bucketName, objectName, sourceFile, contentType string) (err error) {
+	dir, err := os.Getwd()
+	filename := dir + "/" + sourceFile
+	info, err := os.Stat(filename)
+	if err != nil {
+		panic(err)
+	}
+
+	size, err := tracker.minioSDK.FPutObject(bucketName, objectName, filename, contentType)
+	if err != nil {
+		panic(err)
+	}
+
+	if info.Size() != size {
+		fmt.Println("Size missmatch")
+	}
+
+	return
+}
+
 func (tracker *minioTracker) CreatePath(pathName string, isDirectory bool) (err error) {
 	err = tracker.verifyInitialized()
 	if err != nil {
@@ -95,6 +125,19 @@ func (tracker *minioTracker) CreatePath(pathName string, isDirectory bool) (err 
 func (tracker *minioTracker) Rename(sourcePath string, destinationPath string, isDirectory bool) (err error) {
 	return
 }
+
+
+
+func (tracker *minioTracker) DeleteObject(bucket, name string) (err error) {
+	fmt.Printf("minioTracker::DeleteObject bucket: %s, name: %s\n", bucket, name)
+
+	err = tracker.minioSDK.RemoveObject(bucket, name)
+	if err != nil {
+		panic(err)
+	}
+	return
+}
+
 
 func (tracker *minioTracker) DeleteFolder(name string) (err error) {
 	err = tracker.verifyInitialized()
@@ -132,8 +175,8 @@ func (tracker *minioTracker) ListFolders(getLocks bool) (folderList []string, er
 
 	folderList = make([]string, len(bucketList))
 	for k, v := range bucketList {
-		bucket := bucketList[k]
-		fmt.Printf("Bucket: '%s' created on: %s\n", bucket.Name, bucket.CreationDate)
+		//bucket := bucketList[k]
+		//fmt.Printf("Bucket: '%s' created on: %s\n", bucket.Name, bucket.CreationDate)
 		folderList[k] = v.Name
 	}
 
