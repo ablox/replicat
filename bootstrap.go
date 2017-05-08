@@ -95,7 +95,6 @@ func BootstrapAndServe(address string) {
 	http.Handle("/config/", httpauth.SimpleBasicAuth("replicat", "isthecat")(http.HandlerFunc(configHandler)))
 	http.Handle("/upload/", httpauth.SimpleBasicAuth("replicat", "isthecat")(http.HandlerFunc(uploadHandler)))
 
-
 	// quick test of Minio
 	suffix := rand.Int31n(10000)
 	tempFolder := fmt.Sprintf("thisisanam3azingtest%05d", suffix)
@@ -125,11 +124,6 @@ func BootstrapAndServe(address string) {
 	if err != nil {
 		panic(err)
 	}
-
-
-	tracker2.DeleteFolder("thisisanam3azingtest00744")
-	tracker2.DeleteFolder("thisisanam3azingtest02982")
-	tracker2.DeleteFolder("thisisanam3azingtest09182")
 
 	folderlist, err = tracker2.ListFolders(false)
 

@@ -17,17 +17,17 @@
 package main
 
 import (
-	"sync"
-	"github.com/minio/minio-go"
 	"fmt"
+	"github.com/minio/minio-go"
+	"sync"
 )
 
 // FilesystemTracker - Track a filesystem and keep it in sync
 type minioTracker struct {
-	directory         string
-	contents          map[string]Entry
-	setup             bool
-	watcher           *ChangeHandler
+	directory string
+	contents  map[string]Entry
+	setup     bool
+	watcher   *ChangeHandler
 	//fsEventsChannel   chan notify.EventInfo
 	renamesInProgress map[uint64]renameInformation // map from inode to source/destination of items being moved
 	fsLock            sync.RWMutex
@@ -38,8 +38,8 @@ type minioTracker struct {
 }
 
 const (
-	minioLocation = "https://play.minio.io:9000"
-	minioAddress = "play.minio.io:9000"
+	minioLocation  = "https://play.minio.io:9000"
+	minioAddress   = "play.minio.io:9000"
 	minioAccessKey = "Q3AM3UQ867SPQQA43P2F"
 	minioSecretKey = "zuf+tfteSlswRu7BJ86wekitnifILbZam1KYY3TG"
 )
@@ -80,7 +80,7 @@ func (tracker *minioTracker) CreatePath(pathName string, isDirectory bool) (err 
 	}
 
 	if isDirectory == true {
-		err = tracker.minioSDK.MakeBucket(pathName, "" )
+		err = tracker.minioSDK.MakeBucket(pathName, "")
 		if err != nil {
 			fmt.Println(err)
 			return
@@ -133,7 +133,7 @@ func (tracker *minioTracker) ListFolders(getLocks bool) (folderList []string, er
 	folderList = make([]string, len(bucketList))
 	for k, v := range bucketList {
 		bucket := bucketList[k]
-		fmt.Printf("Bucket: '%s' created on: %s\n", bucket.Name, bucket.CreationDate )
+		fmt.Printf("Bucket: '%s' created on: %s\n", bucket.Name, bucket.CreationDate)
 		folderList[k] = v.Name
 	}
 
