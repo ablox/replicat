@@ -44,6 +44,7 @@ type ChangeHandler interface {
 
 // StorageTracker - Listener that allows you to tell the tracker what has happened elsewhere so it can mirror the changes
 type StorageTracker interface {
+	Initialize() (err error)
 	CreatePath(pathName string, isDirectory bool) error
 	Rename(sourcePath string, destinationPath string, isDirectory bool) (err error)
 	DeleteFolder(name string) (err error)
@@ -116,6 +117,10 @@ func NewDirectory() *Entry {
 // NewDirectoryFromFileInfo - creates and returns a new Directory based on a fileinfo structure
 func NewDirectoryFromFileInfo(info *os.FileInfo) *Entry {
 	return &Entry{*info, true, nil}
+}
+
+func (handler *FilesystemTracker) Initialize() (err error) {
+	return
 }
 
 // IncrementStatistic - Increment one of the named statistics on the tracker.

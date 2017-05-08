@@ -18,10 +18,12 @@ package main
 
 import (
 	"sync"
+	"github.com/minio/minio-go"
+	"fmt"
 )
 
 // FilesystemTracker - Track a filesystem and keep it in sync
-type MinioTracker struct {
+type minioTracker struct {
 	directory         string
 	contents          map[string]Entry
 	setup             bool
@@ -32,45 +34,133 @@ type MinioTracker struct {
 	server            *ReplicatServer
 	neededFiles       map[string]EntryJSON
 	stats             TrackerStats
+	minioSDK          *minio.Client
 }
 
-func (*MinioTracker) CreatePath(pathName string, isDirectory bool) (err error) {
+const (
+	minioLocation = "https://play.minio.io:9000"
+	minioAddress = "play.minio.io:9000"
+	minioAccessKey = "Q3AM3UQ867SPQQA43P2F"
+	minioSecretKey = "zuf+tfteSlswRu7BJ86wekitnifILbZam1KYY3TG"
+)
+
+func (tracker *minioTracker) Initialize() (err error) {
+	if tracker.setup == true {
+		return
+	}
+
+	// Use a secure connection.
+	ssl := true
+
+	// Initialize minio client object.
+	tracker.minioSDK, err = minio.New(minioAddress, minioAccessKey, minioSecretKey, ssl)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	fmt.Printf("IT WORKED: %#v\n", tracker.minioSDK)
+
+	tracker.setup = true
 	return
 }
 
-func (*MinioTracker) Rename(sourcePath string, destinationPath string, isDirectory bool) (err error) {
+func (tracker *minioTracker) verifyInitialized() (err error) {
+	if tracker.setup == false {
+		tracker.Initialize()
+	}
+
 	return
 }
 
-func (*MinioTracker) DeleteFolder(name string) (err error) {
+func (tracker *minioTracker) CreatePath(pathName string, isDirectory bool) (err error) {
+	err = tracker.verifyInitialized()
+	if err != nil {
+		panic(err)
+	}
+
+	if isDirectory == true {
+		err = tracker.minioSDK.MakeBucket(pathName, "" )
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+	} else {
+		panic("Not implemented yet")
+	}
+
 	return
 }
 
-func (*MinioTracker) ListFolders(getLocks bool) (folderList []string) {
+func (tracker *minioTracker) Rename(sourcePath string, destinationPath string, isDirectory bool) (err error) {
 	return
 }
 
-func (*MinioTracker) SendCatalog() {
+func (tracker *minioTracker) DeleteFolder(name string) (err error) {
+	err = tracker.verifyInitialized()
+	if err != nil {
+		panic(err)
+	}
+
+	err = tracker.minioSDK.RemoveBucket(name)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	// todo add support for this to be either a bucket or an object based on the metadata
 	return
 }
 
-func (*MinioTracker) ProcessCatalog(event Event) {
+//type BucketInfo struct {
+//	// The name of the bucket.
+//	Name string `json:"name"`
+//	// Date the bucket was created.
+//	CreationDate time.Time `json:"creationDate"`
+//}
+
+func (tracker *minioTracker) ListFolders(getLocks bool) (folderList []string, err error) {
+	err = tracker.verifyInitialized()
+	if err != nil {
+		panic(err)
+	}
+
+	bucketList, err := tracker.minioSDK.ListBuckets()
+	if err != nil {
+		panic(err)
+	}
+
+	folderList = make([]string, len(bucketList))
+	for k, v := range bucketList {
+		bucket := bucketList[k]
+		fmt.Printf("Bucket: '%s' created on: %s\n", bucket.Name, bucket.CreationDate )
+		folderList[k] = v.Name
+	}
+
 	return
 }
 
-func (*MinioTracker) sendRequestedPaths(pathEntries map[string]EntryJSON, targetServerName string) {
+func (tracker *minioTracker) SendCatalog() {
 	return
 }
 
-func (*MinioTracker) getEntryJSON(relativePath string) (entry EntryJSON, err error) {
+func (tracker *minioTracker) ProcessCatalog(event Event) {
 	return
 }
 
-func (*MinioTracker) GetStatistics() (stats map[string]string) {
+func (tracker *minioTracker) sendRequestedPaths(pathEntries map[string]EntryJSON, targetServerName string) {
 	return
 }
 
-func (*MinioTracker) IncrementStatistic(name string, delta int) {
+func (tracker *minioTracker) getEntryJSON(relativePath string) (entry EntryJSON, err error) {
+	return
+}
+
+func (tracker *minioTracker) GetStatistics() (stats map[string]string) {
+	return
+}
+
+func (tracker *minioTracker) IncrementStatistic(name string, delta int) {
 	return
 }
 

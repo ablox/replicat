@@ -95,6 +95,62 @@ func BootstrapAndServe(address string) {
 	http.Handle("/config/", httpauth.SimpleBasicAuth("replicat", "isthecat")(http.HandlerFunc(configHandler)))
 	http.Handle("/upload/", httpauth.SimpleBasicAuth("replicat", "isthecat")(http.HandlerFunc(uploadHandler)))
 
+
+	// quick test of Minio
+	suffix := rand.Int31n(10000)
+	tempFolder := fmt.Sprintf("thisisanam3azingtest%05d", suffix)
+	fmt.Printf("temporary path name: %s\n", tempFolder)
+	tracker2 := &minioTracker{}
+	tracker2.Initialize()
+	err := tracker2.CreatePath(tempFolder, true)
+	if err != nil {
+		panic(err)
+	}
+
+	folderlist, err := tracker2.ListFolders(false)
+
+	found := false
+	for _, v := range folderlist {
+		fmt.Printf("Comparing %s and %s\n", v, tempFolder)
+		if v == tempFolder {
+			found = true
+			break
+		}
+	}
+	if found == false {
+		fmt.Printf("Could not find the directory we should have just created: %s\n", tempFolder)
+	}
+
+	err = tracker2.DeleteFolder(tempFolder)
+	if err != nil {
+		panic(err)
+	}
+
+
+	tracker2.DeleteFolder("thisisanam3azingtest00744")
+	tracker2.DeleteFolder("thisisanam3azingtest02982")
+	tracker2.DeleteFolder("thisisanam3azingtest09182")
+
+	folderlist, err = tracker2.ListFolders(false)
+
+	found = false
+	for _, v := range folderlist {
+		if v == tempFolder {
+			found = true
+			break
+		}
+	}
+
+	if found == true {
+		fmt.Printf("We found our folder after it should have been deleted: %s\n", tempFolder)
+	}
+
+	fmt.Println("YAY - Made it to the end")
+
+	if tracker2 != nil {
+		panic("nobody knows the trouble I've seen?\n")
+	}
+
 	lsnr, err := net.Listen("tcp4", address)
 	if err != nil {
 		panic(fmt.Sprintf("Error listening: %v\nAddress: %s\n", err, address))
