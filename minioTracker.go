@@ -21,6 +21,7 @@ import (
 	"github.com/minio/minio-go"
 	"os"
 	"sync"
+	"strings"
 )
 
 // FilesystemTracker - Track a filesystem and keep it in sync
@@ -126,8 +127,39 @@ func (tracker *minioTracker) Rename(sourcePath string, destinationPath string, i
 	return
 }
 
+func (tracker *minioTracker) RenameObject(bucketName string, objectName string, sourceObjectName string) (err error) {
+	fmt.Printf("minioTracker::Rename object dest bucket: %s dest name: %s, source: %s\n", bucketName, objectName, sourceObjectName)
+	err = tracker.verifyInitialized()
+	if err != nil {
+		panic(err)
+	}
+
+	// todo find out if this changes on windows
+	err = tracker.minioSDK.CopyObject(bucketName, objectName, sourceObjectName, minio.NewCopyConditions())
+	if err != nil {
+		panic(err)
+	}
+
+	// find the first instance of a path separator
+	splitResults := strings.SplitN(sourceObjectName, string(os.PathSeparator), 2)
+	if len(splitResults) != 2 {
+		panic(fmt.Sprintf("Could not separate (%s) bucket info from object name. Source: %s output: %#v\n", string(os.PathSeparator), sourceObjectName, splitResults))
+	}
+
+	err = tracker.minioSDK.RemoveObject(splitResults[0], splitResults[1])
+	if err != nil {
+		panic(err)
+	}
+
+	return
+}
+
 func (tracker *minioTracker) DeleteObject(bucket, name string) (err error) {
 	fmt.Printf("minioTracker::DeleteObject bucket: %s, name: %s\n", bucket, name)
+	err = tracker.verifyInitialized()
+	if err != nil {
+		panic(err)
+	}
 
 	err = tracker.minioSDK.RemoveObject(bucket, name)
 	if err != nil {

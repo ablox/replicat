@@ -107,6 +107,7 @@ func BootstrapAndServe(address string) {
 	//}
 
 	objectName := "babySloth"
+	secondObjectName := "cuteBabySloth"
 
 	err := tracker2.CreatePath(tempFolder, true)
 	if err != nil {
@@ -133,9 +134,19 @@ func BootstrapAndServe(address string) {
 		panic(err)
 	}
 
+//Just have list buckets and delete working (buckets and objects). Also have create object from file working.
+//Now it is time to have a little more fun. Finish out the methods and start to add watchers
 
+	time.Sleep(time.Second * 30)
 
-	err = tracker2.DeleteObject(tempFolder, objectName)
+	err = tracker2.RenameObject(tempFolder, secondObjectName, tempFolder + "/" + objectName)
+	if err != nil {
+		panic(err)
+	}
+
+	time.Sleep(time.Second * 15)
+
+	err = tracker2.DeleteObject(tempFolder, secondObjectName)
 	if err != nil {
 		panic(err)
 	}
@@ -145,7 +156,7 @@ func BootstrapAndServe(address string) {
 		panic(err)
 	}
 
-	folderlist, err = tracker2.ListFolders(false)
+	folderlist, err = tracker2.ListFolders(true)
 
 	found = false
 	for _, v := range folderlist {
