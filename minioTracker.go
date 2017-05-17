@@ -22,6 +22,7 @@ import (
 	"os"
 	"strings"
 	"sync"
+	"errors"
 )
 
 // FilesystemTracker - Track a filesystem and keep it in sync
@@ -159,7 +160,7 @@ func splitBucketObjectName(bucketObjectName string) (bucketName string, objectNa
 	// find the first instance of a path separator
 	splitResults := strings.SplitN(bucketObjectName, "/", 2)
 	if len(splitResults) != 2 || len(splitResults[0]) == 0 || len(splitResults[1]) == 0 {
-		err = error(fmt.Sprintf("minioTracker:splitBucketObjectNames panic Could not separate (%s) bucket info from object name. Source: %s output: %#v\n", string(os.PathSeparator), bucketObjectName, splitResults))
+		err = errors.New(fmt.Sprintf("minioTracker:splitBucketObjectNames panic Could not separate (%s) bucket info from object name. Source: %s output: %#v\n", string(os.PathSeparator), bucketObjectName, splitResults))
 		return
 	}
 
@@ -171,7 +172,7 @@ func splitBucketObjectName(bucketObjectName string) (bucketName string, objectNa
 // joinBucketNames - Take a bucket name and object name and combine them into one string
 func joinBucketObjectName(bucketName string, objectName string) (bucketObjectName string, err error) {
 	if len(bucketName) < 1 || len(objectName) < 1 {
-		err = error(fmt.Sprintf("minioTracker:joinBucketObjectName panic Could not join bucket: %s object: %s\n", bucketName, objectName))
+		err = errors.New(fmt.Sprintf("minioTracker:joinBucketObjectName panic Could not join bucket: %s object: %s\n", bucketName, objectName))
 		return
 	}
 
