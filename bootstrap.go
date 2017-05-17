@@ -154,12 +154,31 @@ func exerciseMinio() {
 	objectName := "babySloth"
 	secondObjectName := "cuteBabySloth"
 
+
+	// Create a done channel to control 'ListenBucketNotification' go routine.
+	doneCh := make(chan struct{})
+
+	// Indicate a background go-routine to exit cleanly upon return.
+	defer close(doneCh)
+
+	allEvents := []string{
+		"s3:ObjectCreated:*",
+		"s3:ObjectAccessed:*",
+		"s3:ObjectRemoved:*",
+	}
+
 	err := tracker2.CreatePath(tempFolder, true)
 	if err != nil {
 		panic(err)
 	}
 
+	go watchBucketTest(tracker2, tempFolder, allEvents, doneCh)
+
 	folderlist, err := tracker2.ListFolders(false)
+
+	for _, bucket := range folderlist {
+		go watchBucketTest(tracker2, bucket, allEvents, doneCh)
+	}
 
 	found := false
 	for _, v := range folderlist {
@@ -216,10 +235,22 @@ func exerciseMinio() {
 
 	fmt.Println("YAY - Made it to the end")
 
+	time.Sleep(time.Duration(60 * time.Second))
+
 	if tracker2 != nil {
 		panic("nobody knows the trouble I've seen?\n")
 	}
 
+}
+
+func watchBucketTest(tracker2 *minioTracker, tempFolder string, allEvents []string, doneCh chan struct {}) {
+	// Listen for bucket notifications on "mybucket" filtered by prefix, suffix and events.
+	for notificationInfo := range tracker2.minioSDK.ListenBucketNotification(tempFolder, "", "", allEvents, doneCh) {
+		if notificationInfo.Err != nil {
+			log.Fatalln(notificationInfo.Err)
+		}
+		log.Printf("S3 NOTIFICATION: %s\n", notificationInfo)
+	}
 }
 
 const (
