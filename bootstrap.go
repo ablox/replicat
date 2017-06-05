@@ -95,7 +95,7 @@ func BootstrapAndServe(address string) {
 	http.Handle("/config/", httpauth.SimpleBasicAuth("replicat", "isthecat")(http.HandlerFunc(configHandler)))
 	http.Handle("/upload/", httpauth.SimpleBasicAuth("replicat", "isthecat")(http.HandlerFunc(uploadHandler)))
 
-	exerciseMinio()
+	//exerciseMinio()
 
 	lsnr, err := net.Listen("tcp4", address)
 	if err != nil {
