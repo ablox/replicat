@@ -40,7 +40,7 @@ type MinioTracker struct {
 	minioSDK          *minio.Client
 }
 
-var _ StorageTracker = (*FilesystemTracker)(nil)
+// Make sure we can adhere to the StorageTracker interface
 var _ StorageTracker = (*MinioTracker)(nil)
 
 const (

@@ -64,6 +64,9 @@ type StorageTracker interface {
 	cleanupAndDelete()
 }
 
+// Make sure we can adhere to the StorageTracker interface
+var _ StorageTracker = (*FilesystemTracker)(nil)
+
 // FilesystemTracker - Track a filesystem and keep it in sync
 type FilesystemTracker struct {
 	directory         string
