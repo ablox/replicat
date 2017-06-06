@@ -149,7 +149,6 @@ func BootstrapAndServe(address string) {
 	keepConfigCurrent()
 }
 
-
 const (
 	managerOverdueSeconds = 30
 	managerCheckSleepTime = 45

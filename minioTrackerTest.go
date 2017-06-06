@@ -16,11 +16,11 @@
 package main
 
 import (
-	"runtime"
 	"fmt"
-	"time"
 	"log"
 	"math/rand"
+	"runtime"
+	"time"
 )
 
 func createMinioTracker(prefix string) (tracker *MinioTracker) {

@@ -16,9 +16,9 @@
 package main
 
 import (
-	"time"
-	"testing"
 	"runtime/debug"
+	"testing"
+	"time"
 )
 
 func causeFailOnPanic(t *testing.T) {
@@ -31,6 +31,7 @@ func causeFailOnPanic(t *testing.T) {
 		t.Fatal(msg)
 	}
 }
+
 // WaitForFilesystem - a helper function that will politely wait until the helper argument function evaluates to the value of waitingFor.
 // this is great for waiting for the tracker to catch up to the filesystem in tests, for example.
 func WaitForFilesystem(tracker *FilesystemTracker, folder string, waitingFor bool, helper func(tracker *FilesystemTracker, folder string) bool) bool {

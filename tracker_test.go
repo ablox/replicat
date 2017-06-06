@@ -21,8 +21,6 @@ import (
 	"testing"
 )
 
-
-
 //REPLICAT_STATUS_INITIAL_SCAN
 //func TestTrackerStatusAndScanInitialFiles(t *testing.T) {
 //	defer causeFailOnPanic(t)

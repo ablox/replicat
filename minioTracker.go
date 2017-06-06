@@ -28,17 +28,17 @@ import (
 
 // MinioTracker - Track a filesystem and keep it in sync
 type MinioTracker struct {
-	bucketName         string
-	contents          map[string]Entry
-	setup             bool
+	bucketName string
+	contents   map[string]Entry
+	setup      bool
 	//watcher           *ChangeHandler
 	//renamesInProgress map[uint64]renameInformation // map from inode to source/destination of items being moved
-	fsLock            sync.RWMutex
-	server            *ReplicatServer
-	neededFiles       map[string]EntryJSON
-	stats             TrackerStats
-	minioSDK          *minio.Client
-	doneCh	  	  chan struct{}
+	fsLock      sync.RWMutex
+	server      *ReplicatServer
+	neededFiles map[string]EntryJSON
+	stats       TrackerStats
+	minioSDK    *minio.Client
+	doneCh      chan struct{}
 }
 
 // Make sure we can adhere to the StorageTracker interface
@@ -135,9 +135,9 @@ func (tracker *MinioTracker) verifyInitialized() (err error) {
 //		ServerName   string
 
 func (tracker *MinioTracker) CreateObject(bucketName, objectName, sourceFile, contentType string) (err error) {
-//todo rectify this. Filesystem tracker assumes the base directory of the tracker for source file. Not cool.
-//	dir, err := os.Getwd()
-//	fmt.Printf("Minio Tracker in Create object. sourceFile is: %s cwd is: %s \n", sourceFile, dir)
+	//todo rectify this. Filesystem tracker assumes the base directory of the tracker for source file. Not cool.
+	//	dir, err := os.Getwd()
+	//	fmt.Printf("Minio Tracker in Create object. sourceFile is: %s cwd is: %s \n", sourceFile, dir)
 	fmt.Printf("Minio Tracker in Create object. sourceFile is: %s\n", sourceFile)
 
 	info, err := os.Stat(sourceFile)

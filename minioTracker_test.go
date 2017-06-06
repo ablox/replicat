@@ -16,17 +16,16 @@
 package main
 
 import (
-	"testing"
 	"fmt"
-	"path/filepath"
 	"os"
+	"path/filepath"
+	"testing"
 	//"time"
 	//"log"
 	//"math/rand"
 	//"io/ioutil"
 	"time"
 )
-
 
 func TestMinioSmallObjectCreationAndDeletion(t *testing.T) {
 	defer causeFailOnPanic(t)

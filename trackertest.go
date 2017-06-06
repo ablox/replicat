@@ -18,6 +18,7 @@ package main
 import (
 	"fmt"
 	"io/ioutil"
+	"math/rand"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -25,9 +26,7 @@ import (
 	"sort"
 	"strconv"
 	"time"
-	"math/rand"
 )
-
 
 func createTracker(prefix string) (tracker *FilesystemTracker) {
 	rand.Seed(int64(time.Now().Nanosecond()))
