@@ -145,7 +145,7 @@ func trackerTestEmptyDirectoryMovesInOutAround() {
 	}
 	tracker.printLockable(true)
 
-	if !WaitFor(tracker, folderName, true, waitForEmptyRenamesInProgress) {
+	if !WaitForFilesystem(tracker, folderName, true, waitForEmptyRenamesInProgress) {
 		tracker.printLockable(true)
 		panic(fmt.Sprint("11 tracker has renames in progress still"))
 	}
@@ -312,7 +312,7 @@ func trackerTestSmallFileCreationAndRename() {
 		panic(fmt.Sprintf("%s not found in contents\ncontents: %v\n", secondFilename, tracker.contents))
 	}
 
-	if !WaitFor(tracker, "", true, waitForEmptyRenamesInProgress) {
+	if !WaitForFilesystem(tracker, "", true, waitForEmptyRenamesInProgress) {
 		panic(fmt.Sprint("6 tracker has renames in progress still"))
 	}
 

@@ -910,9 +910,9 @@ func (tracker *MinioTracker) cleanupAndDelete() {
 //	TRACKER_RENAME_TIMEOUT = time.Millisecond * 250
 //)
 //
-//// WaitFor - a helper function that will politely wait until the helper argument function evaluates to the value of waitingFor.
+//// WaitForFilesystem - a helper function that will politely wait until the helper argument function evaluates to the value of waitingFor.
 //// this is great for waiting for the tracker to catch up to the filesystem in tests, for example.
-//func WaitFor(tracker *FilesystemTracker, folder string, waitingFor bool, helper func(tracker *FilesystemTracker, folder string) bool) bool {
+//func WaitForFilesystem(tracker *FilesystemTracker, folder string, waitingFor bool, helper func(tracker *FilesystemTracker, folder string) bool) bool {
 //	roundTrips := 0
 //	for {
 //		if waitingFor == helper(tracker, folder) {

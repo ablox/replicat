@@ -15,11 +15,25 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 package main
 
-import "time"
+import (
+	"time"
+	"testing"
+	"runtime/debug"
+)
 
-// WaitFor - a helper function that will politely wait until the helper argument function evaluates to the value of waitingFor.
+func causeFailOnPanic(t *testing.T) {
+	// recover from panic if one occurred. Set err to nil otherwise.
+	rec := recover()
+	if rec != nil {
+		debug.PrintStack()
+		//stack := rec.Stack()
+		msg := rec.(string)
+		t.Fatal(msg)
+	}
+}
+// WaitForFilesystem - a helper function that will politely wait until the helper argument function evaluates to the value of waitingFor.
 // this is great for waiting for the tracker to catch up to the filesystem in tests, for example.
-func WaitFor(tracker *FilesystemTracker, folder string, waitingFor bool, helper func(tracker *FilesystemTracker, folder string) bool) bool {
+func WaitForFilesystem(tracker *FilesystemTracker, folder string, waitingFor bool, helper func(tracker *FilesystemTracker, folder string) bool) bool {
 	roundTrips := 0
 	for {
 		if waitingFor == helper(tracker, folder) {

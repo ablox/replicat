@@ -16,12 +16,11 @@
 package main
 
 import (
-	"fmt"
-	"os"
-	"testing"
+	//"fmt"
+	//"os"
+	//"runtime/debug"
+	//"testing"
 )
-
-
 
 //REPLICAT_STATUS_INITIAL_SCAN
 //func TestTrackerStatusAndScanInitialFiles(t *testing.T) {
@@ -34,6 +33,7 @@ import (
 //	trackerTestDual()
 //}
 
+/*
 func TestTrackerTestSmallFileInSubfolder(t *testing.T) {
 	defer causeFailOnPanic(t)
 	trackerTestSmallFileInSubfolder()
@@ -97,3 +97,4 @@ func TestNestedFastDirectoryCreation(t *testing.T) {
 	defer causeFailOnPanic(t)
 	trackerTestNestedFastDirectoryCreation()
 }
+*/
