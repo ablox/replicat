@@ -104,26 +104,32 @@ func BootstrapAndServe(address string) {
 	fmt.Println("Listening on:", lsnr.Addr().String())
 
 	logOnlyHandler := LogOnlyChangeHandler{}
-	tracker := FilesystemTracker{}
+	var tracker StorageTracker = &FilesystemTracker{}
+
 	fmt.Printf("Looking up settings for node: %s\n", globalSettings.Name)
 
 	directory := globalSettings.Directory
 
 	fmt.Printf("GlobalSettings directory retrieved for this node: %s\n", directory)
-	server := &ReplicatServer{Name: globalSettings.Name, ClusterKey: globalSettings.ClusterKey, Address: lsnr.Addr().String(), storage: &tracker, Status: REPLICAT_STATUS_INITIAL_SCAN}
+	server := &ReplicatServer{Name: globalSettings.Name, ClusterKey: globalSettings.ClusterKey, Address: lsnr.Addr().String(), storage: tracker, Status: REPLICAT_STATUS_INITIAL_SCAN}
 	serverMap[globalSettings.Name] = server
-	tracker.init(directory, server)
+	tracker.Initialize(directory, server)
 
 	go func(tracker StorageTracker) {
 		for true {
 			tracker.GetStatistics()
 			time.Sleep(30 * time.Second)
 		}
-	}(&tracker)
+	}(tracker)
 
 	var c ChangeHandler
 	c = &logOnlyHandler
-	tracker.watchDirectory(&c)
+
+	switch t := tracker.(type) {
+	case *FilesystemTracker:
+		t.watchDirectory(&c)
+		//func (handler *FilesystemTracker) watchDirectory(watcher *ChangeHandler) {
+	}
 
 	go func(listener net.Listener) {
 		err = http.Serve(listener, nil)
@@ -148,12 +154,11 @@ func exerciseMinio() {
 	suffix := rand.Int31n(10000)
 	tempFolder := fmt.Sprintf("replicat-test-%05d", suffix)
 	fmt.Printf("temporary path name: %s\n", tempFolder)
-	tracker2 := &minioTracker{}
-	tracker2.Initialize()
+	tracker2 := &MinioTracker{}
+	tracker2.Initialize("", nil)
 
 	objectName := "babySloth"
 	secondObjectName := "cuteBabySloth"
-
 
 	// Create a done channel to control 'ListenBucketNotification' go routine.
 	doneCh := make(chan struct{})
@@ -243,7 +248,7 @@ func exerciseMinio() {
 
 }
 
-func watchBucketTest(tracker2 *minioTracker, tempFolder string, allEvents []string, doneCh chan struct {}) {
+func watchBucketTest(tracker2 *MinioTracker, tempFolder string, allEvents []string, doneCh chan struct{}) {
 	// Listen for bucket notifications on "mybucket" filtered by prefix, suffix and events.
 	for notificationInfo := range tracker2.minioSDK.ListenBucketNotification(tempFolder, "", "", allEvents, doneCh) {
 		if notificationInfo.Err != nil {

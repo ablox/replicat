@@ -17,21 +17,21 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"github.com/minio/minio-go"
 	"os"
 	"strings"
 	"sync"
-	"errors"
+	"sort"
 )
 
-// FilesystemTracker - Track a filesystem and keep it in sync
-type minioTracker struct {
+// MinioTracker - Track a filesystem and keep it in sync
+type MinioTracker struct {
 	directory string
 	contents  map[string]Entry
 	setup     bool
 	watcher   *ChangeHandler
-	//fsEventsChannel   chan notify.EventInfo
 	renamesInProgress map[uint64]renameInformation // map from inode to source/destination of items being moved
 	fsLock            sync.RWMutex
 	server            *ReplicatServer
@@ -40,6 +40,9 @@ type minioTracker struct {
 	minioSDK          *minio.Client
 }
 
+var _ StorageTracker = (*FilesystemTracker)(nil)
+var _ StorageTracker = (*MinioTracker)(nil)
+
 const (
 	//minioLocation  = "https://play.minio.io:9000"
 	minioAddress   = "play.minio.io:9000"
@@ -47,16 +50,58 @@ const (
 	minioSecretKey = "zuf+tfteSlswRu7BJ86wekitnifILbZam1KYY3TG"
 )
 
-func (tracker *minioTracker) Initialize() (err error) {
+//func (handler *MinioTracker) Initialize(directory string, server *ReplicatServer) {
+//	fmt.Println("FilesystemTracker:init")
+//	handler.fsLock.Lock()
+//	defer handler.fsLock.Unlock()
+//	fmt.Println("FilesystemTracker:/init")
+//	defer fmt.Println("FilesystemTracker://init")
+//
+//	if handler.setup {
+//		return
+//	}
+//
+//	fmt.Printf("FilesystemTracker:init called with %s\n", directory)
+//	handler.directory = directory
+//
+//	// Make the channel buffered to ensure no event is dropped. Notify will drop
+//	// an event if the receiver is not able to keep up the sending pace.
+//	handler.fsEventsChannel = make(chan notify.EventInfo, 10000)
+//
+//	// Update the path that traffic is served from to be the filesystem canonical path. This will allow the event folders that come in to match what we have.
+//	fullPath := validatePath(directory)
+//	handler.directory = fullPath
+//
+//	if fullPath != globalSettings.Directory {
+//		fmt.Printf("Updating serving directory to: %s\n", fullPath)
+//		handler.directory = fullPath
+//	}
+//
+//	handler.renamesInProgress = make(map[uint64]renameInformation, 0)
+//
+//	fmt.Println("Setting up filesystemTracker!")
+//	handler.printLockable(false)
+//
+//	fmt.Println("FilesystemTracker:init starting folder scan looking for initial files")
+//	err := handler.scanFolders()
+//	if err != nil {
+//		panic(err)
+//	}
+//
+//	// Set the status to be done with initial scan
+//	server.SetStatus(REPLICAT_STATUS_JOINING_CLUSTER)
+//	handler.printLockable(false)
+//	handler.setup = true
+//}
+
+//todo fix up the miniotracker initialization
+func (tracker *MinioTracker) Initialize(directory string, server *ReplicatServer) (err error) {
 	if tracker.setup == true {
 		return
 	}
 
-	// Use a secure connection.
-	ssl := true
-
 	// Initialize minio client object.
-	tracker.minioSDK, err = minio.New(minioAddress, minioAccessKey, minioSecretKey, ssl)
+	tracker.minioSDK, err = minio.New(minioAddress, minioAccessKey, minioSecretKey, true)
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -68,15 +113,15 @@ func (tracker *minioTracker) Initialize() (err error) {
 	return
 }
 
-func (tracker *minioTracker) verifyInitialized() (err error) {
+func (tracker *MinioTracker) verifyInitialized() (err error) {
 	if tracker.setup == false {
-		tracker.Initialize()
+		panic("verifyInitialized called when the object was not properly initialized.")
 	}
 
 	return
 }
 
-//func (tracker *minioTracker) getEntryJSON(relativePath string) (entry EntryJSON, err error) {
+//func (tracker *MinioTracker) getEntryJSON(relativePath string) (entry EntryJSON, err error) {
 //	type EntryJSON struct {
 //		RelativePath string
 //		IsDirectory  bool
@@ -85,7 +130,7 @@ func (tracker *minioTracker) verifyInitialized() (err error) {
 //		Size         int64
 //		ServerName   string
 
-func (tracker *minioTracker) CreateObject(bucketName, objectName, sourceFile, contentType string) (err error) {
+func (tracker *MinioTracker) CreateObject(bucketName, objectName, sourceFile, contentType string) (err error) {
 	dir, err := os.Getwd()
 	filename := dir + "/" + sourceFile
 	info, err := os.Stat(filename)
@@ -105,7 +150,7 @@ func (tracker *minioTracker) CreateObject(bucketName, objectName, sourceFile, co
 	return
 }
 
-func (tracker *minioTracker) CreatePath(pathName string, isDirectory bool) (err error) {
+func (tracker *MinioTracker) CreatePath(pathName string, isDirectory bool) (err error) {
 	err = tracker.verifyInitialized()
 	if err != nil {
 		panic(err)
@@ -124,13 +169,13 @@ func (tracker *minioTracker) CreatePath(pathName string, isDirectory bool) (err 
 	return
 }
 
-func (tracker *minioTracker) Rename(sourcePath string, destinationPath string, isDirectory bool) (err error) {
+func (tracker *MinioTracker) Rename(sourcePath string, destinationPath string, isDirectory bool) (err error) {
 
 	return
 }
 
-func (tracker *minioTracker) RenameObject(bucketName string, objectName string, sourceObjectName string) (err error) {
-	fmt.Printf("minioTracker::Rename object dest bucket: %s dest name: %s, source: %s\n", bucketName, objectName, sourceObjectName)
+func (tracker *MinioTracker) RenameObject(bucketName string, objectName string, sourceObjectName string) (err error) {
+	fmt.Printf("MinioTracker::Rename object dest bucket: %s dest name: %s, source: %s\n", bucketName, objectName, sourceObjectName)
 	err = tracker.verifyInitialized()
 	if err != nil {
 		panic(err)
@@ -160,7 +205,7 @@ func splitBucketObjectName(bucketObjectName string) (bucketName string, objectNa
 	// find the first instance of a path separator
 	splitResults := strings.SplitN(bucketObjectName, "/", 2)
 	if len(splitResults) != 2 || len(splitResults[0]) == 0 || len(splitResults[1]) == 0 {
-		err = errors.New(fmt.Sprintf("minioTracker:splitBucketObjectNames panic Could not separate (%s) bucket info from object name. Source: %s output: %#v\n", string(os.PathSeparator), bucketObjectName, splitResults))
+		err = errors.New(fmt.Sprintf("MinioTracker:splitBucketObjectNames panic Could not separate (%s) bucket info from object name. Source: %s output: %#v\n", string(os.PathSeparator), bucketObjectName, splitResults))
 		return
 	}
 
@@ -172,7 +217,7 @@ func splitBucketObjectName(bucketObjectName string) (bucketName string, objectNa
 // joinBucketNames - Take a bucket name and object name and combine them into one string
 func joinBucketObjectName(bucketName string, objectName string) (bucketObjectName string, err error) {
 	if len(bucketName) < 1 || len(objectName) < 1 {
-		err = errors.New(fmt.Sprintf("minioTracker:joinBucketObjectName panic Could not join bucket: %s object: %s\n", bucketName, objectName))
+		err = errors.New(fmt.Sprintf("MinioTracker:joinBucketObjectName panic Could not join bucket: %s object: %s\n", bucketName, objectName))
 		return
 	}
 
@@ -180,8 +225,8 @@ func joinBucketObjectName(bucketName string, objectName string) (bucketObjectNam
 	return
 }
 
-func (tracker *minioTracker) DeleteObject(bucket, name string) (err error) {
-	fmt.Printf("minioTracker::DeleteObject bucket: %s, name: %s\n", bucket, name)
+func (tracker *MinioTracker) DeleteObject(bucket, name string) (err error) {
+	fmt.Printf("MinioTracker::DeleteObject bucket: %s, name: %s\n", bucket, name)
 	err = tracker.verifyInitialized()
 	if err != nil {
 		panic(err)
@@ -194,7 +239,7 @@ func (tracker *minioTracker) DeleteObject(bucket, name string) (err error) {
 	return
 }
 
-func (tracker *minioTracker) DeleteFolder(name string) (err error) {
+func (tracker *MinioTracker) DeleteFolder(name string) (err error) {
 	err = tracker.verifyInitialized()
 	if err != nil {
 		panic(err)
@@ -210,7 +255,7 @@ func (tracker *minioTracker) DeleteFolder(name string) (err error) {
 	return
 }
 
-func (tracker *minioTracker) ListFolders(getLocks bool) (folderList []string, err error) {
+func (tracker *MinioTracker) ListFolders(getLocks bool) (folderList []string, err error) {
 	err = tracker.verifyInitialized()
 	if err != nil {
 		panic(err)
@@ -231,27 +276,27 @@ func (tracker *minioTracker) ListFolders(getLocks bool) (folderList []string, er
 	return
 }
 
-func (tracker *minioTracker) SendCatalog() {
+func (tracker *MinioTracker) SendCatalog() {
 	return
 }
 
-func (tracker *minioTracker) ProcessCatalog(event Event) {
+func (tracker *MinioTracker) ProcessCatalog(event Event) {
 	return
 }
 
-func (tracker *minioTracker) sendRequestedPaths(pathEntries map[string]EntryJSON, targetServerName string) {
+func (tracker *MinioTracker) sendRequestedPaths(pathEntries map[string]EntryJSON, targetServerName string) {
 	return
 }
 
-func (tracker *minioTracker) getEntryJSON(relativePath string) (entry EntryJSON, err error) {
+func (tracker *MinioTracker) getEntryJSON(relativePath string) (entry EntryJSON, err error) {
 	return
 }
 
-func (tracker *minioTracker) GetStatistics() (stats map[string]string) {
+func (tracker *MinioTracker) GetStatistics() (stats map[string]string) {
 	return
 }
 
-func (tracker *minioTracker) IncrementStatistic(name string, delta int) {
+func (tracker *MinioTracker) IncrementStatistic(name string, delta int) {
 	return
 }
 
@@ -289,44 +334,56 @@ func (tracker *minioTracker) IncrementStatistic(name string, delta int) {
 //		}
 //	}()
 //}
-//
-//func (handler *FilesystemTracker) printTracker() {
-//	handler.printLockable(true)
-//}
-//
-//func (handler *FilesystemTracker) startTest(name string) {
-//	event := Event{Name: "startTest", Path: name, Source: globalSettings.Name}
-//	SendEvent(event, "")
-//}
-//
-//func (handler *FilesystemTracker) endTest(name string) {
-//	event := Event{Name: "endTest", Path: name, Source: globalSettings.Name}
-//	SendEvent(event, "")
-//}
-//
-//func (handler *FilesystemTracker) printLockable(lock bool) {
-//	if lock {
-//		fmt.Println("FilesystemTracker:print")
-//		handler.fsLock.RLock()
-//		fmt.Println("FilesystemTracker:/print")
-//		defer handler.fsLock.RUnlock()
-//		defer fmt.Println("FilesystemTracker://print")
-//	}
-//
-//	folders := make([]string, 0, len(handler.contents))
-//	for dir := range handler.contents {
-//		folders = append(folders, dir)
-//	}
-//	sort.Strings(folders)
-//
-//	fmt.Println("~~~~~~~~~~~~~~~~~~~~~~~")
-//	fmt.Printf("~~~~%s Tracker report setup(%v)\n", handler.directory, handler.setup)
-//	fmt.Printf("~~~~contents: %v\n", handler.contents)
-//	fmt.Printf("~~~~folders: %v\n", folders)
-//	fmt.Printf("~~~~renames in progress: %v\n", handler.renamesInProgress)
-//	fmt.Println("~~~~~~~~~~~~~~~~~~~~~~~")
-//}
-//
+
+func (tracker *MinioTracker) printLockable(lock bool) {
+	if lock {
+		fmt.Println("MinioTracker:print")
+		tracker.fsLock.RLock()
+		fmt.Println("MinioTracker:/print")
+		defer tracker.fsLock.RUnlock()
+		defer fmt.Println("MinioTracker://print")
+	}
+
+	folders := make([]string, 0, len(tracker.contents))
+	for dir := range tracker.contents {
+		folders = append(folders, dir)
+	}
+	sort.Strings(folders)
+
+	fmt.Println("~~~~~~~~~~~~~~~~~~~~~~~")
+	fmt.Printf("~~~~%s Minio Tracker report setup(%v)\n", tracker.directory, tracker.setup)
+	fmt.Printf("~~~~contents: %v\n", tracker.contents)
+	fmt.Printf("~~~~folders: %v\n", folders)
+	fmt.Printf("~~~~renames in progress: %v\n", tracker.renamesInProgress)
+	fmt.Println("~~~~~~~~~~~~~~~~~~~~~~~")
+}
+
+
+func (handler *MinioTracker) rlock() {
+	fmt.Println("MinioTracker:rlock before")
+	handler.fsLock.RLock()
+	fmt.Println("MinioTracker:rlock after")
+}
+
+func (handler *MinioTracker) lock() {
+	fmt.Println("MinioTracker:lock before")
+	handler.fsLock.Lock()
+	fmt.Println("MinioTracker:lock after")
+}
+
+func (handler *MinioTracker) runlock() {
+	fmt.Println("MinioTracker:runlock before")
+	handler.fsLock.RUnlock()
+	fmt.Println("MinioTracker:runlock after")
+}
+
+func (handler *MinioTracker) unlock() {
+	fmt.Println("MinioTracker:unlock before")
+	handler.fsLock.Unlock()
+	fmt.Println("MinioTracker:unlock after")
+}
+
+
 //func (handler *FilesystemTracker) validate() {
 //	handler.fsLock.RLock()
 //	defer handler.fsLock.RUnlock()
@@ -413,20 +470,20 @@ func (tracker *minioTracker) IncrementStatistic(name string, delta int) {
 //	handler.setup = true
 //}
 //
-//func (handler *FilesystemTracker) cleanup() {
-//	fmt.Println("FilesystemTracker:cleanup")
-//	handler.fsLock.Lock()
-//	defer handler.fsLock.Unlock()
-//	fmt.Println("FilesystemTracker:/cleanup")
-//	defer fmt.Println("FilesystemTracker://cleanup")
-//
-//	if !handler.setup {
-//		panic("cleanup called when not yet setup")
-//	}
-//
-//	notify.Stop(handler.fsEventsChannel)
-//}
-//
+func (tracker *MinioTracker) cleanupAndDelete() {
+	fmt.Println("FilesystemTracker:cleanup")
+	tracker.fsLock.Lock()
+	defer tracker.fsLock.Unlock()
+	fmt.Println("FilesystemTracker:/cleanup")
+	defer fmt.Println("FilesystemTracker://cleanup")
+
+	if !tracker.setup {
+		panic("cleanup called when not yet setup")
+	}
+
+	//todo do we tell Minio that we are no longer watching for changes?
+}
+
 //func (handler *FilesystemTracker) watchDirectory(watcher *ChangeHandler) {
 //	handler.fsLock.Lock()
 //	defer handler.fsLock.Unlock()

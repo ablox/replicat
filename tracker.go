@@ -30,6 +30,7 @@ import (
 	"sync"
 	"syscall"
 	"time"
+	//"reflect"
 )
 
 // ChangeHandler - Listener for tracking changes that happen to a storage system
@@ -44,17 +45,23 @@ type ChangeHandler interface {
 
 // StorageTracker - Listener that allows you to tell the tracker what has happened elsewhere so it can mirror the changes
 type StorageTracker interface {
-	Initialize() (err error)
-	CreatePath(pathName string, isDirectory bool) error
+	Initialize(directory string, server *ReplicatServer) (err error)
+	CreatePath(pathName string, isDirectory bool) (err error)
 	Rename(sourcePath string, destinationPath string, isDirectory bool) (err error)
 	DeleteFolder(name string) (err error)
-	ListFolders(getLocks bool) (folderList []string)
+	ListFolders(getLocks bool) (folderList []string, err error)
 	SendCatalog()
 	ProcessCatalog(event Event)
 	sendRequestedPaths(pathEntries map[string]EntryJSON, targetServerName string)
 	getEntryJSON(relativePath string) (EntryJSON, error)
 	GetStatistics() map[string]string
 	IncrementStatistic(name string, delta int)
+	printLockable(lock bool)
+	lock()
+	rlock()
+	unlock()
+	runlock()
+	cleanupAndDelete()
 }
 
 // FilesystemTracker - Track a filesystem and keep it in sync
@@ -119,10 +126,6 @@ func NewDirectoryFromFileInfo(info *os.FileInfo) *Entry {
 	return &Entry{*info, true, nil}
 }
 
-func (handler *FilesystemTracker) Initialize() (err error) {
-	return
-}
-
 // IncrementStatistic - Increment one of the named statistics on the tracker.
 func (handler *FilesystemTracker) IncrementStatistic(name string, delta int) {
 	go func() {
@@ -158,19 +161,30 @@ func (handler *FilesystemTracker) IncrementStatistic(name string, delta int) {
 	}()
 }
 
-func (handler *FilesystemTracker) printTracker() {
-	handler.printLockable(true)
+func (handler *FilesystemTracker) rlock() {
+	fmt.Println("FilesystemTracker:rlock before")
+	handler.fsLock.RLock()
+	fmt.Println("FilesystemTracker:rlock after")
 }
 
-func (handler *FilesystemTracker) startTest(name string) {
-	event := Event{Name: "startTest", Path: name, Source: globalSettings.Name}
-	SendEvent(event, "")
+func (handler *FilesystemTracker) lock() {
+	fmt.Println("FilesystemTracker:lock before")
+	handler.fsLock.Lock()
+	fmt.Println("FilesystemTracker:lock after")
 }
 
-func (handler *FilesystemTracker) endTest(name string) {
-	event := Event{Name: "endTest", Path: name, Source: globalSettings.Name}
-	SendEvent(event, "")
+func (handler *FilesystemTracker) runlock() {
+	fmt.Println("FilesystemTracker:runlock before")
+	handler.fsLock.RUnlock()
+	fmt.Println("FilesystemTracker:runlock after")
 }
+
+func (handler *FilesystemTracker) unlock() {
+	fmt.Println("FilesystemTracker:unlock before")
+	handler.fsLock.Unlock()
+	fmt.Println("FilesystemTracker:unlock after")
+}
+
 
 func (handler *FilesystemTracker) printLockable(lock bool) {
 	if lock {
@@ -237,7 +251,7 @@ func (handler *FilesystemTracker) GetStatistics() (stats map[string]string) {
 	return
 }
 
-func (handler *FilesystemTracker) init(directory string, server *ReplicatServer) {
+func (handler *FilesystemTracker) Initialize(directory string, server *ReplicatServer) (err error) {
 	fmt.Println("FilesystemTracker:init")
 	handler.fsLock.Lock()
 	defer handler.fsLock.Unlock()
@@ -270,7 +284,7 @@ func (handler *FilesystemTracker) init(directory string, server *ReplicatServer)
 	handler.printLockable(false)
 
 	fmt.Println("FilesystemTracker:init starting folder scan looking for initial files")
-	err := handler.scanFolders()
+	err = handler.scanFolders()
 	if err != nil {
 		panic(err)
 	}
@@ -279,9 +293,11 @@ func (handler *FilesystemTracker) init(directory string, server *ReplicatServer)
 	server.SetStatus(REPLICAT_STATUS_JOINING_CLUSTER)
 	handler.printLockable(false)
 	handler.setup = true
+
+	return
 }
 
-func (handler *FilesystemTracker) cleanup() {
+func (handler *FilesystemTracker) cleanupAndDelete() {
 	fmt.Println("FilesystemTracker:cleanup")
 	handler.fsLock.Lock()
 	defer handler.fsLock.Unlock()
@@ -291,6 +307,8 @@ func (handler *FilesystemTracker) cleanup() {
 	if !handler.setup {
 		panic("cleanup called when not yet setup")
 	}
+
+	os.RemoveAll(handler.directory)
 
 	notify.Stop(handler.fsEventsChannel)
 }
@@ -485,7 +503,7 @@ func (handler *FilesystemTracker) createPath(pathName string, isDirectory bool) 
 }
 
 // CreatePath tells the storage tracker to create a new path
-func (handler *FilesystemTracker) CreatePath(pathName string, isDirectory bool) error {
+func (handler *FilesystemTracker) CreatePath(pathName string, isDirectory bool) (err error) {
 	fmt.Printf("FilesystemTracker:CreatePath called with relativePath: %s isDirectory: %v\n", pathName, isDirectory)
 	handler.fsLock.Lock()
 	fmt.Println("FilesystemTracker:/CreatePath")
@@ -587,7 +605,7 @@ func (handler *FilesystemTracker) DeleteFolder(name string) error {
 }
 
 // ListFolders - This storage handler should return a list of contained folders.
-func (handler *FilesystemTracker) ListFolders(getLocks bool) (folderList []string) {
+func (handler *FilesystemTracker) ListFolders(getLocks bool) (folderList []string, err error) {
 	fmt.Printf("FilesystemTracker:ListFolders getLocks: %v\n", getLocks)
 	if getLocks {
 		handler.fsLock.Lock()
@@ -722,24 +740,6 @@ const (
 	// TRACKER_RENAME_TIMEOUT - the amount of time to sleep while waiting for the second event in a rename process
 	TRACKER_RENAME_TIMEOUT = time.Millisecond * 250
 )
-
-// WaitFor - a helper function that will politely wait until the helper argument function evaluates to the value of waitingFor.
-// this is great for waiting for the tracker to catch up to the filesystem in tests, for example.
-func WaitFor(tracker *FilesystemTracker, folder string, waitingFor bool, helper func(tracker *FilesystemTracker, folder string) bool) bool {
-	roundTrips := 0
-	for {
-		if waitingFor == helper(tracker, folder) {
-			return true
-		}
-
-		if roundTrips > 50 {
-			return false
-		}
-		roundTrips++
-
-		time.Sleep(50 * time.Millisecond)
-	}
-}
 
 // completeRenameIfAbandoned - if there is a rename that was started with a source
 // but has been left pending for more than TRACKER_RENAME_TIMEOUT, complete it (i.e. move the folder away)
