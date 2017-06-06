@@ -16,11 +16,91 @@
 package main
 
 import (
-	//"fmt"
-	//"os"
-	//"runtime/debug"
-	//"testing"
+	"testing"
+	"fmt"
+	"path/filepath"
+	"os"
+	//"time"
+	//"log"
+	//"math/rand"
+	//"io/ioutil"
+	"time"
 )
+
+
+func TestMinioSmallObjectCreationAndDeletion(t *testing.T) {
+	defer causeFailOnPanic(t)
+
+	outsideFolder := createExtraFolder("outside")
+	defer cleanupExtraFolder(outsideFolder)
+
+	tracker := createMinioTracker("")
+	defer cleanupMinioTracker(tracker)
+
+	objectName := "babySloth"
+	//secondObjectName := "cuteBabySloth"
+
+	// The bucket should already exist at this point
+	tracker.printLockable(true)
+	targetMonitoredPath := filepath.Join(outsideFolder, objectName)
+
+	fmt.Printf("making file: %s\n", targetMonitoredPath)
+	file, err := os.Create(targetMonitoredPath)
+	if err != nil {
+		panic(err)
+	}
+
+	sampleFileContents := "This is the content of the file\n"
+	n, err := file.WriteString(sampleFileContents)
+	if err != nil {
+		panic(err)
+	}
+	if n != len(sampleFileContents) {
+		panic(fmt.Sprintf("Contents of file not correct length n: %d len: %d\n", n, len(sampleFileContents)))
+	}
+
+	err = file.Close()
+	if err != nil {
+		panic(err)
+	}
+
+	tracker.CreateObject(tracker.bucketName, objectName, targetMonitoredPath, "text/plain")
+	if err != nil {
+		panic(err)
+	}
+
+	tracker.DeleteObject(tracker.bucketName, objectName)
+
+	//if !WaitForStorage(tracker, fileName, true, waitForTrackerFolderExists) {
+	//	panic(fmt.Sprintf("%s not found in contents\ncontents: %v\n", fileName, tracker.contents))
+	//}
+	//
+	//tracker.printLockable(true)
+	//
+	//fmt.Printf("Moving file \nfrom: %s\n  to: %s\n", targetMonitoredPath, secondMonitoredPath)
+	//os.Rename(targetMonitoredPath, secondMonitoredPath)
+	//
+	//stats, err := os.Stat(secondMonitoredPath)
+	//if err != nil {
+	//	panic(fmt.Sprintf("failed to move file: %v", err))
+	//}
+	//fmt.Printf("stats for: %s\n%v\n", targetMonitoredPath, stats)
+	//
+	//if !WaitForStorage(tracker, fileName, false, waitForTrackerFolderExists) {
+	//	panic(fmt.Sprintf("%s found in contents\ncontents: %v\n", fileName, tracker.contents))
+	//}
+	//
+	//if !WaitForStorage(tracker, secondFilename, true, waitForTrackerFolderExists) {
+	//	panic(fmt.Sprintf("%s not found in contents\ncontents: %v\n", secondFilename, tracker.contents))
+	//}
+	//
+	//if !WaitForFilesystem(tracker, "", true, waitForEmptyRenamesInProgress) {
+	//	panic(fmt.Sprint("6 tracker has renames in progress still"))
+	//}
+
+	// check to make sure that there are no invalid directories
+	//tracker.validate()
+}
 
 //REPLICAT_STATUS_INITIAL_SCAN
 //func TestTrackerStatusAndScanInitialFiles(t *testing.T) {
@@ -49,10 +129,7 @@ func TestSmallFileMovesInOutAround(t *testing.T) {
 	trackerTestSmallFileMovesInOutAround()
 }
 
-func TestSmallFileCreationAndRename(t *testing.T) {
-	defer causeFailOnPanic(t)
-	trackerTestSmallFileCreationAndRename()
-}
+
 
 func TestSmallFileCreationAndUpdate(t *testing.T) {
 	defer causeFailOnPanic(t)

@@ -16,16 +16,21 @@
 package main
 
 import (
-	"io/ioutil"
 	"runtime"
+	"fmt"
+	"time"
+	"log"
+	"math/rand"
 )
 
 func createMinioTracker(prefix string) (tracker *MinioTracker) {
-	monitoredFolder, _ := ioutil.TempDir("", prefix)
+	rand.Seed(int64(time.Now().Nanosecond()))
 
 	tracker = new(MinioTracker)
-	server := ReplicatServer{}
-	tracker.Initialize(monitoredFolder, &server)
+	tracker.Initialize("", nil)
+	bucketName := generateBucketName(prefix)
+	tracker.CreatePath(bucketName, true)
+	tracker.bucketName = bucketName
 
 	pc, _, _, _ := runtime.Caller(1)
 	details := runtime.FuncForPC(pc)
@@ -40,6 +45,118 @@ func cleanupMinioTracker(tracker StorageTracker) {
 	pc, _, _, _ := runtime.Caller(1)
 	details := runtime.FuncForPC(pc)
 	endTest(details.Name())
+}
+
+func generateBucketName(prefix string) (name string) {
+	suffix := rand.Int31n(10000)
+	if prefix == "" {
+		prefix = "replicat-test"
+	}
+	name = fmt.Sprintf("%s-%05d", prefix, suffix)
+	fmt.Printf("generatedBucketName: %s\n", name)
+	return
+}
+
+// Quick test if the minio integration to exercise all of the functionality that is working so far.
+func exerciseMinio() {
+	tracker2 := &MinioTracker{}
+	tracker2.Initialize("", nil)
+
+	tempFolder := generateBucketName("replicat-test")
+
+	objectName := "babySloth"
+	secondObjectName := "cuteBabySloth"
+
+	allEvents := []string{
+		"s3:ObjectCreated:*",
+		"s3:ObjectAccessed:*",
+		"s3:ObjectRemoved:*",
+	}
+
+	err := tracker2.CreatePath(tempFolder, true)
+	if err != nil {
+		panic(err)
+	}
+
+	go watchBucketTest(tracker2, tempFolder, allEvents, tracker2.doneCh)
+
+	folderlist, err := tracker2.ListFolders(false)
+
+	for _, bucket := range folderlist {
+		go watchBucketTest(tracker2, bucket, allEvents, tracker2.doneCh)
+	}
+
+	found := false
+	for _, v := range folderlist {
+		if v == tempFolder {
+			found = true
+			break
+		}
+	}
+	if found == false {
+		fmt.Printf("Could not find the directory we should have just created: %s\n", tempFolder)
+	}
+
+	// Time to create file!
+	err = tracker2.CreateObject(tempFolder, objectName, "/testdata/LargeSampleImages/baby sloth on a rail.jpg", "")
+	if err != nil {
+		panic(err)
+	}
+
+	//Just have list buckets and delete working (buckets and objects). Also have create object from file working.
+	//Now it is time to have a little more fun. Finish out the methods and start to add watchers
+
+	//time.Sleep(time.Second * 30)
+
+	err = tracker2.RenameObject(tempFolder, secondObjectName, tempFolder+"/"+objectName)
+	if err != nil {
+		panic(err)
+	}
+
+	//time.Sleep(time.Second * 15)
+
+	err = tracker2.DeleteObject(tempFolder, secondObjectName)
+	if err != nil {
+		panic(err)
+	}
+
+	err = tracker2.DeleteFolder(tempFolder)
+	if err != nil {
+		panic(err)
+	}
+
+	folderlist, err = tracker2.ListFolders(true)
+
+	found = false
+	for _, v := range folderlist {
+		if v == tempFolder {
+			found = true
+			break
+		}
+	}
+
+	if found == true {
+		fmt.Printf("We found our folder after it should have been deleted: %s\n", tempFolder)
+	}
+
+	fmt.Println("YAY - Made it to the end")
+
+	time.Sleep(time.Duration(60 * time.Second))
+
+	if tracker2 != nil {
+		panic("nobody knows the trouble I've seen?\n")
+	}
+
+}
+
+func watchBucketTest(tracker2 *MinioTracker, tempFolder string, allEvents []string, doneCh chan struct{}) {
+	// Listen for bucket notifications on "mybucket" filtered by prefix, suffix and events.
+	for notificationInfo := range tracker2.minioSDK.ListenBucketNotification(tempFolder, "", "", allEvents, doneCh) {
+		if notificationInfo.Err != nil {
+			log.Fatalln(notificationInfo.Err)
+		}
+		log.Printf("S3 NOTIFICATION: %s\n", notificationInfo)
+	}
 }
 
 /*
@@ -244,75 +361,6 @@ func trackerTestFileChangeTrackerAddFolders() {
 	}
 }
 
-func trackerTestSmallFileCreationAndRename() {
-	outsideFolder := createExtraFolder("outside")
-	defer cleanupExtraFolder(outsideFolder)
-
-	tracker := createMinioTracker("monitored")
-	defer cleanupMinioTracker(tracker)
-	monitoredFolder := tracker.directory
-
-	logger := &LogOnlyChangeHandler{}
-	var loggerInterface ChangeHandler = logger
-	tracker.watchDirectory(&loggerInterface)
-
-	tracker.printLockable(true)
-
-	fileName := "happy.txt"
-	secondFilename := "behappy.txt"
-	targetMonitoredPath := filepath.Join(monitoredFolder, fileName)
-	secondMonitoredPath := filepath.Join(monitoredFolder, secondFilename)
-
-	fmt.Printf("making file: %s\n", targetMonitoredPath)
-	file, err := os.Create(targetMonitoredPath)
-	if err != nil {
-		panic(err)
-	}
-
-	sampleFileContents := "This is the content of the file\n"
-	n, err := file.WriteString(sampleFileContents)
-	if err != nil {
-		panic(err)
-	}
-	if n != len(sampleFileContents) {
-		panic(fmt.Sprintf("Contents of file not correct length n: %d len: %d\n", n, len(sampleFileContents)))
-	}
-
-	err = file.Close()
-	if err != nil {
-		panic(err)
-	}
-
-	if !WaitForStorage(tracker, fileName, true, waitForTrackerFolderExists) {
-		panic(fmt.Sprintf("%s not found in contents\ncontents: %v\n", fileName, tracker.contents))
-	}
-
-	tracker.printLockable(true)
-
-	fmt.Printf("Moving file \nfrom: %s\n  to: %s\n", targetMonitoredPath, secondMonitoredPath)
-	os.Rename(targetMonitoredPath, secondMonitoredPath)
-
-	stats, err := os.Stat(secondMonitoredPath)
-	if err != nil {
-		panic(fmt.Sprintf("failed to move file: %v", err))
-	}
-	fmt.Printf("stats for: %s\n%v\n", targetMonitoredPath, stats)
-
-	if !WaitForStorage(tracker, fileName, false, waitForTrackerFolderExists) {
-		panic(fmt.Sprintf("%s found in contents\ncontents: %v\n", fileName, tracker.contents))
-	}
-
-	if !WaitForStorage(tracker, secondFilename, true, waitForTrackerFolderExists) {
-		panic(fmt.Sprintf("%s not found in contents\ncontents: %v\n", secondFilename, tracker.contents))
-	}
-
-	if !WaitForFilesystem(tracker, "", true, waitForEmptyRenamesInProgress) {
-		panic(fmt.Sprint("6 tracker has renames in progress still"))
-	}
-
-	// check to make sure that there are no invalid directories
-	tracker.validate()
-}
 
 func trackerTestSmallFileCreationAndUpdate() {
 	outsideFolder := createExtraFolder("outside")

@@ -147,7 +147,7 @@ func sendFileRequestToServer(serverName string, event Event) {
 
 func sendEvent(serverName string, event *Event, fullPath string, address string, credentials string) {
 	if address == "" {
-		fmt.Println("sendEvent: no address sepcified. Skipping, returning")
+		fmt.Println("sendEvent: no address specified. Skipping, returning")
 		return
 	}
 

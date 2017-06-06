@@ -28,16 +28,17 @@ import (
 
 // MinioTracker - Track a filesystem and keep it in sync
 type MinioTracker struct {
-	directory         string
+	bucketName         string
 	contents          map[string]Entry
 	setup             bool
-	watcher           *ChangeHandler
-	renamesInProgress map[uint64]renameInformation // map from inode to source/destination of items being moved
+	//watcher           *ChangeHandler
+	//renamesInProgress map[uint64]renameInformation // map from inode to source/destination of items being moved
 	fsLock            sync.RWMutex
 	server            *ReplicatServer
 	neededFiles       map[string]EntryJSON
 	stats             TrackerStats
 	minioSDK          *minio.Client
+	doneCh	  	  chan struct{}
 }
 
 // Make sure we can adhere to the StorageTracker interface
@@ -107,6 +108,9 @@ func (tracker *MinioTracker) Initialize(directory string, server *ReplicatServer
 		return
 	}
 
+	// Create a done channel to control 'ListenBucketNotification' go routine.
+	tracker.doneCh = make(chan struct{})
+
 	fmt.Printf("IT WORKED: %#v\n", tracker.minioSDK)
 
 	tracker.setup = true
@@ -131,16 +135,19 @@ func (tracker *MinioTracker) verifyInitialized() (err error) {
 //		ServerName   string
 
 func (tracker *MinioTracker) CreateObject(bucketName, objectName, sourceFile, contentType string) (err error) {
-	dir, err := os.Getwd()
-	filename := dir + "/" + sourceFile
-	info, err := os.Stat(filename)
+//todo rectify this. Filesystem tracker assumes the base directory of the tracker for source file. Not cool.
+//	dir, err := os.Getwd()
+//	fmt.Printf("Minio Tracker in Create object. sourceFile is: %s cwd is: %s \n", sourceFile, dir)
+	fmt.Printf("Minio Tracker in Create object. sourceFile is: %s\n", sourceFile)
+
+	info, err := os.Stat(sourceFile)
 	if err != nil {
-		panic(err)
+		panic(err.Error())
 	}
 
-	size, err := tracker.minioSDK.FPutObject(bucketName, objectName, filename, contentType)
+	size, err := tracker.minioSDK.FPutObject(bucketName, objectName, sourceFile, contentType)
 	if err != nil {
-		panic(err)
+		panic(err.Error())
 	}
 
 	if info.Size() != size {
@@ -351,10 +358,10 @@ func (tracker *MinioTracker) printLockable(lock bool) {
 	sort.Strings(folders)
 
 	fmt.Println("~~~~~~~~~~~~~~~~~~~~~~~")
-	fmt.Printf("~~~~%s Minio Tracker report setup(%v)\n", tracker.directory, tracker.setup)
+	fmt.Printf("~~~~%s Minio Tracker report setup(%v)\n", tracker.bucketName, tracker.setup)
 	fmt.Printf("~~~~contents: %v\n", tracker.contents)
 	fmt.Printf("~~~~folders: %v\n", folders)
-	fmt.Printf("~~~~renames in progress: %v\n", tracker.renamesInProgress)
+	//fmt.Printf("~~~~renames in progress: %v\n", tracker.renamesInProgress)
 	fmt.Println("~~~~~~~~~~~~~~~~~~~~~~~")
 }
 
@@ -469,17 +476,20 @@ func (handler *MinioTracker) unlock() {
 //}
 //
 func (tracker *MinioTracker) cleanupAndDelete() {
-	fmt.Println("FilesystemTracker:cleanup")
+	fmt.Println("MinioTracker:cleanup")
 	tracker.fsLock.Lock()
 	defer tracker.fsLock.Unlock()
-	fmt.Println("FilesystemTracker:/cleanup")
-	defer fmt.Println("FilesystemTracker://cleanup")
+	fmt.Println("MinioTracker:/cleanup")
+	defer fmt.Println("MinioTracker://cleanup")
 
 	if !tracker.setup {
 		panic("cleanup called when not yet setup")
 	}
 
 	//todo do we tell Minio that we are no longer watching for changes?
+	// delete the bucket we created for tracking
+	//todo clean this up to handle multiple buckets
+	tracker.DeleteFolder(tracker.bucketName)
 }
 
 //func (handler *FilesystemTracker) watchDirectory(watcher *ChangeHandler) {
