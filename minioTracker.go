@@ -21,17 +21,17 @@ import (
 	"fmt"
 	"github.com/minio/minio-go"
 	"os"
+	"sort"
 	"strings"
 	"sync"
-	"sort"
 )
 
 // MinioTracker - Track a filesystem and keep it in sync
 type MinioTracker struct {
-	directory string
-	contents  map[string]Entry
-	setup     bool
-	watcher   *ChangeHandler
+	directory         string
+	contents          map[string]Entry
+	setup             bool
+	watcher           *ChangeHandler
 	renamesInProgress map[uint64]renameInformation // map from inode to source/destination of items being moved
 	fsLock            sync.RWMutex
 	server            *ReplicatServer
@@ -358,7 +358,6 @@ func (tracker *MinioTracker) printLockable(lock bool) {
 	fmt.Println("~~~~~~~~~~~~~~~~~~~~~~~")
 }
 
-
 func (handler *MinioTracker) rlock() {
 	fmt.Println("MinioTracker:rlock before")
 	handler.fsLock.RLock()
@@ -382,7 +381,6 @@ func (handler *MinioTracker) unlock() {
 	handler.fsLock.Unlock()
 	fmt.Println("MinioTracker:unlock after")
 }
-
 
 //func (handler *FilesystemTracker) validate() {
 //	handler.fsLock.RLock()

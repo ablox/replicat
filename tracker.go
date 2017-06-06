@@ -188,7 +188,6 @@ func (handler *FilesystemTracker) unlock() {
 	fmt.Println("FilesystemTracker:unlock after")
 }
 
-
 func (handler *FilesystemTracker) printLockable(lock bool) {
 	if lock {
 		fmt.Println("FilesystemTracker:print")
