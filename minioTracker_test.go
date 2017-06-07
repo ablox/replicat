@@ -24,7 +24,6 @@ import (
 	//"log"
 	//"math/rand"
 	//"io/ioutil"
-	"time"
 )
 
 func TestMinioSmallObjectCreationAndDeletion(t *testing.T) {
