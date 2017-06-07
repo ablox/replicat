@@ -20,10 +20,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
-	//"time"
-	//"log"
-	//"math/rand"
-	//"io/ioutil"
+	"github.com/minio/minio-go"
 )
 
 func TestMinioSmallObjectCreationAndDeletion(t *testing.T) {
@@ -35,8 +32,9 @@ func TestMinioSmallObjectCreationAndDeletion(t *testing.T) {
 	tracker := createMinioTracker("")
 	defer cleanupMinioTracker(tracker)
 
+	fmt.Printf("Minio initialized with bucket: %s\n", tracker.bucketName)
+
 	objectName := "babySloth"
-	//secondObjectName := "cuteBabySloth"
 
 	// The bucket should already exist at this point
 	tracker.printLockable(true)
@@ -69,15 +67,65 @@ func TestMinioSmallObjectCreationAndDeletion(t *testing.T) {
 
 	tracker.DeleteObject(tracker.bucketName, objectName)
 
+	// Get the event from Minio
+
 	//if !WaitForStorage(tracker, fileName, true, waitForTrackerFolderExists) {
 	//	panic(fmt.Sprintf("%s not found in contents\ncontents: %v\n", fileName, tracker.contents))
 	//}
 	//
-	//tracker.printLockable(true)
+	tracker.printLockable(true)
+
+	// Initialize minio client object.
+	minioSDK, err := minio.New(minioAddress, minioAccessKey, minioSecretKey, true)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	fmt.Println("tt 1001")
+
+	_, err = minioSDK.FPutObject(tracker.bucketName, objectName, targetMonitoredPath, "text/plain")
+	if err != nil {
+		panic(err)
+	}
+
+	// at this point, we should have a bucket entry named objectName. Wait until Minio gets it.
+fmt.Println("tt 1002")
+
+	path, err := joinBucketObjectName(tracker.bucketName, objectName)
+	if err != nil {
+		panic(err.Error())
+	}
+	fmt.Println("tt 1003")
+
+	result := WaitForStorage(tracker, objectName, true, waitForTrackerFolderExists)
+	if result == false {
+		panic(fmt.Sprintf("Object %s was not created. Aborting.\n", path))
+	}
+	fmt.Println("tt 1004")
+
+	//for true {
+	//	fmt.Printf("Yolo: looking for bucket/object: %s/%s\n", tracker.bucketName, objectName)
 	//
+	//
+	//	tracker.fsLock.RLock()
+	//	_, exists := tracker.contents[path]
+	//	tracker.fsLock.RUnlock()
+	//	if exists {
+	//		fmt.Println("Found it")
+	//		break
+	//	}
+	//
+	//	time.Sleep(time.Millisecond * 15)
+	//
+	//
+	//}
+
+	fmt.Println("Made it past ")
 	//fmt.Printf("Moving file \nfrom: %s\n  to: %s\n", targetMonitoredPath, secondMonitoredPath)
 	//os.Rename(targetMonitoredPath, secondMonitoredPath)
-	//
+
+
+
 	//stats, err := os.Stat(secondMonitoredPath)
 	//if err != nil {
 	//	panic(fmt.Sprintf("failed to move file: %v", err))

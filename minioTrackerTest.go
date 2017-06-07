@@ -27,10 +27,8 @@ func createMinioTracker(prefix string) (tracker *MinioTracker) {
 	rand.Seed(int64(time.Now().Nanosecond()))
 
 	tracker = new(MinioTracker)
-	tracker.Initialize("", nil)
 	bucketName := generateBucketName(prefix)
-	tracker.CreatePath(bucketName, true)
-	tracker.bucketName = bucketName
+	tracker.Initialize(bucketName, nil)
 
 	pc, _, _, _ := runtime.Caller(1)
 	details := runtime.FuncForPC(pc)
@@ -67,11 +65,6 @@ func exerciseMinio() {
 	objectName := "babySloth"
 	secondObjectName := "cuteBabySloth"
 
-	allEvents := []string{
-		"s3:ObjectCreated:*",
-		"s3:ObjectAccessed:*",
-		"s3:ObjectRemoved:*",
-	}
 
 	err := tracker2.CreatePath(tempFolder, true)
 	if err != nil {

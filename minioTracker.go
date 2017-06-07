@@ -24,12 +24,13 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"log"
 )
 
 // MinioTracker - Track a filesystem and keep it in sync
 type MinioTracker struct {
 	bucketName string
-	contents   map[string]Entry
+	contents   map[string]MinioEntry
 	setup      bool
 	//watcher           *ChangeHandler
 	//renamesInProgress map[uint64]renameInformation // map from inode to source/destination of items being moved
@@ -40,6 +41,13 @@ type MinioTracker struct {
 	minioSDK    *minio.Client
 	doneCh      chan struct{}
 }
+
+var allEvents = []string{
+"s3:ObjectCreated:*",
+"s3:ObjectAccessed:*",
+"s3:ObjectRemoved:*",
+}
+
 
 // Make sure we can adhere to the StorageTracker interface
 var _ StorageTracker = (*MinioTracker)(nil)
@@ -95,6 +103,72 @@ const (
 //	handler.setup = true
 //}
 
+type MinioEntry struct {
+	etag string
+	size int64
+	modTime string
+}
+
+//todo fix modtime to be a time.
+
+
+//// Notification event object metadata.
+//type objectMeta struct {
+//	Key       string `json:"key"`
+//	Size      int64  `json:"size,omitempty"`
+//	ETag      string `json:"eTag,omitempty"`
+//	VersionID string `json:"versionId,omitempty"`
+//	Sequencer string `json:"sequencer"`
+//}
+//
+//// Notification event server specific metadata.
+//type eventMeta struct {
+//	SchemaVersion   string     `json:"s3SchemaVersion"`
+//	ConfigurationID string     `json:"configurationId"`
+//	Bucket          bucketMeta `json:"bucket"`
+//	Object          objectMeta `json:"object"`
+//}
+//
+//// NotificationEvent represents an Amazon an S3 bucket notification event.
+//type NotificationEvent struct {
+//	EventVersion      string            `json:"eventVersion"`
+//	EventSource       string            `json:"eventSource"`
+//	AwsRegion         string            `json:"awsRegion"`
+//	EventTime         string            `json:"eventTime"`
+//	EventName         string            `json:"eventName"`
+//	UserIdentity      identity          `json:"userIdentity"`
+//	RequestParameters map[string]string `json:"requestParameters"`
+//	ResponseElements  map[string]string `json:"responseElements"`
+//	S3                eventMeta         `json:"s3"`
+//}
+
+
+
+func (tracker *MinioTracker) watchBucket() {
+
+	for notificationInfo := range tracker.minioSDK.ListenBucketNotification(tracker.bucketName, "", "", allEvents, tracker.doneCh) {
+		if notificationInfo.Err != nil {
+			panic(notificationInfo.Err)
+		}
+
+		for _, record := range notificationInfo.Records {
+			fmt.Printf("%s: %s bucket: %s object: %s\n", record.EventTime, record.EventName, record.S3.Bucket.Name, record.S3.Object.Key)
+			switch record.EventName {
+			case "s3:ObjectCreated:Put":
+				newEntry := MinioEntry{etag: record.S3.Object.ETag, size: record.S3.Object.Size, modTime: record.EventTime}
+				tracker.lock()
+				tracker.contents[record.S3.Object.Key] = newEntry
+				tracker.unlock()
+			}
+
+		}
+		if notificationInfo.Err != nil {
+			log.Fatalln(notificationInfo.Err)
+		}
+	}
+}
+
+
 //todo fix up the miniotracker initialization
 func (tracker *MinioTracker) Initialize(directory string, server *ReplicatServer) (err error) {
 	if tracker.setup == true {
@@ -110,10 +184,27 @@ func (tracker *MinioTracker) Initialize(directory string, server *ReplicatServer
 
 	// Create a done channel to control 'ListenBucketNotification' go routine.
 	tracker.doneCh = make(chan struct{})
+	tracker.bucketName = directory
+
+	// If the bucket does not exist, create it.
+	exists, err := tracker.minioSDK.BucketExists(directory)
+	if err != nil {
+		panic(err.Error())
+	}
+	if exists == false {
+		err = tracker.minioSDK.MakeBucket(directory, "")
+		if err != nil {
+			panic(err.Error())
+		}
+	}
+
+	tracker.contents = make(map[string]MinioEntry, 0)
+
+	go tracker.watchBucket()
+	tracker.setup = true
 
 	fmt.Printf("IT WORKED: %#v\n", tracker.minioSDK)
 
-	tracker.setup = true
 	return
 }
 
@@ -177,6 +268,7 @@ func (tracker *MinioTracker) CreatePath(pathName string, isDirectory bool) (err 
 }
 
 func (tracker *MinioTracker) Rename(sourcePath string, destinationPath string, isDirectory bool) (err error) {
+
 
 	return
 }
@@ -268,16 +360,17 @@ func (tracker *MinioTracker) ListFolders(getLocks bool) (folderList []string, er
 		panic(err)
 	}
 
-	bucketList, err := tracker.minioSDK.ListBuckets()
-	if err != nil {
-		panic(err)
-	}
+	//if tracker.contents == nil || len(tracker.contents) == 0 {
+	//
+	//}
+	//bucketList, err := tracker.minioSDK.ListBuckets()
+	//if err != nil {
+	//	panic(err)
+	//}
 
-	folderList = make([]string, len(bucketList))
-	for k, v := range bucketList {
-		//bucket := bucketList[k]
-		//fmt.Printf("Bucket: '%s' created on: %s\n", bucket.Name, bucket.CreationDate)
-		folderList[k] = v.Name
+	folderList = make([]string, len(tracker.contents))
+	for k, _ := range tracker.contents {
+		folderList = append(folderList, k)
 	}
 
 	return

@@ -65,6 +65,9 @@ func waitForTrackerFolderExists(tracker StorageTracker, folder string) bool {
 	tracker.rlock()
 	defer tracker.runlock()
 
+	fmt.Printf("waitForTrackerFolderExists: folder %s\n", folder)
+	tracker.printLockable(false)
+
 	folders, err := tracker.ListFolders(false)
 	if err != nil {
 		panic("error when listing folders.")
