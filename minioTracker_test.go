@@ -17,10 +17,10 @@ package main
 
 import (
 	"fmt"
+	"github.com/minio/minio-go"
 	"os"
 	"path/filepath"
 	"testing"
-	"github.com/minio/minio-go"
 )
 
 func TestMinioSmallObjectCreationAndDeletion(t *testing.T) {
@@ -89,7 +89,7 @@ func TestMinioSmallObjectCreationAndDeletion(t *testing.T) {
 	}
 
 	// at this point, we should have a bucket entry named objectName. Wait until Minio gets it.
-fmt.Println("tt 1002")
+	fmt.Println("tt 1002")
 
 	path, err := joinBucketObjectName(tracker.bucketName, objectName)
 	if err != nil {
@@ -123,8 +123,6 @@ fmt.Println("tt 1002")
 	fmt.Println("Made it past ")
 	//fmt.Printf("Moving file \nfrom: %s\n  to: %s\n", targetMonitoredPath, secondMonitoredPath)
 	//os.Rename(targetMonitoredPath, secondMonitoredPath)
-
-
 
 	//stats, err := os.Stat(secondMonitoredPath)
 	//if err != nil {

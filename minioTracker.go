@@ -20,11 +20,12 @@ import (
 	"errors"
 	"fmt"
 	"github.com/minio/minio-go"
+	"log"
 	"os"
 	"sort"
 	"strings"
 	"sync"
-	"log"
+	"encoding/json"
 )
 
 // MinioTracker - Track a filesystem and keep it in sync
@@ -43,11 +44,10 @@ type MinioTracker struct {
 }
 
 var allEvents = []string{
-"s3:ObjectCreated:*",
-"s3:ObjectAccessed:*",
-"s3:ObjectRemoved:*",
+	"s3:ObjectCreated:*",
+	"s3:ObjectAccessed:*",
+	"s3:ObjectRemoved:*",
 }
-
 
 // Make sure we can adhere to the StorageTracker interface
 var _ StorageTracker = (*MinioTracker)(nil)
@@ -103,15 +103,6 @@ const (
 //	handler.setup = true
 //}
 
-type MinioEntry struct {
-	etag string
-	size int64
-	modTime string
-}
-
-//todo fix modtime to be a time.
-
-
 //// Notification event object metadata.
 //type objectMeta struct {
 //	Key       string `json:"key"`
@@ -142,7 +133,14 @@ type MinioEntry struct {
 //	S3                eventMeta         `json:"s3"`
 //}
 
-
+type MinioEntry struct {
+	Key       string `json:"key"`
+	Size      int64  `json:"size,omitempty"`
+	ETag      string `json:"eTag,omitempty"`
+	VersionID string `json:"versionId,omitempty"`
+	Sequencer string `json:"sequencer"`
+	ModTime   string `json:"modTime"`
+}
 
 func (tracker *MinioTracker) watchBucket() {
 
@@ -155,7 +153,7 @@ func (tracker *MinioTracker) watchBucket() {
 			fmt.Printf("%s: %s bucket: %s object: %s\n", record.EventTime, record.EventName, record.S3.Bucket.Name, record.S3.Object.Key)
 			switch record.EventName {
 			case "s3:ObjectCreated:Put":
-				newEntry := MinioEntry{etag: record.S3.Object.ETag, size: record.S3.Object.Size, modTime: record.EventTime}
+				newEntry := MinioEntry{Key: record.S3.Object.Key, Size: record.S3.Object.Size, ETag: record.S3.Object.ETag, ModTime: record.EventTime}
 				tracker.lock()
 				tracker.contents[record.S3.Object.Key] = newEntry
 				tracker.unlock()
@@ -168,9 +166,8 @@ func (tracker *MinioTracker) watchBucket() {
 	}
 }
 
-
 //todo fix up the miniotracker initialization
-func (tracker *MinioTracker) Initialize(directory string, server *ReplicatServer) (err error) {
+func (tracker *MinioTracker) Initialize(bucketName string, server *ReplicatServer) (err error) {
 	if tracker.setup == true {
 		return
 	}
@@ -184,28 +181,63 @@ func (tracker *MinioTracker) Initialize(directory string, server *ReplicatServer
 
 	// Create a done channel to control 'ListenBucketNotification' go routine.
 	tracker.doneCh = make(chan struct{})
-	tracker.bucketName = directory
+	tracker.bucketName = bucketName
+
+	// Create the contents
+	tracker.contents = make(map[string]MinioEntry, 100)
 
 	// If the bucket does not exist, create it.
-	exists, err := tracker.minioSDK.BucketExists(directory)
+	exists, err := tracker.minioSDK.BucketExists(bucketName)
 	if err != nil {
 		panic(err.Error())
 	}
-	if exists == false {
-		err = tracker.minioSDK.MakeBucket(directory, "")
+
+	go tracker.watchBucket()
+
+	if exists == true {
+		fmt.Printf("MinioTracker:Initialize starting object scan in bucket: %s\n", tracker.bucketName)
+		tracker.scanObjects()
+	} else {
+		err = tracker.minioSDK.MakeBucket(bucketName, "")
 		if err != nil {
 			panic(err.Error())
 		}
 	}
 
-	tracker.contents = make(map[string]MinioEntry, 0)
-
-	go tracker.watchBucket()
+	// Set the status to be done with initial scan
+	server.SetStatus(REPLICAT_STATUS_JOINING_CLUSTER)
+	tracker.printLockable(false)
 	tracker.setup = true
 
-	fmt.Printf("IT WORKED: %#v\n", tracker.minioSDK)
-
 	return
+}
+
+func (tracker *MinioTracker) scanObjects() {
+	doneCh := make(chan struct{})
+	defer close(doneCh)
+	// Recursively list all objects in 'mytestbucket'
+	for message := range tracker.minioSDK.ListObjectsV2(tracker.bucketName, "", true, doneCh) {
+		fmt.Println(message)
+		var jsonValues []byte
+		jsonValues, err := json.Marshal(message)
+		if err != nil {
+			panic(err.Error())
+		}
+
+		fmt.Printf("Current item is: %s\n", jsonValues)
+
+		var test MinioEntry
+		json.Unmarshal(jsonValues, &test)
+
+		fmt.Printf("This is the key field from the entry: %s\n", test.Key)
+		//switch message {
+		//
+		//}
+
+	}
+
+	// Add each
+
 }
 
 func (tracker *MinioTracker) verifyInitialized() (err error) {
@@ -268,7 +300,6 @@ func (tracker *MinioTracker) CreatePath(pathName string, isDirectory bool) (err 
 }
 
 func (tracker *MinioTracker) Rename(sourcePath string, destinationPath string, isDirectory bool) (err error) {
-
 
 	return
 }
@@ -360,16 +391,8 @@ func (tracker *MinioTracker) ListFolders(getLocks bool) (folderList []string, er
 		panic(err)
 	}
 
-	//if tracker.contents == nil || len(tracker.contents) == 0 {
-	//
-	//}
-	//bucketList, err := tracker.minioSDK.ListBuckets()
-	//if err != nil {
-	//	panic(err)
-	//}
-
 	folderList = make([]string, len(tracker.contents))
-	for k, _ := range tracker.contents {
+	for k := range tracker.contents {
 		folderList = append(folderList, k)
 	}
 
@@ -454,31 +477,30 @@ func (tracker *MinioTracker) printLockable(lock bool) {
 	fmt.Printf("~~~~%s Minio Tracker report setup(%v)\n", tracker.bucketName, tracker.setup)
 	fmt.Printf("~~~~contents: %v\n", tracker.contents)
 	fmt.Printf("~~~~folders: %v\n", folders)
-	//fmt.Printf("~~~~renames in progress: %v\n", tracker.renamesInProgress)
 	fmt.Println("~~~~~~~~~~~~~~~~~~~~~~~")
 }
 
-func (handler *MinioTracker) rlock() {
+func (tracker *MinioTracker) rlock() {
 	fmt.Println("MinioTracker:rlock before")
-	handler.fsLock.RLock()
+	tracker.fsLock.RLock()
 	fmt.Println("MinioTracker:rlock after")
 }
 
-func (handler *MinioTracker) lock() {
+func (tracker *MinioTracker) lock() {
 	fmt.Println("MinioTracker:lock before")
-	handler.fsLock.Lock()
+	tracker.fsLock.Lock()
 	fmt.Println("MinioTracker:lock after")
 }
 
-func (handler *MinioTracker) runlock() {
+func (tracker *MinioTracker) runlock() {
 	fmt.Println("MinioTracker:runlock before")
-	handler.fsLock.RUnlock()
+	tracker.fsLock.RUnlock()
 	fmt.Println("MinioTracker:runlock after")
 }
 
-func (handler *MinioTracker) unlock() {
+func (tracker *MinioTracker) unlock() {
 	fmt.Println("MinioTracker:unlock before")
-	handler.fsLock.Unlock()
+	tracker.fsLock.Unlock()
 	fmt.Println("MinioTracker:unlock after")
 }
 
@@ -524,50 +546,7 @@ func (handler *MinioTracker) unlock() {
 //	return
 //}
 //
-//func (handler *FilesystemTracker) init(directory string, server *ReplicatServer) {
-//	fmt.Println("FilesystemTracker:init")
-//	handler.fsLock.Lock()
-//	defer handler.fsLock.Unlock()
-//	fmt.Println("FilesystemTracker:/init")
-//	defer fmt.Println("FilesystemTracker://init")
-//
-//	if handler.setup {
-//		return
-//	}
-//
-//	fmt.Printf("FilesystemTracker:init called with %s\n", directory)
-//	handler.directory = directory
-//
-//	// Make the channel buffered to ensure no event is dropped. Notify will drop
-//	// an event if the receiver is not able to keep up the sending pace.
-//	handler.fsEventsChannel = make(chan notify.EventInfo, 10000)
-//
-//	// Update the path that traffic is served from to be the filesystem canonical path. This will allow the event folders that come in to match what we have.
-//	fullPath := validatePath(directory)
-//	handler.directory = fullPath
-//
-//	if fullPath != globalSettings.Directory {
-//		fmt.Printf("Updating serving directory to: %s\n", fullPath)
-//		handler.directory = fullPath
-//	}
-//
-//	handler.renamesInProgress = make(map[uint64]renameInformation, 0)
-//
-//	fmt.Println("Setting up filesystemTracker!")
-//	handler.printLockable(false)
-//
-//	fmt.Println("FilesystemTracker:init starting folder scan looking for initial files")
-//	err := handler.scanFolders()
-//	if err != nil {
-//		panic(err)
-//	}
-//
-//	// Set the status to be done with initial scan
-//	server.SetStatus(REPLICAT_STATUS_JOINING_CLUSTER)
-//	handler.printLockable(false)
-//	handler.setup = true
-//}
-//
+
 func (tracker *MinioTracker) cleanupAndDelete() {
 	fmt.Println("MinioTracker:cleanup")
 	tracker.fsLock.Lock()
@@ -1271,79 +1250,7 @@ func (tracker *MinioTracker) cleanupAndDelete() {
 //	}
 //}
 //
-//// Scan for existing files and add them to the list of files that we have with create events. this has to be called inside of a lock
-//func (handler *FilesystemTracker) scanFolders() error {
-//	log.Printf("FileSystemTracker ScanFolders - start. File Root: '%s'\n", handler.directory)
-//	pendingPaths := make([]string, 0, 100)
-//	pendingPaths = append(pendingPaths, handler.directory)
-//	handler.contents = make(map[string]Entry)
-//
-//	for len(pendingPaths) > 0 {
-//		currentPath := pendingPaths[0]
-//		pendingPaths = pendingPaths[1:]
-//
-//		log.Printf("scanFolders: scanning path: %s\n", currentPath)
-//		// Read the directories in the path
-//		f, err := os.Open(currentPath)
-//		if err != nil {
-//			log.Printf("Error opening '%s': %s\n", currentPath, err)
-//			return err
-//		}
-//
-//		dirEntries, err := f.Readdir(-1)
-//		for _, entry := range dirEntries {
-//			// Determine the relative path for this file or folder
-//			absolutePath := filepath.Join(currentPath, entry.Name())
-//			relativePath := absolutePath[len(handler.directory)+1:]
-//
-//			var hash []byte
-//
-//			if entry.IsDir() {
-//				handler.stats.TotalFolders++
-//			} else {
-//				hash, err = fileBlake2bHash(absolutePath)
-//				if err != nil {
-//					log.Printf("Error getting Blake2 Hash for %s: %s\n", absolutePath, err)
-//
-//					panic(err)
-//				}
-//				handler.stats.TotalFiles++
-//			}
-//
-//			// add to contents
-//			info, err := os.Stat(absolutePath)
-//			if err != nil {
-//				fmt.Printf("ScanFolders: Could not get stats on directory %s\n", absolutePath)
-//				panic(err)
-//			}
-//
-//			directory := NewDirectory()
-//			directory.FileInfo = info
-//			directory.hash = hash
-//			handler.contents[relativePath] = *directory
-//
-//			fmt.Printf("Packing up: %s = %#v\n", relativePath, directory)
-//
-//			if entry.IsDir() {
-//				newDirectory := filepath.Join(currentPath, entry.Name())
-//				pendingPaths = append(pendingPaths, newDirectory)
-//			}
-//		}
-//
-//		err = f.Close()
-//		if err != nil {
-//			return err
-//		}
-//	}
-//
-//	fmt.Println("About to set status of joining cluster")
-//	handler.server.SetStatus(REPLICAT_STATUS_JOINING_CLUSTER)
-//	fmt.Println("Done set status of joining cluster. About to send catalog")
-//	handler.SendCatalog()
-//	fmt.Println("Done sending catalog")
-//
-//	return nil
-//}
+
 //
 //// EntryJSON - a JSON friendly version of the entry object. It does not have a native filesystem object inside of it.
 //type EntryJSON struct {

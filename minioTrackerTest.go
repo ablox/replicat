@@ -65,7 +65,6 @@ func exerciseMinio() {
 	objectName := "babySloth"
 	secondObjectName := "cuteBabySloth"
 
-
 	err := tracker2.CreatePath(tempFolder, true)
 	if err != nil {
 		panic(err)
