@@ -23,11 +23,13 @@ import (
 	"time"
 )
 
-func createMinioTracker(prefix string) (tracker *MinioTracker) {
-	rand.Seed(int64(time.Now().Nanosecond()))
+func createMinioTracker(bucketName, bucketNamePrefix string) (tracker *MinioTracker) {
+	if bucketName == "" {
+		rand.Seed(int64(time.Now().Nanosecond()))
+		bucketName = generateBucketName(bucketNamePrefix)
+	}
 
 	tracker = new(MinioTracker)
-	bucketName := generateBucketName(prefix)
 	tracker.Initialize(bucketName, nil)
 
 	pc, _, _, _ := runtime.Caller(1)

@@ -18,6 +18,7 @@ package main
 import (
 	"fmt"
 	"github.com/minio/minio-go"
+	"log"
 	"os"
 	"path/filepath"
 	"testing"
@@ -29,7 +30,7 @@ func TestMinioSmallObjectCreationAndDeletion(t *testing.T) {
 	outsideFolder := createExtraFolder("outside")
 	defer cleanupExtraFolder(outsideFolder)
 
-	tracker := createMinioTracker("")
+	tracker := createMinioTracker("", "")
 	defer cleanupMinioTracker(tracker)
 
 	fmt.Printf("Minio initialized with bucket: %s\n", tracker.bucketName)
@@ -43,107 +44,82 @@ func TestMinioSmallObjectCreationAndDeletion(t *testing.T) {
 	fmt.Printf("making file: %s\n", targetMonitoredPath)
 	file, err := os.Create(targetMonitoredPath)
 	if err != nil {
-		panic(err)
+		t.Fatal(err)
 	}
 
 	sampleFileContents := "This is the content of the file\n"
 	n, err := file.WriteString(sampleFileContents)
 	if err != nil {
-		panic(err)
+		t.Fatal(err)
 	}
 	if n != len(sampleFileContents) {
-		panic(fmt.Sprintf("Contents of file not correct length n: %d len: %d\n", n, len(sampleFileContents)))
+		t.Fatalf("Contents of file not correct length n: %d len: %d\n", n, len(sampleFileContents))
 	}
 
 	err = file.Close()
 	if err != nil {
-		panic(err)
+		t.Fatal(err)
 	}
 
 	tracker.CreateObject(tracker.bucketName, objectName, targetMonitoredPath, "text/plain")
 	if err != nil {
-		panic(err)
+		t.Fatal(err)
+	}
+
+	tempTracker := createMinioTracker(tracker.bucketName, "")
+	defer cleanupMinioTracker(tempTracker)
+
+	log.Println("About to print tempTracker")
+	tempTracker.printLockable(true)
+	log.Println("Done - About to print tempTracker")
+
+	objectsList, err := tempTracker.ListFolders(true)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	for _, x := range objectsList {
+		log.Printf("Object name: %s\n", x)
+	}
+
+	if len(objectsList) != 1 {
+		tempTracker.printLockable(true)
+		t.Fatalf("Wrong number of objects found. Expected 1 found %d\n", len(objectsList))
+	}
+
+	if objectsList[0] != objectName {
+		t.Fatalf("Wrong object name found. Expected %s found %s\n", objectName, objectsList[0])
 	}
 
 	tracker.DeleteObject(tracker.bucketName, objectName)
 
 	// Get the event from Minio
-
-	//if !WaitForStorage(tracker, fileName, true, waitForTrackerFolderExists) {
-	//	panic(fmt.Sprintf("%s not found in contents\ncontents: %v\n", fileName, tracker.contents))
-	//}
-	//
 	tracker.printLockable(true)
 
 	// Initialize minio client object.
 	minioSDK, err := minio.New(minioAddress, minioAccessKey, minioSecretKey, true)
 	if err != nil {
-		fmt.Println(err)
-		return
+		t.Fatal(err)
 	}
-	fmt.Println("tt 1001")
 
+	//todo create a test where the bucket already exists and has at least one item in it. (or varify that test is working)
 	_, err = minioSDK.FPutObject(tracker.bucketName, objectName, targetMonitoredPath, "text/plain")
 	if err != nil {
-		panic(err)
+		t.Fatal(err)
 	}
 
 	// at this point, we should have a bucket entry named objectName. Wait until Minio gets it.
-	fmt.Println("tt 1002")
 
 	path, err := joinBucketObjectName(tracker.bucketName, objectName)
 	if err != nil {
-		panic(err.Error())
+		t.Fatal(err)
 	}
-	fmt.Println("tt 1003")
 
 	result := WaitForStorage(tracker, objectName, true, waitForTrackerFolderExists)
 	if result == false {
-		panic(fmt.Sprintf("Object %s was not created. Aborting.\n", path))
+		t.Fatalf("Object %s was not created. Aborting.\n", path)
 	}
-	fmt.Println("tt 1004")
 
-	//for true {
-	//	fmt.Printf("Yolo: looking for bucket/object: %s/%s\n", tracker.bucketName, objectName)
-	//
-	//
-	//	tracker.fsLock.RLock()
-	//	_, exists := tracker.contents[path]
-	//	tracker.fsLock.RUnlock()
-	//	if exists {
-	//		fmt.Println("Found it")
-	//		break
-	//	}
-	//
-	//	time.Sleep(time.Millisecond * 15)
-	//
-	//
-	//}
-
-	fmt.Println("Made it past ")
-	//fmt.Printf("Moving file \nfrom: %s\n  to: %s\n", targetMonitoredPath, secondMonitoredPath)
-	//os.Rename(targetMonitoredPath, secondMonitoredPath)
-
-	//stats, err := os.Stat(secondMonitoredPath)
-	//if err != nil {
-	//	panic(fmt.Sprintf("failed to move file: %v", err))
-	//}
-	//fmt.Printf("stats for: %s\n%v\n", targetMonitoredPath, stats)
-	//
-	//if !WaitForStorage(tracker, fileName, false, waitForTrackerFolderExists) {
-	//	panic(fmt.Sprintf("%s found in contents\ncontents: %v\n", fileName, tracker.contents))
-	//}
-	//
-	//if !WaitForStorage(tracker, secondFilename, true, waitForTrackerFolderExists) {
-	//	panic(fmt.Sprintf("%s not found in contents\ncontents: %v\n", secondFilename, tracker.contents))
-	//}
-	//
-	//if !WaitForFilesystem(tracker, "", true, waitForEmptyRenamesInProgress) {
-	//	panic(fmt.Sprint("6 tracker has renames in progress still"))
-	//}
-
-	// check to make sure that there are no invalid directories
-	//tracker.validate()
 }
 
 //REPLICAT_STATUS_INITIAL_SCAN

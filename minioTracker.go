@@ -17,6 +17,7 @@
 package main
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/minio/minio-go"
@@ -25,7 +26,6 @@ import (
 	"sort"
 	"strings"
 	"sync"
-	"encoding/json"
 )
 
 // MinioTracker - Track a filesystem and keep it in sync
@@ -60,17 +60,17 @@ const (
 )
 
 //func (handler *MinioTracker) Initialize(directory string, server *ReplicatServer) {
-//	fmt.Println("FilesystemTracker:init")
+//	log.Println("FilesystemTracker:init")
 //	handler.fsLock.Lock()
 //	defer handler.fsLock.Unlock()
-//	fmt.Println("FilesystemTracker:/init")
-//	defer fmt.Println("FilesystemTracker://init")
+//	log.Println("FilesystemTracker:/init")
+//	defer log.Println("FilesystemTracker://init")
 //
 //	if handler.setup {
 //		return
 //	}
 //
-//	fmt.Printf("FilesystemTracker:init called with %s\n", directory)
+//	log.Printf("FilesystemTracker:init called with %s\n", directory)
 //	handler.directory = directory
 //
 //	// Make the channel buffered to ensure no event is dropped. Notify will drop
@@ -82,16 +82,16 @@ const (
 //	handler.directory = fullPath
 //
 //	if fullPath != globalSettings.Directory {
-//		fmt.Printf("Updating serving directory to: %s\n", fullPath)
+//		log.Printf("Updating serving directory to: %s\n", fullPath)
 //		handler.directory = fullPath
 //	}
 //
 //	handler.renamesInProgress = make(map[uint64]renameInformation, 0)
 //
-//	fmt.Println("Setting up filesystemTracker!")
+//	log.Println("Setting up filesystemTracker!")
 //	handler.printLockable(false)
 //
-//	fmt.Println("FilesystemTracker:init starting folder scan looking for initial files")
+//	log.Println("FilesystemTracker:init starting folder scan looking for initial files")
 //	err := handler.scanFolders()
 //	if err != nil {
 //		panic(err)
@@ -134,7 +134,7 @@ const (
 //}
 
 type MinioEntry struct {
-	Key       string `json:"key"`
+	Name      string `json:"name"`
 	Size      int64  `json:"size,omitempty"`
 	ETag      string `json:"eTag,omitempty"`
 	VersionID string `json:"versionId,omitempty"`
@@ -150,10 +150,10 @@ func (tracker *MinioTracker) watchBucket() {
 		}
 
 		for _, record := range notificationInfo.Records {
-			fmt.Printf("%s: %s bucket: %s object: %s\n", record.EventTime, record.EventName, record.S3.Bucket.Name, record.S3.Object.Key)
+			log.Printf("%s: %s bucket: %s object: %s\n", record.EventTime, record.EventName, record.S3.Bucket.Name, record.S3.Object.Key)
 			switch record.EventName {
 			case "s3:ObjectCreated:Put":
-				newEntry := MinioEntry{Key: record.S3.Object.Key, Size: record.S3.Object.Size, ETag: record.S3.Object.ETag, ModTime: record.EventTime}
+				newEntry := MinioEntry{Name: record.S3.Object.Key, Size: record.S3.Object.Size, ETag: record.S3.Object.ETag, ModTime: record.EventTime}
 				tracker.lock()
 				tracker.contents[record.S3.Object.Key] = newEntry
 				tracker.unlock()
@@ -175,7 +175,7 @@ func (tracker *MinioTracker) Initialize(bucketName string, server *ReplicatServe
 	// Initialize minio client object.
 	tracker.minioSDK, err = minio.New(minioAddress, minioAccessKey, minioSecretKey, true)
 	if err != nil {
-		fmt.Println(err)
+		log.Println(err)
 		return
 	}
 
@@ -188,21 +188,28 @@ func (tracker *MinioTracker) Initialize(bucketName string, server *ReplicatServe
 
 	// If the bucket does not exist, create it.
 	exists, err := tracker.minioSDK.BucketExists(bucketName)
+	log.Printf("MinioTracker::Initialize: Bucket: %s Exists: %t Error: %v\n", bucketName, exists, err)
 	if err != nil {
 		panic(err.Error())
 	}
 
-	go tracker.watchBucket()
-
 	if exists == true {
-		fmt.Printf("MinioTracker:Initialize starting object scan in bucket: %s\n", tracker.bucketName)
+		log.Printf("MinioTracker:Initialize starting object scan in bucket: %s\n", tracker.bucketName)
+		go tracker.watchBucket()
+
 		tracker.scanObjects()
 	} else {
 		err = tracker.minioSDK.MakeBucket(bucketName, "")
+		log.Printf("MinioTracker::Initialize: Attempted to make bucket: %s Error: %v\n", tracker.bucketName, err)
 		if err != nil {
 			panic(err.Error())
 		}
+
+		log.Printf("MinioTracker::Initialize: About to start watching bucket: %s Error: %v\n", tracker.bucketName, err)
+		go tracker.watchBucket()
 	}
+
+	log.Printf("MinioTracker::Initialize: About to start watching bucket: %s Error: %v\n", tracker.bucketName, err)
 
 	// Set the status to be done with initial scan
 	server.SetStatus(REPLICAT_STATUS_JOINING_CLUSTER)
@@ -213,30 +220,43 @@ func (tracker *MinioTracker) Initialize(bucketName string, server *ReplicatServe
 }
 
 func (tracker *MinioTracker) scanObjects() {
+	log.Printf("Scanning objects in bucket: %s\n", tracker.bucketName)
 	doneCh := make(chan struct{})
 	defer close(doneCh)
-	// Recursively list all objects in 'mytestbucket'
+
+	tracker.fsLock.Lock()
+	defer tracker.fsLock.Unlock()
+
+	//type MinioEntry struct {
+	//	Key       string `json:"key"`
+	//	Size      int64  `json:"size,omitempty"`
+	//	ETag      string `json:"eTag,omitempty"`
+	//	VersionID string `json:"versionId,omitempty"`
+	//	Sequencer string `json:"sequencer"`
+	//	ModTime   string `json:"modTime"`
+	//}
+
+	// Recursively list all objects in tracker.bucketName
+	log.Printf("About to list all of the objects from S3. Current contents:\n%#v\n", tracker.contents)
 	for message := range tracker.minioSDK.ListObjectsV2(tracker.bucketName, "", true, doneCh) {
-		fmt.Println(message)
+		log.Println(message)
 		var jsonValues []byte
 		jsonValues, err := json.Marshal(message)
 		if err != nil {
 			panic(err.Error())
 		}
 
-		fmt.Printf("Current item is: %s\n", jsonValues)
+		log.Printf("Current item is: %s\n", jsonValues)
 
 		var test MinioEntry
 		json.Unmarshal(jsonValues, &test)
 
-		fmt.Printf("This is the key field from the entry: %s\n", test.Key)
-		//switch message {
-		//
-		//}
-
+		log.Printf("This is the key field from the entry: %s\n", test.Name)
+		log.Printf("Before Setting: %s to %v Length: %d Current contents:\n%#v\n", test.Name, test, len(tracker.contents), tracker.contents)
+		tracker.contents[test.Name] = test
+		log.Printf("After  Setting: %s to %v Length: %d Current contents:\n%#v\n", test.Name, test, len(tracker.contents), tracker.contents)
 	}
-
-	// Add each
+	log.Printf("About to list all of the objects from S3. Current contents:\n%#v\n", tracker.contents)
 
 }
 
@@ -260,8 +280,8 @@ func (tracker *MinioTracker) verifyInitialized() (err error) {
 func (tracker *MinioTracker) CreateObject(bucketName, objectName, sourceFile, contentType string) (err error) {
 	//todo rectify this. Filesystem tracker assumes the base directory of the tracker for source file. Not cool.
 	//	dir, err := os.Getwd()
-	//	fmt.Printf("Minio Tracker in Create object. sourceFile is: %s cwd is: %s \n", sourceFile, dir)
-	fmt.Printf("Minio Tracker in Create object. sourceFile is: %s\n", sourceFile)
+	//	log.Printf("Minio Tracker in Create object. sourceFile is: %s cwd is: %s \n", sourceFile, dir)
+	log.Printf("Minio Tracker in Create object. sourceFile is: %s\n", sourceFile)
 
 	info, err := os.Stat(sourceFile)
 	if err != nil {
@@ -274,7 +294,7 @@ func (tracker *MinioTracker) CreateObject(bucketName, objectName, sourceFile, co
 	}
 
 	if info.Size() != size {
-		fmt.Println("Size missmatch")
+		log.Println("Size missmatch")
 	}
 
 	return
@@ -292,7 +312,7 @@ func (tracker *MinioTracker) CreatePath(pathName string, isDirectory bool) (err 
 
 	err = tracker.minioSDK.MakeBucket(pathName, "")
 	if err != nil {
-		fmt.Println(err)
+		log.Println(err)
 		return
 	}
 
@@ -305,7 +325,7 @@ func (tracker *MinioTracker) Rename(sourcePath string, destinationPath string, i
 }
 
 func (tracker *MinioTracker) RenameObject(bucketName string, objectName string, sourceObjectName string) (err error) {
-	fmt.Printf("MinioTracker::Rename object dest bucket: %s dest name: %s, source: %s\n", bucketName, objectName, sourceObjectName)
+	log.Printf("MinioTracker::Rename object dest bucket: %s dest name: %s, source: %s\n", bucketName, objectName, sourceObjectName)
 	err = tracker.verifyInitialized()
 	if err != nil {
 		panic(err)
@@ -356,7 +376,7 @@ func joinBucketObjectName(bucketName string, objectName string) (bucketObjectNam
 }
 
 func (tracker *MinioTracker) DeleteObject(bucket, name string) (err error) {
-	fmt.Printf("MinioTracker::DeleteObject bucket: %s, name: %s\n", bucket, name)
+	log.Printf("MinioTracker::DeleteObject bucket: %s, name: %s\n", bucket, name)
 	err = tracker.verifyInitialized()
 	if err != nil {
 		panic(err)
@@ -377,7 +397,7 @@ func (tracker *MinioTracker) DeleteFolder(name string) (err error) {
 
 	err = tracker.minioSDK.RemoveBucket(name)
 	if err != nil {
-		fmt.Println(err)
+		log.Println(err)
 		return
 	}
 
@@ -391,11 +411,12 @@ func (tracker *MinioTracker) ListFolders(getLocks bool) (folderList []string, er
 		panic(err)
 	}
 
-	folderList = make([]string, len(tracker.contents))
+	folderList = make([]string, 0)
 	for k := range tracker.contents {
 		folderList = append(folderList, k)
 	}
 
+	fmt.Printf("Items returning from ListFolders: %d\n%#v\n", len(folderList), folderList)
 	return
 }
 
@@ -426,11 +447,11 @@ func (tracker *MinioTracker) IncrementStatistic(name string, delta int) {
 //// IncrementStatistic - Increment one of the named statistics on the tracker.
 //func (handler *FilesystemTracker) IncrementStatistic(name string, delta int) {
 //	go func() {
-//		fmt.Printf("FilesystemTracker:IncrementStatistic(name %s, delta %d)\n", name, delta)
+//		log.Printf("FilesystemTracker:IncrementStatistic(name %s, delta %d)\n", name, delta)
 //		handler.fsLock.Lock()
-//		fmt.Println("FilesystemTracker:/IncrementStatistic")
+//		log.Println("FilesystemTracker:/IncrementStatistic")
 //		defer handler.fsLock.Unlock()
-//		defer fmt.Println("FilesystemTracker://IncrementStatistic")
+//		defer log.Println("FilesystemTracker://IncrementStatistic")
 //
 //		switch name {
 //		case TRACKER_TOTAL_FILES:
@@ -460,11 +481,11 @@ func (tracker *MinioTracker) IncrementStatistic(name string, delta int) {
 
 func (tracker *MinioTracker) printLockable(lock bool) {
 	if lock {
-		fmt.Println("MinioTracker:print")
+		log.Println("MinioTracker:print")
 		tracker.fsLock.RLock()
-		fmt.Println("MinioTracker:/print")
+		log.Println("MinioTracker:/print")
 		defer tracker.fsLock.RUnlock()
-		defer fmt.Println("MinioTracker://print")
+		defer log.Println("MinioTracker://print")
 	}
 
 	folders := make([]string, 0, len(tracker.contents))
@@ -473,50 +494,50 @@ func (tracker *MinioTracker) printLockable(lock bool) {
 	}
 	sort.Strings(folders)
 
-	fmt.Println("~~~~~~~~~~~~~~~~~~~~~~~")
-	fmt.Printf("~~~~%s Minio Tracker report setup(%v)\n", tracker.bucketName, tracker.setup)
-	fmt.Printf("~~~~contents: %v\n", tracker.contents)
-	fmt.Printf("~~~~folders: %v\n", folders)
-	fmt.Println("~~~~~~~~~~~~~~~~~~~~~~~")
+	log.Println("~~~~~~~~~~~~~~~~~~~~~~~")
+	log.Printf("~~~~%s Minio Tracker report setup(%v)\n", tracker.bucketName, tracker.setup)
+	log.Printf("~~~~contents: %v\n", tracker.contents)
+	log.Printf("~~~~folders: %v\n", folders)
+	log.Println("~~~~~~~~~~~~~~~~~~~~~~~")
 }
 
 func (tracker *MinioTracker) rlock() {
-	fmt.Println("MinioTracker:rlock before")
+	log.Println("MinioTracker:rlock before")
 	tracker.fsLock.RLock()
-	fmt.Println("MinioTracker:rlock after")
+	log.Println("MinioTracker:rlock after")
 }
 
 func (tracker *MinioTracker) lock() {
-	fmt.Println("MinioTracker:lock before")
+	log.Println("MinioTracker:lock before")
 	tracker.fsLock.Lock()
-	fmt.Println("MinioTracker:lock after")
+	log.Println("MinioTracker:lock after")
 }
 
 func (tracker *MinioTracker) runlock() {
-	fmt.Println("MinioTracker:runlock before")
+	log.Println("MinioTracker:runlock before")
 	tracker.fsLock.RUnlock()
-	fmt.Println("MinioTracker:runlock after")
+	log.Println("MinioTracker:runlock after")
 }
 
 func (tracker *MinioTracker) unlock() {
-	fmt.Println("MinioTracker:unlock before")
+	log.Println("MinioTracker:unlock before")
 	tracker.fsLock.Unlock()
-	fmt.Println("MinioTracker:unlock after")
+	log.Println("MinioTracker:unlock after")
 }
 
 //func (handler *FilesystemTracker) validate() {
 //	handler.fsLock.RLock()
 //	defer handler.fsLock.RUnlock()
-//	fmt.Println("~~~~~~~~~~~~~~~~~~~~~~~")
-//	fmt.Printf("~~~~%s Tracker validation starting on %d folders\n", handler.directory, len(handler.contents))
+//	log.Println("~~~~~~~~~~~~~~~~~~~~~~~")
+//	log.Printf("~~~~%s Tracker validation starting on %d folders\n", handler.directory, len(handler.contents))
 //
 //	for name, dir := range handler.contents {
 //		if !dir.setup {
-//			panic(fmt.Sprintf("tracker validation failed on directory: %s\n", name))
+//			panic(log.Sprintf("tracker validation failed on directory: %s\n", name))
 //		}
 //	}
 //
-//	fmt.Println("~~~~~~~~~~~~~~~~~~~~~~~")
+//	log.Println("~~~~~~~~~~~~~~~~~~~~~~~")
 //}
 //
 //// GetStatistics - Return the tracked statistics for the replicat node.
@@ -536,23 +557,23 @@ func (tracker *MinioTracker) unlock() {
 //	var cluster string
 //	serverMapLock.RLock()
 //	for _, v := range serverMap {
-//		cluster += fmt.Sprintf("name: %s\taddress: %s\n", v.Name, v.Address)
+//		cluster += log.Sprintf("name: %s\taddress: %s\n", v.Name, v.Address)
 //	}
 //
 //	serverMapLock.RUnlock()
 //
-//	fmt.Printf("Address: %s\tFiles: %d\tFolders:%d\tFiles Sent: %d\tReceived %d\tDeleted: %d\tCatalogs Sent: %d\tReceived: %d\n%s", address, handler.stats.TotalFiles, handler.stats.TotalFolders, handler.stats.FilesSent, handler.stats.FilesReceived, handler.stats.FilesDeleted, handler.stats.CatalogsSent, handler.stats.CatalogsReceived, cluster)
+//	log.Printf("Address: %s\tFiles: %d\tFolders:%d\tFiles Sent: %d\tReceived %d\tDeleted: %d\tCatalogs Sent: %d\tReceived: %d\n%s", address, handler.stats.TotalFiles, handler.stats.TotalFolders, handler.stats.FilesSent, handler.stats.FilesReceived, handler.stats.FilesDeleted, handler.stats.CatalogsSent, handler.stats.CatalogsReceived, cluster)
 //
 //	return
 //}
 //
 
 func (tracker *MinioTracker) cleanupAndDelete() {
-	fmt.Println("MinioTracker:cleanup")
+	log.Println("MinioTracker:cleanup")
 	tracker.fsLock.Lock()
 	defer tracker.fsLock.Unlock()
-	fmt.Println("MinioTracker:/cleanup")
-	defer fmt.Println("MinioTracker://cleanup")
+	log.Println("MinioTracker:/cleanup")
+	defer log.Println("MinioTracker://cleanup")
 
 	if !tracker.setup {
 		panic("cleanup called when not yet setup")
@@ -596,7 +617,7 @@ func (tracker *MinioTracker) cleanupAndDelete() {
 //			err2 = os.Mkdir(directory, os.ModeDir+os.ModePerm)
 //			fullPath, err3 = filepath.EvalSymlinks(directory)
 //			if err2 != nil || err3 != nil {
-//				panic(fmt.Sprintf("err: %v\nerr2: %v\nerr3: %v\n", err, err2, err3))
+//				panic(log.Sprintf("err: %v\nerr2: %v\nerr3: %v\n", err, err2, err3))
 //			}
 //		} else {
 //			panic(err)
@@ -611,30 +632,30 @@ func (tracker *MinioTracker) cleanupAndDelete() {
 //		stat, err = os.Stat(absolutePathName)
 //
 //		if err == nil {
-//			fmt.Printf("Path existed: %s\n", absolutePathName)
+//			log.Printf("Path existed: %s\n", absolutePathName)
 //			pathCreated = true
 //			return
 //		}
 //
 //		// if there is an error, go to create the path
-//		fmt.Printf("Creating path: %s\n", absolutePathName)
+//		log.Printf("Creating path: %s\n", absolutePathName)
 //		err = os.MkdirAll(absolutePathName, os.ModeDir+os.ModePerm)
 //
 //		// after attempting to create the path, check the err again
 //		if err == nil {
-//			fmt.Printf("Path was created or existed: %s\n", absolutePathName)
+//			log.Printf("Path was created or existed: %s\n", absolutePathName)
 //			pathCreated = true
 //			stat, err = os.Stat(absolutePathName)
-//			fmt.Printf("os.Stat returned stat: %#v, err: %#v\n", stat, err)
+//			log.Printf("os.Stat returned stat: %#v, err: %#v\n", stat, err)
 //			return
 //		} else if os.IsExist(err) {
-//			fmt.Printf("Path already exists: %s\n", absolutePathName)
+//			log.Printf("Path already exists: %s\n", absolutePathName)
 //			pathCreated = true
 //			stat, err = os.Stat(absolutePathName)
 //			return
 //		}
 //
-//		fmt.Printf("Error (%v) encountered creating path, going to try again. Attempt: %d\n", err, maxCycles)
+//		log.Printf("Error (%v) encountered creating path, going to try again. Attempt: %d\n", err, maxCycles)
 //		time.Sleep(20 * time.Millisecond)
 //	}
 //
@@ -652,9 +673,9 @@ func (tracker *MinioTracker) cleanupAndDelete() {
 //	for p, entry := range pathEntries {
 //		fullPath := filepath.Join(currentPath, p)
 //		realEntry := handler.contents[p]
-//		fmt.Printf("File info for: %s\nProvided: %#v\nFile info for: %s\nStorege : %#v\n", p, entry, p, realEntry)
+//		log.Printf("File info for: %s\nProvided: %#v\nFile info for: %s\nStorege : %#v\n", p, entry, p, realEntry)
 //		if !entry.IsDirectory {
-//			fmt.Printf("Requested file information: %s\n%#v\n", p, entry)
+//			log.Printf("Requested file information: %s\n%#v\n", p, entry)
 //			go postHelper(p, fullPath, serverAddress, globalSettings.ManagerCredentials)
 //		}
 //	}
@@ -693,19 +714,19 @@ func (tracker *MinioTracker) cleanupAndDelete() {
 //		relativePathName, file = filepath.Split(pathName)
 //	}
 //
-//	//fmt.Printf("Path name before any adjustments (directory: %v)\npath: %s\nfile: %s\n", isDirectory, relativePathName, file)
+//	//log.Printf("Path name before any adjustments (directory: %v)\npath: %s\nfile: %s\n", isDirectory, relativePathName, file)
 //	if len(relativePathName) > 0 && relativePathName[len(relativePathName)-1] == filepath.Separator {
-//		fmt.Println("Stripping out path ending")
+//		log.Println("Stripping out path ending")
 //		relativePathName = relativePathName[:len(relativePathName)-1]
 //	}
 //
 //	absolutePathName := filepath.Join(handler.directory, relativePathName)
-//	fmt.Printf("**********\npath was split into \nrelativePathName: %s \nfile: %s \nabsolutePath: %s\n**********\n", relativePathName, file, absolutePathName)
+//	log.Printf("**********\npath was split into \nrelativePathName: %s \nfile: %s \nabsolutePath: %s\n**********\n", relativePathName, file, absolutePathName)
 //
 //	pathCreated, stat, err := createPath(pathName, absolutePathName)
 //
 //	if err != nil && !os.IsExist(err) {
-//		panic(fmt.Sprintf("Error creating folder %s: %v\n", relativePathName, err))
+//		panic(log.Sprintf("Error creating folder %s: %v\n", relativePathName, err))
 //	}
 //
 //	if pathCreated {
@@ -714,37 +735,37 @@ func (tracker *MinioTracker) cleanupAndDelete() {
 //
 //	if !isDirectory {
 //		completeAbsoluteFilePath := filepath.Join(handler.directory, pathName)
-//		fmt.Printf("We are creating a file at: %s\n", completeAbsoluteFilePath)
+//		log.Printf("We are creating a file at: %s\n", completeAbsoluteFilePath)
 //
 //		// We also need to create the file.
 //		for maxCycles := 0; maxCycles < 5; maxCycles++ {
 //			stat, err = os.Stat(completeAbsoluteFilePath)
-//			fmt.Printf("Stat call done for\npath: %s\nerr: %v\nstat: %v\n", completeAbsoluteFilePath, err, stat)
+//			log.Printf("Stat call done for\npath: %s\nerr: %v\nstat: %v\n", completeAbsoluteFilePath, err, stat)
 //			var newFile *os.File
 //
 //			// if there is an error, go to create the file
-//			fmt.Println("before")
+//			log.Println("before")
 //			if err != nil {
-//				fmt.Printf("Creating file: %s\n", completeAbsoluteFilePath)
+//				log.Printf("Creating file: %s\n", completeAbsoluteFilePath)
 //				newFile, err = os.Create(completeAbsoluteFilePath)
-//				fmt.Printf("Attempt to create file finished\n err: %v\n path: %s\n", err, completeAbsoluteFilePath)
+//				log.Printf("Attempt to create file finished\n err: %v\n path: %s\n", err, completeAbsoluteFilePath)
 //			}
-//			fmt.Println("after")
+//			log.Println("after")
 //
 //			// after attempting to create the file, check the err again
 //			if err == nil {
 //				newFile.Close()
 //				stat, err = os.Stat(completeAbsoluteFilePath)
-//				fmt.Printf("file was created or existed: %s\n", completeAbsoluteFilePath)
+//				log.Printf("file was created or existed: %s\n", completeAbsoluteFilePath)
 //				break
 //			}
 //
-//			fmt.Printf("Error (%v) encountered creating file, going to try again. Attempt: %d\n", err, maxCycles)
+//			log.Printf("Error (%v) encountered creating file, going to try again. Attempt: %d\n", err, maxCycles)
 //			time.Sleep(20 * time.Millisecond)
 //		}
 //
 //		if err != nil {
-//			panic(fmt.Sprintf("Error creating file %s: %v\n", completeAbsoluteFilePath, err))
+//			panic(log.Sprintf("Error creating file %s: %v\n", completeAbsoluteFilePath, err))
 //		}
 //
 //		handler.contents[relativePathName] = *NewDirectoryFromFileInfo(&stat)
@@ -755,11 +776,11 @@ func (tracker *MinioTracker) cleanupAndDelete() {
 //
 //// CreatePath tells the storage tracker to create a new path
 //func (handler *FilesystemTracker) CreatePath(pathName string, isDirectory bool) error {
-//	fmt.Printf("FilesystemTracker:CreatePath called with relativePath: %s isDirectory: %v\n", pathName, isDirectory)
+//	log.Printf("FilesystemTracker:CreatePath called with relativePath: %s isDirectory: %v\n", pathName, isDirectory)
 //	handler.fsLock.Lock()
-//	fmt.Println("FilesystemTracker:/CreatePath")
+//	log.Println("FilesystemTracker:/CreatePath")
 //	defer handler.fsLock.Unlock()
-//	defer fmt.Println("FilesystemTracker://CreatePath")
+//	defer log.Println("FilesystemTracker://CreatePath")
 //
 //	if !handler.setup {
 //		panic("FilesystemTracker:CreatePath called when not yet setup")
@@ -779,16 +800,16 @@ func (tracker *MinioTracker) cleanupAndDelete() {
 //
 //		// after attempting to create the path, check the err again
 //		if err == nil {
-//			fmt.Println("Rename Complete")
+//			log.Println("Rename Complete")
 //			break
 //		}
 //
-//		fmt.Printf("Error (%v) encountered moving path, going to try again. Attempt: %d\n", err, maxCycles)
+//		log.Printf("Error (%v) encountered moving path, going to try again. Attempt: %d\n", err, maxCycles)
 //		time.Sleep(20 * time.Millisecond)
 //	}
 //
 //	if err != nil {
-//		panic(fmt.Sprintf("Rename failed (%v)!  source: %s dest: %s directory %v\n", err, sourcePath, destinationPath, isDirectory))
+//		panic(log.Sprintf("Rename failed (%v)!  source: %s dest: %s directory %v\n", err, sourcePath, destinationPath, isDirectory))
 //	}
 //
 //	return err
@@ -796,13 +817,13 @@ func (tracker *MinioTracker) cleanupAndDelete() {
 //
 //// Rename - Rename a file or folder from one location to another
 //func (handler *FilesystemTracker) Rename(sourcePath string, destinationPath string, isDirectory bool) (err error) {
-//	fmt.Println("FilesystemTracker:Rename")
+//	log.Println("FilesystemTracker:Rename")
 //	handler.fsLock.Lock()
 //	defer handler.fsLock.Unlock()
-//	fmt.Println("FilesystemTracker:/Rename")
-//	defer fmt.Println("FilesystemTracker://Rename")
+//	log.Println("FilesystemTracker:/Rename")
+//	defer log.Println("FilesystemTracker://Rename")
 //
-//	fmt.Printf("We have a rename event. source: %s dest: %s directory %v\n", sourcePath, destinationPath, isDirectory)
+//	log.Printf("We have a rename event. source: %s dest: %s directory %v\n", sourcePath, destinationPath, isDirectory)
 //
 //	if !handler.setup {
 //		panic("FilesystemTracker:CreatePath called when not yet setup")
@@ -810,59 +831,59 @@ func (tracker *MinioTracker) cleanupAndDelete() {
 //
 //	// If we have a source and destination, perform the move to mirror the other side
 //	if len(sourcePath) > 0 && len(destinationPath) > 0 {
-//		fmt.Println("FilesystemTracker:Rename completing")
+//		log.Println("FilesystemTracker:Rename completing")
 //		err = handler.handleCompleteRename(sourcePath, destinationPath, isDirectory)
 //	} else if sourcePath == "" {
-//		fmt.Println("FilesystemTracker:Rename creating a new path")
+//		log.Println("FilesystemTracker:Rename creating a new path")
 //		// If the file was moved into the monitored folder from nowhere, ...
 //		// bypass the locking by using the internal method since we already have the lockings and safety checks
 //		err = handler.createPath(destinationPath, isDirectory)
 //	} else if destinationPath == "" {
-//		fmt.Println("FilesystemTracker:Rename deleting existing path")
+//		log.Println("FilesystemTracker:Rename deleting existing path")
 //		// If the file or folder was moved out of the monitored folder, get rid of it.
 //		delete(handler.contents, sourcePath)
 //		// todo - shortcut the events on this one. Should create a bit of a storm.
 //		absolutePathForDeletion := filepath.Join(handler.directory, sourcePath)
-//		fmt.Printf("About to call os.RemoveAll on: %s\n", absolutePathForDeletion)
+//		log.Printf("About to call os.RemoveAll on: %s\n", absolutePathForDeletion)
 //		err = os.RemoveAll(absolutePathForDeletion)
 //		if err != nil {
-//			panic(fmt.Sprintf("%v encountered when attempting to os.RemoveAll(%s)", err, absolutePathForDeletion))
+//			panic(log.Sprintf("%v encountered when attempting to os.RemoveAll(%s)", err, absolutePathForDeletion))
 //		}
 //	} else {
 //		panic("Enexpected case encountered in rename")
 //	}
 //
-//	fmt.Printf("Rename Complete source: %s dest: %s directory %v\n", sourcePath, destinationPath, isDirectory)
+//	log.Printf("Rename Complete source: %s dest: %s directory %v\n", sourcePath, destinationPath, isDirectory)
 //	return
 //}
 //
 //// DeleteFolder - This storage handler should remove the specified path
 //func (handler *FilesystemTracker) DeleteFolder(name string) error {
-//	fmt.Println("FilesystemTracker:DeleteFolder")
+//	log.Println("FilesystemTracker:DeleteFolder")
 //	handler.fsLock.Lock()
 //	defer handler.fsLock.Unlock()
-//	fmt.Println("FilesystemTracker:/DeleteFolder")
-//	defer fmt.Println("FilesystemTracker://DeleteFolder")
+//	log.Println("FilesystemTracker:/DeleteFolder")
+//	defer log.Println("FilesystemTracker://DeleteFolder")
 //
 //	if !handler.setup {
 //		panic("FilesystemTracker:DeleteFolder called when not yet setup")
 //	}
 //
-//	fmt.Printf("DeleteFolder: '%s'\n", name)
+//	log.Printf("DeleteFolder: '%s'\n", name)
 //	delete(handler.contents, name)
-//	fmt.Printf("%d after delete of: %s\n", len(handler.contents), name)
+//	log.Printf("%d after delete of: %s\n", len(handler.contents), name)
 //
 //	return nil
 //}
 //
 //// ListFolders - This storage handler should return a list of contained folders.
 //func (handler *FilesystemTracker) ListFolders(getLocks bool) (folderList []string) {
-//	fmt.Printf("FilesystemTracker:ListFolders getLocks: %v\n", getLocks)
+//	log.Printf("FilesystemTracker:ListFolders getLocks: %v\n", getLocks)
 //	if getLocks {
 //		handler.fsLock.Lock()
 //		defer handler.fsLock.Unlock()
-//		fmt.Println("FilesystemTracker:/ListFolders")
-//		defer fmt.Println("FilesystemTracker://ListFolders")
+//		log.Println("FilesystemTracker:/ListFolders")
+//		defer log.Println("FilesystemTracker://ListFolders")
 //	}
 //
 //	if !handler.setup {
@@ -909,12 +930,12 @@ func (tracker *MinioTracker) cleanupAndDelete() {
 //	for {
 //		ei := <-c
 //
-//		fmt.Printf("*****We have an event: %v\nwith Sys: %v\npath: %v\nevent: %v\n", ei, ei.Sys(), ei.Path(), ei.Event())
+//		log.Printf("*****We have an event: %v\nwith Sys: %v\npath: %v\nevent: %v\n", ei, ei.Sys(), ei.Path(), ei.Event())
 //
 //		path, fullPath := extractPaths(handler, &ei)
 //		// Skip empty paths
 //		if path == "" {
-//			fmt.Println("blank path. Ignore!")
+//			log.Println("blank path. Ignore!")
 //			continue
 //		}
 //
@@ -923,7 +944,7 @@ func (tracker *MinioTracker) cleanupAndDelete() {
 //		_, testFile := filepath.Split(ei.Path())
 //		_, exists := filesToIgnore[testFile]
 //		if exists {
-//			fmt.Printf("Ignoring event for file on ignore list: %s - %s\n", ei.Event(), testFile)
+//			log.Printf("Ignoring event for file on ignore list: %s - %s\n", ei.Event(), testFile)
 //			continue
 //		}
 //
@@ -937,11 +958,11 @@ func (tracker *MinioTracker) cleanupAndDelete() {
 //}
 //
 //func (handler *FilesystemTracker) checkIfDirectory(event Event, path, fullPath string) bool {
-//	fmt.Println("FilesystemTracker:checkIfDirectory")
+//	log.Println("FilesystemTracker:checkIfDirectory")
 //	handler.fsLock.Lock()
 //	defer handler.fsLock.Unlock()
-//	fmt.Println("FilesystemTracker:/checkIfDirectory")
-//	defer fmt.Println("FilesystemTracker://checkIfDirectory")
+//	log.Println("FilesystemTracker:/checkIfDirectory")
+//	defer log.Println("FilesystemTracker://checkIfDirectory")
 //
 //	// Check to see if this was a path we knew about
 //	_, isDirectory := handler.contents[path]
@@ -951,14 +972,14 @@ func (tracker *MinioTracker) cleanupAndDelete() {
 //	if err == nil {
 //		isDirectory = info.IsDir()
 //		sysInterface := info.Sys()
-//		fmt.Printf("sysInterface: %v\n", sysInterface)
+//		log.Printf("sysInterface: %v\n", sysInterface)
 //		if sysInterface != nil {
 //			foo := sysInterface.(*syscall.Stat_t)
 //			iNode = foo.Ino
 //		}
 //	}
 //
-//	fmt.Printf("checkIfDirectory: event raw data: %s with path: %s fullPath: %s isDirectory: %v iNode: %v\n", event.Name, path, fullPath, isDirectory, iNode)
+//	log.Printf("checkIfDirectory: event raw data: %s with path: %s fullPath: %s isDirectory: %v iNode: %v\n", event.Name, path, fullPath, isDirectory, iNode)
 //
 //	return isDirectory
 //}
@@ -974,7 +995,7 @@ func (tracker *MinioTracker) cleanupAndDelete() {
 //}
 //
 //func getiNodeFromStat(stat os.FileInfo) uint64 {
-//	fmt.Printf("getiNodeFromStat called with %#v\n", stat)
+//	log.Printf("getiNodeFromStat called with %#v\n", stat)
 //	if stat == nil {
 //		return 0
 //	}
@@ -1020,28 +1041,28 @@ func (tracker *MinioTracker) cleanupAndDelete() {
 //
 //	inProgress, exists := handler.renamesInProgress[iNode]
 //	if !exists {
-//		fmt.Printf("Rename for iNode %d appears to have been completed\n", iNode)
+//		log.Printf("Rename for iNode %d appears to have been completed\n", iNode)
 //		return
 //	}
 //
 //	// We have the inProgress. Clean it up
 //	if inProgress.sourceSet {
 //		relativePath := inProgress.sourcePath[len(handler.directory)+1:]
-//		fmt.Printf("File at: %s (iNode %d) appears to have been moved away. Removing it\n", relativePath, iNode)
+//		log.Printf("File at: %s (iNode %d) appears to have been moved away. Removing it\n", relativePath, iNode)
 //		delete(handler.contents, relativePath)
 //
 //		// tell the other nodes that a rename was done.
 //		event := Event{Name: "replicat.Rename", Source: globalSettings.Name, SourcePath: relativePath}
 //		SendEvent(event, inProgress.sourcePath)
 //	} else if inProgress.destinationSet {
-//		fmt.Printf("directory: %s src: %s dest: %s\n", handler.directory, inProgress.sourcePath, inProgress.destinationPath)
-//		fmt.Printf("inProgress: %v\n", handler.renamesInProgress)
-//		fmt.Printf("this inProgress: %v\n", inProgress)
+//		log.Printf("directory: %s src: %s dest: %s\n", handler.directory, inProgress.sourcePath, inProgress.destinationPath)
+//		log.Printf("inProgress: %v\n", handler.renamesInProgress)
+//		log.Printf("this inProgress: %v\n", inProgress)
 //
 //		//this code failed because of an slice index out of bounds error. It is a reasonable copy with both sides and
 //		//yet it was initialized blank. The first event was for the copy and it should have existed. Ahh, it is a file
 //		if len(inProgress.destinationPath) < len(handler.directory)+1 {
-//			fmt.Print("About to pop.....")
+//			log.Print("About to pop.....")
 //		}
 //
 //		relativePath := inProgress.destinationPath[len(handler.directory)+1:]
@@ -1058,21 +1079,21 @@ func (tracker *MinioTracker) cleanupAndDelete() {
 //		//for name, directory := range handler.contents {
 //		//	directoryID := getiNodeFromStat(directory)
 //		//	if directoryID == iNode {
-//		//		fmt.Println("found the source file, using it!")
+//		//		log.Println("found the source file, using it!")
 //		//		handler.contents[relativePath] = directory
 //		//		delete(handler.contents, name)
 //		//		return
 //		//	}
 //		//}
 //	} else {
-//		fmt.Printf("FilesystemTracker:completeRenameIfAbandoned In progress item that appears to be not set. iNode %d, inProgress: %#v\n", iNode, inProgress)
+//		log.Printf("FilesystemTracker:completeRenameIfAbandoned In progress item that appears to be not set. iNode %d, inProgress: %#v\n", iNode, inProgress)
 //	}
 //
 //	delete(handler.renamesInProgress, iNode)
 //}
 //
 //func (handler *FilesystemTracker) handleNotifyRename(event Event, pathName, fullPath string) (err error) {
-//	fmt.Printf("FilesystemTracker:handleNotifyRename: pathname: %s fullPath: %s\n", pathName, fullPath)
+//	log.Printf("FilesystemTracker:handleNotifyRename: pathname: %s fullPath: %s\n", pathName, fullPath)
 //	// Either the path should exist in the filesystem or it should exist in the stored tree. Find it.
 //
 //	// check to see if this folder currently exists. If it does, it is the destination
@@ -1091,8 +1112,8 @@ func (tracker *MinioTracker) cleanupAndDelete() {
 //	if tmpDestinationSet {
 //		iNode = getiNodeFromStat(tmpDestinationStat)
 //	} else if tmpSourceSet && tmpSourceDirectory.setup {
-//		//fmt.Printf("About to get iNodefromStat. Handler: %#v\n", handler)
-//		//fmt.Printf("tmpSourceDirectory: %#v\n", tmpSourceDirectory)
+//		//log.Printf("About to get iNodefromStat. Handler: %#v\n", handler)
+//		//log.Printf("tmpSourceDirectory: %#v\n", tmpSourceDirectory)
 //		iNode = getiNodeFromStat(tmpSourceDirectory)
 //	}
 //
@@ -1102,7 +1123,7 @@ func (tracker *MinioTracker) cleanupAndDelete() {
 //		inProgress.sourceDirectory = &tmpSourceDirectory
 //		inProgress.sourcePath = fullPath
 //		inProgress.sourceSet = true
-//		fmt.Printf("^^^^^^^Source found, deleting pathName '%s' from contents. Current transfer is: %v\n", pathName, inProgress)
+//		log.Printf("^^^^^^^Source found, deleting pathName '%s' from contents. Current transfer is: %v\n", pathName, inProgress)
 //		delete(handler.contents, pathName)
 //	}
 //
@@ -1112,14 +1133,14 @@ func (tracker *MinioTracker) cleanupAndDelete() {
 //		inProgress.destinationSet = true
 //	}
 //
-//	fmt.Printf("^^^^^^^Current transfer is: %#v\n", inProgress)
+//	log.Printf("^^^^^^^Current transfer is: %#v\n", inProgress)
 //
 //	if inProgress.destinationSet && inProgress.sourceSet {
-//		fmt.Printf("directory: %s src: %s dest: %s\n", handler.directory, inProgress.sourcePath, inProgress.destinationPath)
+//		log.Printf("directory: %s src: %s dest: %s\n", handler.directory, inProgress.sourcePath, inProgress.destinationPath)
 //
 //		relativeDestination := inProgress.destinationPath[len(handler.directory)+1:]
 //		relativeSource := inProgress.sourcePath[len(handler.directory)+1:]
-//		fmt.Printf("moving from source: %s (%s) to destination: %s (%s)\n", inProgress.sourcePath, relativeSource, inProgress.destinationPath, relativeDestination)
+//		log.Printf("moving from source: %s (%s) to destination: %s (%s)\n", inProgress.sourcePath, relativeSource, inProgress.destinationPath, relativeDestination)
 //
 //		handler.contents[relativeDestination] = *NewDirectoryFromFileInfo(&inProgress.destinationStat)
 //		delete(handler.contents, relativeSource)
@@ -1131,7 +1152,7 @@ func (tracker *MinioTracker) cleanupAndDelete() {
 //		SendEvent(event, relativeDestination)
 //
 //	} else {
-//		fmt.Printf("^^^^^^^We do not have both a source and destination - schedule and save under iNode: %d Current transfer is: %#v\n", iNode, inProgress)
+//		log.Printf("^^^^^^^We do not have both a source and destination - schedule and save under iNode: %d Current transfer is: %#v\n", iNode, inProgress)
 //		inProgress.iNode = iNode
 //		handler.renamesInProgress[iNode] = inProgress
 //		go handler.completeRenameIfAbandoned(iNode)
@@ -1216,12 +1237,12 @@ func (tracker *MinioTracker) cleanupAndDelete() {
 ////let them replicate
 //
 //func (handler *FilesystemTracker) processEvent(event Event, pathName, fullPath string, lock bool) {
-//	fmt.Println("FilesystemTracker:processEvent")
+//	log.Println("FilesystemTracker:processEvent")
 //	if lock {
 //		handler.fsLock.Lock()
 //	}
-//	fmt.Println("FilesystemTracker:/processEvent")
-//	defer fmt.Println("FilesystemTracker://processEvent")
+//	log.Println("FilesystemTracker:/processEvent")
+//	defer log.Println("FilesystemTracker://processEvent")
 //
 //	log.Printf("handleFilsystemEvent name: %s pathName: %s\n", event.Name, pathName)
 //	var err error
@@ -1237,7 +1258,7 @@ func (tracker *MinioTracker) cleanupAndDelete() {
 //		err = handler.handleNotifyWrite(event, pathName, fullPath)
 //	default:
 //		// do not send the event if we do not recognize it
-//		fmt.Printf("%s: %s not known, skipping (%v)\n", event.Name, pathName, event)
+//		log.Printf("%s: %s not known, skipping (%v)\n", event.Name, pathName, event)
 //	}
 //
 //	if err != nil {
@@ -1246,7 +1267,7 @@ func (tracker *MinioTracker) cleanupAndDelete() {
 //
 //	if lock {
 //		handler.fsLock.Unlock()
-//		fmt.Println("FilesystemTracker:/+processEvent 2")
+//		log.Println("FilesystemTracker:/+processEvent 2")
 //	}
 //}
 //
@@ -1264,7 +1285,7 @@ func (tracker *MinioTracker) cleanupAndDelete() {
 //
 //// SendCatalog - Send our catalog out for other nodes to compare. This needs to be called with handler.fsLock engaged
 //func (handler *FilesystemTracker) SendCatalog() {
-//	fmt.Printf("FileSystemTracker ScanFolders - end - Found %d items\n", len(handler.contents))
+//	log.Printf("FileSystemTracker ScanFolders - end - Found %d items\n", len(handler.contents))
 //
 //	handler.stats.CatalogsSent++
 //	// transfer the normal contents structure to the JSON friendly version
@@ -1273,7 +1294,7 @@ func (tracker *MinioTracker) cleanupAndDelete() {
 //
 //	for k, v := range handler.contents {
 //		entry := EntryJSON{RelativePath: k, IsDirectory: v.IsDir(), Hash: v.hash, ModTime: v.ModTime(), Size: v.Size()}
-//		fmt.Printf("Packing up: %s=%#v\n", k, entry)
+//		log.Printf("Packing up: %s=%#v\n", k, entry)
 //		rawData = append(rawData, entry)
 //	}
 //
@@ -1281,7 +1302,7 @@ func (tracker *MinioTracker) cleanupAndDelete() {
 //	if err != nil {
 //		panic(err)
 //	}
-//	fmt.Printf("Analyzed all files in the folder and the total size is: %d\n", len(jsonData))
+//	log.Printf("Analyzed all files in the folder and the total size is: %d\n", len(jsonData))
 //
 //	event := Event{
 //		Name:          "replicat.Catalog",
@@ -1291,14 +1312,14 @@ func (tracker *MinioTracker) cleanupAndDelete() {
 //		RawData:       jsonData,
 //	}
 //
-//	fmt.Printf("About to directly send out full catalog event with: %v\n", event)
+//	log.Printf("About to directly send out full catalog event with: %v\n", event)
 //	sendCatalogToManagerAndSiblings(event)
-//	fmt.Println("catalog sent")
+//	log.Println("catalog sent")
 //}
 //
 //// ProcessCatalog - handle a catalog passed from another replicat node
 //func (handler *FilesystemTracker) ProcessCatalog(event Event) {
-//	fmt.Printf("FilesystemTracker ProcessCatalog from Server: %s\n", event.Source)
+//	log.Printf("FilesystemTracker ProcessCatalog from Server: %s\n", event.Source)
 //
 //	handler.stats.CatalogsReceived++
 //	remoteServer := event.Source
@@ -1308,12 +1329,12 @@ func (tracker *MinioTracker) cleanupAndDelete() {
 //	if err != nil {
 //		panic(err)
 //	}
-//	fmt.Printf("Done unmarshalling event. len %d\n", len(remoteContents))
+//	log.Printf("Done unmarshalling event. len %d\n", len(remoteContents))
 //
 //	// Let's go through the other side's files and see if any of them are more up to date than what we have.
 //	handler.fsLock.Lock()
 //
-//	fmt.Printf("Data retrieved from: %s\n%#v\n", event.Source, remoteContents)
+//	log.Printf("Data retrieved from: %s\n%#v\n", event.Source, remoteContents)
 //
 //	if handler.neededFiles == nil {
 //		handler.neededFiles = make(map[string]EntryJSON)
@@ -1329,10 +1350,10 @@ func (tracker *MinioTracker) cleanupAndDelete() {
 //		// Request transfer of the file if we do not have a local copy already
 //		transfer := !exists
 //
-//		fmt.Printf("Considering: %s\nexists: %v\nremote: %#v\nlocal:  %#v\n", path, exists, remoteEntry, local)
+//		log.Printf("Considering: %s\nexists: %v\nremote: %#v\nlocal:  %#v\n", path, exists, remoteEntry, local)
 //		// Make missing directories immediately so we have a place to put the files
 //		if !exists && remoteEntry.IsDirectory {
-//			fmt.Printf("ProcessCatalog(%s) %s\nIs a directory, creating now\n", remoteEntry.ServerName, path)
+//			log.Printf("ProcessCatalog(%s) %s\nIs a directory, creating now\n", remoteEntry.ServerName, path)
 //			// Make a missing directory
 //			handler.createPath(path, true)
 //			// Skip to the next entry
@@ -1340,29 +1361,29 @@ func (tracker *MinioTracker) cleanupAndDelete() {
 //		}
 //
 //		if !transfer {
-//			fmt.Printf("ProcessCatalog(%s) %s\remote: %v\nlocal:  %v\n", remoteEntry.ServerName, path, remoteEntry, local)
-//			fmt.Printf("Comparing times for (%s) remote: %v local: %v\n", path, remoteEntry.ModTime, local.ModTime())
+//			log.Printf("ProcessCatalog(%s) %s\remote: %v\nlocal:  %v\n", remoteEntry.ServerName, path, remoteEntry, local)
+//			log.Printf("Comparing times for (%s) remote: %v local: %v\n", path, remoteEntry.ModTime, local.ModTime())
 //			if local.hash == nil || local.ModTime().Before(remoteEntry.ModTime) {
 //				transfer = true
 //			}
 //		}
 //
 //		hashSame := bytes.Equal(remoteEntry.Hash, local.hash)
-//		fmt.Printf("Done considering(%s) transfer is: %t\n", path, transfer)
+//		log.Printf("Done considering(%s) transfer is: %t\n", path, transfer)
 //		//todo should we do something if the transfer is set to true yet the hash is the same?
 //
 //		// If the hashes differ, we need to do something -- unless the other side is the older one
 //		//if !transfer && !hashSame {
-//		//	panic(fmt.Sprintf("We have a problem. file: %s\nremoteHash: %s\nlocalHash:  %s\n", path, remoteEntry.Hash, local.hash))
+//		//	panic(log.Sprintf("We have a problem. file: %s\nremoteHash: %s\nlocalHash:  %s\n", path, remoteEntry.Hash, local.hash))
 //		//}
 //
 //		if transfer {
 //			currentEntry := handler.neededFiles[path]
-//			fmt.Printf("We have decided to request transfer of this file: %s\nCurrent: %#v\nRemote: %#v\n", path, currentEntry, remoteEntry)
+//			log.Printf("We have decided to request transfer of this file: %s\nCurrent: %#v\nRemote: %#v\n", path, currentEntry, remoteEntry)
 //
 //			// If the current modification time is before the remote modification time, use the remote one
 //			useNew := currentEntry.ModTime.Before(remoteEntry.ModTime)
-//			fmt.Printf("Use New: %v HashSame: %v\n", useNew, hashSame)
+//			log.Printf("Use New: %v HashSame: %v\n", useNew, hashSame)
 //
 //			// If the hash and time are the same, randomly decide which one to use
 //			if !useNew && hashSame {
@@ -1371,16 +1392,16 @@ func (tracker *MinioTracker) cleanupAndDelete() {
 //
 //			// If we are going to use the new file, update the information
 //			if useNew {
-//				fmt.Println("decided to use new")
+//				log.Println("decided to use new")
 //				currentEntry.ModTime = remoteEntry.ModTime
 //				currentEntry.Hash = remoteEntry.Hash
 //				currentEntry.Size = remoteEntry.Size
 //				currentEntry.ServerName = remoteServer
 //
-//				fmt.Printf("About to save %s \n%#v to neededFiles \n%#v\n", path, currentEntry, handler.neededFiles)
+//				log.Printf("About to save %s \n%#v to neededFiles \n%#v\n", path, currentEntry, handler.neededFiles)
 //				handler.neededFiles[path] = currentEntry
 //			} else {
-//				fmt.Println("decided to use old")
+//				log.Println("decided to use old")
 //
 //			}
 //		}
@@ -1399,11 +1420,11 @@ func (tracker *MinioTracker) cleanupAndDelete() {
 //// send out the actual requests for needed files when necessary. Call when inside of a lock!
 //func (handler *FilesystemTracker) requestNeededFiles() {
 //	// Collect the files needed for each server.
-//	fmt.Printf("start collecting what we need from each server %#v\n", handler.neededFiles)
+//	log.Printf("start collecting what we need from each server %#v\n", handler.neededFiles)
 //	filesToFetch := make(map[string]map[string]EntryJSON)
 //
 //	for path, entry := range handler.neededFiles {
-//		fmt.Printf("%s: %s (%#v)\n", entry.ServerName, path, entry)
+//		log.Printf("%s: %s (%#v)\n", entry.ServerName, path, entry)
 //		server := entry.ServerName
 //		fileMap := filesToFetch[server]
 //		if fileMap == nil {
@@ -1414,25 +1435,25 @@ func (tracker *MinioTracker) cleanupAndDelete() {
 //	}
 //
 //	for server, fileMap := range filesToFetch {
-//		fmt.Printf("Files needed from: %s\n", server)
+//		log.Printf("Files needed from: %s\n", server)
 //		for filename, entry := range fileMap {
-//			fmt.Printf("\t%s(%d) - %v\n", filename, entry.Size, entry.Hash)
+//			log.Printf("\t%s(%d) - %v\n", filename, entry.Size, entry.Hash)
 //		}
 //		handler.SendRequestForFiles(server, fileMap)
 //	}
-//	fmt.Println("done collecting what we need from each server")
+//	log.Println("done collecting what we need from each server")
 //
 //}
 //
 //// SendRequestForFiles - Request files you need from another Replicat This needs to be called with handler.fsLock engaged
 //func (handler *FilesystemTracker) SendRequestForFiles(server string, fileMap map[string]EntryJSON) {
-//	fmt.Printf("FileSystemTracker SendRequestForFiles - end - Found %d items\n", len(handler.contents))
+//	log.Printf("FileSystemTracker SendRequestForFiles - end - Found %d items\n", len(handler.contents))
 //
 //	jsonData, err := json.Marshal(fileMap)
 //	if err != nil {
 //		panic(err)
 //	}
-//	fmt.Printf("Files needed from %s: %d    Data: %d\n", server, len(fileMap), len(jsonData))
+//	log.Printf("Files needed from %s: %d    Data: %d\n", server, len(fileMap), len(jsonData))
 //
 //	event := Event{
 //		Name:          "replicat.FileRequest",
@@ -1442,7 +1463,7 @@ func (tracker *MinioTracker) cleanupAndDelete() {
 //		RawData:       jsonData,
 //	}
 //
-//	fmt.Printf("About to directly send out request for files from %s: %v\n", server, event)
+//	log.Printf("About to directly send out request for files from %s: %v\n", server, event)
 //	sendFileRequestToServer(server, event)
-//	fmt.Println("request sent")
+//	log.Println("request sent")
 //}
