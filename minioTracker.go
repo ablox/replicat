@@ -416,7 +416,7 @@ func (tracker *MinioTracker) ListFolders(getLocks bool) (folderList []string, er
 		folderList = append(folderList, k)
 	}
 
-	fmt.Printf("Items returning from ListFolders: %d\n%#v\n", len(folderList), folderList)
+	log.Printf("Items returning from ListFolders: %d\n%#v\n", len(folderList), folderList)
 	return
 }
 
