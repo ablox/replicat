@@ -102,7 +102,6 @@ func TestMinioSmallObjectCreationAndDeletion(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	//todo create a test where the bucket already exists and has at least one item in it. (or varify that test is working)
 	_, err = minioSDK.FPutObject(tracker.bucketName, objectName, targetMonitoredPath, "text/plain")
 	if err != nil {
 		t.Fatal(err)
