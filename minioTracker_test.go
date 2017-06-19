@@ -121,6 +121,79 @@ func TestMinioSmallObjectCreationAndDeletion(t *testing.T) {
 
 }
 
+func TestTrackerCatchingExternalWrite(t *testing.T) {
+	defer causeFailOnPanic(t)
+
+	outsideFolder := createExtraFolder("outside")
+	defer cleanupExtraFolder(outsideFolder)
+
+	tracker := createMinioTracker("", "")
+	defer cleanupMinioTracker(tracker)
+
+	fmt.Printf("Minio initialized with bucket: %s\n", tracker.bucketName)
+
+	objectName := "babySloth"
+
+	// The bucket should already exist at this point
+	tracker.printLockable(true)
+	initialOutput, err := tracker.ListFolders(true)
+
+	if len(initialOutput) != 0 {
+		t.Fatalf("Wrong number of contents. Expected: 0, found: %d contents: %s\n", len(initialOutput), initialOutput)
+	}
+
+	targetMonitoredPath := filepath.Join(outsideFolder, objectName)
+
+	fmt.Printf("making file: %s\n", targetMonitoredPath)
+	file, err := os.Create(targetMonitoredPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	sampleFileContents := "This is the content of the file\n"
+	n, err := file.WriteString(sampleFileContents)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if n != len(sampleFileContents) {
+		t.Fatalf("Contents of file not correct length n: %d len: %d\n", n, len(sampleFileContents))
+	}
+
+	err = file.Close()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Initialize minio client object.
+	minioSDK, err := minio.New(minioAddress, minioAccessKey, minioSecretKey, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = minioSDK.FPutObject(tracker.bucketName, objectName, targetMonitoredPath, "text/plain")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	result := WaitForStorage(tracker, objectName, true, waitForTrackerFolderExists)
+	if result == false {
+		folders, _ := tracker.ListFolders(true)
+		t.Fatalf("Failed to find item: %s, actual contents: %#v\n", objectName, folders)
+	}
+
+	//todo remove the object and make sure the tracker does not have it anymore.
+	err = minioSDK.RemoveObject(tracker.bucketName, objectName)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	result = WaitForStorage(tracker, objectName, false, waitForTrackerFolderExists)
+	if result == false {
+		folders, _ := tracker.ListFolders(true)
+		t.Fatalf("Failed to delete item: %s, actual contents: %#v\n", objectName, folders)
+	}
+}
+
 //REPLICAT_STATUS_INITIAL_SCAN
 //func TestTrackerStatusAndScanInitialFiles(t *testing.T) {
 //	defer causeFailOnPanic(t)

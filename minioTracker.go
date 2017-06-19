@@ -152,10 +152,21 @@ func (tracker *MinioTracker) watchBucket() {
 		for _, record := range notificationInfo.Records {
 			log.Printf("%s: %s bucket: %s object: %s\n", record.EventTime, record.EventName, record.S3.Bucket.Name, record.S3.Object.Key)
 			switch record.EventName {
-			case "s3:ObjectCreated:Put":
+			case minio.ObjectCreatePut:
 				newEntry := MinioEntry{Name: record.S3.Object.Key, Size: record.S3.Object.Size, ETag: record.S3.Object.ETag, ModTime: record.EventTime}
 				tracker.lock()
 				tracker.contents[record.S3.Object.Key] = newEntry
+				tracker.unlock()
+			case minio.ObjectRemovedDelete:
+				tracker.lock()
+				_, exists := tracker.contents[record.S3.Object.Key]
+				if exists {
+					log.Printf("ObjectRemoved: Existing entry found: %s\n", record.S3.Object.Key)
+					delete(tracker.contents, record.S3.Object.Key)
+				} else {
+					log.Printf("ObjectRemoved: NO Existing entry found: %s\n", record.S3.Object.Key)
+				}
+
 				tracker.unlock()
 			}
 
