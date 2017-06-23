@@ -22,7 +22,6 @@ import (
 	"fmt"
 	"github.com/rjeczalik/notify"
 	"log"
-	"math/rand"
 	"os"
 	"path/filepath"
 	"sort"
@@ -30,7 +29,7 @@ import (
 	"sync"
 	"syscall"
 	"time"
-	//"reflect"
+	"math/rand"
 )
 
 // ChangeHandler - Listener for tracking changes that happen to a storage system
@@ -55,7 +54,7 @@ type StorageTracker interface {
 	sendRequestedPaths(pathEntries map[string]EntryJSON, targetServerName string)
 	getEntryJSON(relativePath string) (EntryJSON, error)
 	GetStatistics() map[string]string
-	IncrementStatistic(name string, delta int)
+	IncrementStatistic(name string, delta int, getLocks bool)
 	printLockable(lock bool)
 	lock()
 	rlock()
@@ -107,6 +106,8 @@ const (
 	TRACKER_CATALOGS_SENT = "CatalogsSent"
 	// TRACKER_CATALOGS_RECEIVED - Number of times we have received a catalog from someone else
 	TRACKER_CATALOGS_RECEIVED = "CatalogsRecieved"
+	// TRACKER_CONCURRENT_SENDS_PER_SERVER - Number of concurrent sends allowed per peer request
+	TRACKER_CONCURRENT_SENDS_PER_SERVER = 20
 )
 
 // TRACKER_ERROR_NO_STATS - Could not run stat on an item
@@ -130,13 +131,17 @@ func NewDirectoryFromFileInfo(info *os.FileInfo) *Entry {
 }
 
 // IncrementStatistic - Increment one of the named statistics on the tracker.
-func (handler *FilesystemTracker) IncrementStatistic(name string, delta int) {
-	go func() {
-		fmt.Printf("FilesystemTracker:IncrementStatistic(name %s, delta %d)\n", name, delta)
-		handler.fsLock.Lock()
-		fmt.Println("FilesystemTracker:/IncrementStatistic")
-		defer handler.fsLock.Unlock()
-		defer fmt.Println("FilesystemTracker://IncrementStatistic")
+func (handler *FilesystemTracker) IncrementStatistic(name string, delta int, getLocks bool) {
+	//go func() {
+		//fmt.Printf("FilesystemTracker:IncrementStatistic(name %s, delta %d)\n", name, delta)
+		if getLocks {
+			handler.fsLock.Lock()
+			defer handler.fsLock.Unlock()
+		}
+		//handler.fsLock.Lock()
+		//fmt.Println("FilesystemTracker:/IncrementStatistic")
+		//defer handler.fsLock.Unlock()
+		//defer fmt.Println("FilesystemTracker://IncrementStatistic")
 
 		switch name {
 		case TRACKER_TOTAL_FILES:
@@ -161,7 +166,7 @@ func (handler *FilesystemTracker) IncrementStatistic(name string, delta int) {
 			handler.stats.CatalogsReceived += delta
 			break
 		}
-	}()
+	//}()
 }
 
 func (handler *FilesystemTracker) rlock() {
@@ -228,6 +233,8 @@ func (handler *FilesystemTracker) validate() {
 
 // GetStatistics - Return the tracked statistics for the replicat node.
 func (handler *FilesystemTracker) GetStatistics() (stats map[string]string) {
+	serverMapLock.Lock()
+
 	stats = make(map[string]string, 7)
 	stats[TRACKER_TOTAL_FILES] = strconv.Itoa(handler.stats.TotalFiles)
 	stats[TRACKER_TOTAL_FOLDERS] = strconv.Itoa(handler.stats.TotalFolders)
@@ -241,14 +248,13 @@ func (handler *FilesystemTracker) GetStatistics() (stats map[string]string) {
 
 	// Build a list of the entire cluster. Make that list into a string for printing out later
 	var cluster string
-	serverMapLock.RLock()
 	for _, v := range serverMap {
 		cluster += fmt.Sprintf("name: %s\taddress: %s\n", v.Name, v.Address)
 	}
 
-	serverMapLock.RUnlock()
-
 	fmt.Printf("Address: %s\tFiles: %d\tFolders:%d\tFiles Sent: %d\tReceived %d\tDeleted: %d\tCatalogs Sent: %d\tReceived: %d\n%s", address, handler.stats.TotalFiles, handler.stats.TotalFolders, handler.stats.FilesSent, handler.stats.FilesReceived, handler.stats.FilesDeleted, handler.stats.CatalogsSent, handler.stats.CatalogsReceived, cluster)
+
+	serverMapLock.Unlock()
 
 	return
 }
@@ -280,7 +286,8 @@ func (handler *FilesystemTracker) Initialize(directory string, server *ReplicatS
 		handler.directory = fullPath
 	}
 
-	handler.renamesInProgress = make(map[uint64]renameInformation, 0)
+	handler.renamesInProgress = make(map[uint64]renameInformation, 100)
+	handler.neededFiles = make(map[string]EntryJSON, 100)
 
 	fmt.Println("Setting up filesystemTracker!")
 	handler.printLockable(false)
@@ -393,23 +400,47 @@ func createPath(pathName string, absolutePathName string) (pathCreated bool, sta
 	return pathCreated, stat, err
 }
 
+type sendFileRequest struct {
+	path string
+	fullPath string
+	serverAddress string
+}
+
+func sendPathProxy(requests <- chan sendFileRequest) {
+	for oneRequest := range requests {
+		postHelper(oneRequest.path, oneRequest.fullPath, oneRequest.serverAddress, globalSettings.ManagerCredentials)
+	}
+}
+
 func (handler *FilesystemTracker) sendRequestedPaths(pathEntries map[string]EntryJSON, targetServerName string) {
 	serverAddress := serverMap[targetServerName].Address
 	currentPath := globalSettings.Directory
 
-	handler.fsLock.RLock()
-	defer handler.fsLock.RUnlock()
+	//handler.fsLock.RLock()
+	//defer handler.fsLock.RUnlock()
+
+	//todo set this back to a larger number
+	requestChan := make(chan sendFileRequest, 1)
+	for i := 1; i < TRACKER_CONCURRENT_SENDS_PER_SERVER; i++ {
+		go sendPathProxy(requestChan)
+	}
 
 	for p, entry := range pathEntries {
 		fullPath := filepath.Join(currentPath, p)
-		realEntry := handler.contents[p]
-		fmt.Printf("File info for: %s\nProvided: %#v\nFile info for: %s\nStorege : %#v\n", p, entry, p, realEntry)
+		//realEntry := handler.contents[p]
+		log.Printf("File info for: %s Provided: %#v\n", p, entry)
+		//log.Printf("File info for: %s\nProvided: %#v\nFile info for: %s\nStorage : %#v\n", p, entry, p, realEntry)
 		if !entry.IsDirectory {
-			fmt.Printf("Requested file information: %s\n%#v\n", p, entry)
-			go postHelper(p, fullPath, serverAddress, globalSettings.ManagerCredentials)
+			log.Printf("Requested file (%s) information: %#v\n", p, entry)
+
+			requestChan <- sendFileRequest{p, fullPath, serverAddress}
+			//go postHelper(p, fullPath, serverAddress, globalSettings.ManagerCredentials)
 		}
 	}
+
+	close(requestChan)
 }
+
 
 func (handler *FilesystemTracker) getEntryJSON(relativePath string) (EntryJSON, error) {
 	handler.fsLock.RLock()
@@ -934,6 +965,20 @@ func (handler *FilesystemTracker) handleNotifyWrite(event Event, pathName, fullP
 		}
 	}
 
+
+	//RelativePath string
+	//IsDirectory  bool
+	//Hash         []byte
+	//ModTime      time.Time
+	//Size         int64
+	//ServerName   string
+//}
+
+	//pathEntries := make(map[string]EntryJSON)
+	//pathEntries[pathName] = EntryJSON{pathName, false, nil, event.ModTime, 0, }
+	//handler.sendRequestedPaths()
+	//go handler.sendRequestedPaths()
+
 	go SendEvent(event, fullPath)
 	return
 }
@@ -1013,12 +1058,16 @@ func (handler *FilesystemTracker) scanFolders() error {
 			if entry.IsDir() {
 				handler.stats.TotalFolders++
 			} else {
-				hash, err = fileBlake2bHash(absolutePath)
-				if err != nil {
-					log.Printf("Error getting Blake2 Hash for %s: %s\n", absolutePath, err)
-
-					panic(err)
-				}
+				//hash, err = fileBlake2bHash(absolutePath)
+				//if err != nil {
+				//	log.Printf("Error getting Blake2 Hash for %s: %s\n", absolutePath, err)
+				//	handler.stats.TotalFolders++
+				//	//todo figure out why I had the folder in here.
+				//	fmt.Printf("Entry data for error: %#v\n", entry)
+				//	//panic(err)
+				//} else {
+				//	handler.stats.TotalFiles++
+				//}
 				handler.stats.TotalFiles++
 			}
 
@@ -1034,7 +1083,7 @@ func (handler *FilesystemTracker) scanFolders() error {
 			directory.hash = hash
 			handler.contents[relativePath] = *directory
 
-			fmt.Printf("Packing up: %s = %#v\n", relativePath, directory)
+			//fmt.Printf("Packing up: %s = %#v\n", relativePath, directory)
 
 			if entry.IsDir() {
 				newDirectory := filepath.Join(currentPath, entry.Name())
@@ -1071,14 +1120,15 @@ type EntryJSON struct {
 func (handler *FilesystemTracker) SendCatalog() {
 	fmt.Printf("FileSystemTracker ScanFolders - end - Found %d items\n", len(handler.contents))
 
-	handler.stats.CatalogsSent++
+	handler.IncrementStatistic(TRACKER_CATALOGS_SENT, 1, false)
+
 	// transfer the normal contents structure to the JSON friendly version
 	//rawData := make([]EntryJSON, 0, len(handler.contents))
 	rawData := make([]EntryJSON, 0, len(handler.contents))
 
 	for k, v := range handler.contents {
 		entry := EntryJSON{RelativePath: k, IsDirectory: v.IsDir(), Hash: v.hash, ModTime: v.ModTime(), Size: v.Size()}
-		fmt.Printf("Packing up: %s=%#v\n", k, entry)
+		//fmt.Printf("Packing up: %s=%#v\n", k, entry)
 		rawData = append(rawData, entry)
 	}
 
@@ -1096,14 +1146,14 @@ func (handler *FilesystemTracker) SendCatalog() {
 		RawData:       jsonData,
 	}
 
-	fmt.Printf("About to directly send out full catalog event with: %v\n", event)
+	//fmt.Printf("About to directly send out full catalog event with: %v\n", event)
 	sendCatalogToManagerAndSiblings(event)
 	fmt.Println("catalog sent")
 }
 
 // ProcessCatalog - handle a catalog passed from another replicat node
 func (handler *FilesystemTracker) ProcessCatalog(event Event) {
-	fmt.Printf("FilesystemTracker ProcessCatalog from Server: %s\n", event.Source)
+	log.Printf("FilesystemTracker ProcessCatalog: from Server: %s\n", event.Source)
 
 	handler.stats.CatalogsReceived++
 	remoteServer := event.Source
@@ -1113,48 +1163,50 @@ func (handler *FilesystemTracker) ProcessCatalog(event Event) {
 	if err != nil {
 		panic(err)
 	}
-	fmt.Printf("Done unmarshalling event. len %d\n", len(remoteContents))
+	//log.Printf("Done unmarshalling event. len %d\n", len(remoteContents))
+	//log.Printf("Data retrieved from: %s\n%#v\n", event.Source, remoteContents)
 
 	// Let's go through the other side's files and see if any of them are more up to date than what we have.
-	handler.fsLock.Lock()
-
-	fmt.Printf("Data retrieved from: %s\n%#v\n", event.Source, remoteContents)
-
-	if handler.neededFiles == nil {
-		handler.neededFiles = make(map[string]EntryJSON)
-	}
-
 	for _, remoteEntry := range remoteContents {
 		// Get the path out
 		path := remoteEntry.RelativePath
 
 		// check for a local value
+		handler.fsLock.RLock()
 		local, exists := handler.contents[path]
+		handler.fsLock.RUnlock()
 
 		// Request transfer of the file if we do not have a local copy already
 		transfer := !exists
 
-		fmt.Printf("Considering: %s\nexists: %v\nremote: %#v\nlocal:  %#v\n", path, exists, remoteEntry, local)
+		log.Printf("ProcessCatalog: Considering: %s\texists: %v\tremote: %#v\tlocal:  %#v\n", path, exists, remoteEntry, local)
+
+		if exists && local.IsDir() && remoteEntry.IsDirectory {
+			log.Printf("Skipping directory: %s\n", path)
+			continue
+		}
 		// Make missing directories immediately so we have a place to put the files
 		if !exists && remoteEntry.IsDirectory {
-			fmt.Printf("ProcessCatalog(%s) %s\nIs a directory, creating now\n", remoteEntry.ServerName, path)
+			log.Printf("ProcessCatalog(%s) %s\nIs a directory, creating now\n", remoteEntry.ServerName, path)
 			// Make a missing directory
+			handler.fsLock.Lock()
 			handler.createPath(path, true)
+			handler.fsLock.Unlock()
 			// Skip to the next entry
 			continue
 		}
 
 		if !transfer {
-			fmt.Printf("ProcessCatalog(%s) %s\remote: %v\nlocal:  %v\n", remoteEntry.ServerName, path, remoteEntry, local)
-			fmt.Printf("Comparing times for (%s) remote: %v local: %v\n", path, remoteEntry.ModTime, local.ModTime())
+			log.Printf("ProcessCatalog(%s) %s\remote: %v\nlocal: %v times remote: %v local: %v\n", remoteEntry.ServerName, path, remoteEntry, local, remoteEntry.ModTime, local.ModTime())
 			if local.hash == nil || local.ModTime().Before(remoteEntry.ModTime) {
 				transfer = true
 			}
 		}
 
 		hashSame := bytes.Equal(remoteEntry.Hash, local.hash)
-		fmt.Printf("Done considering(%s) transfer is: %t\n", path, transfer)
-		//todo should we do something if the transfer is set to true yet the hash is the same?
+		log.Printf("ProcessCatalog: Done considering(%s) transfer is: %t\n", path, transfer)
+
+		//todo should we do something if the transfer is set to true yet the hash is the same and is set to a valid value?
 
 		// If the hashes differ, we need to do something -- unless the other side is the older one
 		//if !transfer && !hashSame {
@@ -1162,34 +1214,44 @@ func (handler *FilesystemTracker) ProcessCatalog(event Event) {
 		//}
 
 		if transfer {
-			currentEntry := handler.neededFiles[path]
-			fmt.Printf("We have decided to request transfer of this file: %s\nCurrent: %#v\nRemote: %#v\n", path, currentEntry, remoteEntry)
+			handler.fsLock.RLock()
+			currentEntry, exists := handler.neededFiles[path]
+			handler.fsLock.RUnlock()
+
+			log.Printf("ProcessCatalog: We have decided to request transfer of this file: %s\nCurrent(%t): %#v\nRemote: %#v\n", path, exists, currentEntry, remoteEntry)
 
 			// If the current modification time is before the remote modification time, use the remote one
 			useNew := currentEntry.ModTime.Before(remoteEntry.ModTime)
-			fmt.Printf("Use New: %v HashSame: %v\n", useNew, hashSame)
+			//log.Printf("Use New: %v HashSame: %v\n", useNew, hashSame)
 
-			// If the hash and time are the same, randomly decide which one to use
+			// If the hash and time are the same, randomly decide which server to request the file from. Bias towards the first instance (faster server response time)
 			if !useNew && hashSame {
-				useNew = rand.Intn(1) == 1
+				useNew = rand.Intn(10) < 5		// send about 60% of the traffic
 			}
 
 			// If we are going to use the new file, update the information
 			if useNew {
-				fmt.Println("decided to use new")
-				currentEntry.ModTime = remoteEntry.ModTime
-				currentEntry.Hash = remoteEntry.Hash
-				currentEntry.Size = remoteEntry.Size
-				currentEntry.ServerName = remoteServer
-
-				fmt.Printf("About to save %s \n%#v to neededFiles \n%#v\n", path, currentEntry, handler.neededFiles)
-				handler.neededFiles[path] = currentEntry
-			} else {
-				fmt.Println("decided to use old")
-
+				//if !exists {
+				//	currentEntry.IsDirectory = remoteEntry.IsDirectory
+				//	currentEntry.RelativePath = remoteEntry.RelativePath
+				//	currentEntry.ModTime = remoteEntry.ModTime
+				//	currentEntry.Hash = remoteEntry.Hash
+				//	currentEntry.Size = remoteEntry.Size
+				//	currentEntry.ServerName = remoteServer
+				//}
+				//
+				//log.Printf("About to save %s \n%#v to neededFiles \n", path, currentEntry)
+				handler.fsLock.Lock()
+				remoteEntry.ServerName = remoteServer
+				handler.neededFiles[path] = remoteEntry
+				handler.fsLock.Unlock()
+			//} else {
+			//	log.Println("decided to use current")
 			}
 		}
 	}
+
+	handler.fsLock.Lock()
 
 	if len(handler.neededFiles) > 0 {
 		handler.server.SetStatus(REPLICAT_STATUS_JOINING_CLUSTER)
@@ -1204,9 +1266,10 @@ func (handler *FilesystemTracker) ProcessCatalog(event Event) {
 // send out the actual requests for needed files when necessary. Call when inside of a lock!
 func (handler *FilesystemTracker) requestNeededFiles() {
 	// Collect the files needed for each server.
-	fmt.Printf("start collecting what we need from each server %#v\n", handler.neededFiles)
+	//fmt.Printf("start collecting what we need from each server %#v\n", handler.neededFiles)
 	filesToFetch := make(map[string]map[string]EntryJSON)
 
+	// flip the list of needed files from [[path]Entry] to server -> [path] -> Entry
 	for path, entry := range handler.neededFiles {
 		fmt.Printf("%s: %s (%#v)\n", entry.ServerName, path, entry)
 		server := entry.ServerName
@@ -1215,29 +1278,37 @@ func (handler *FilesystemTracker) requestNeededFiles() {
 			fileMap = make(map[string]EntryJSON)
 		}
 		fileMap[path] = entry
+		fmt.Printf("requestNeededFiles adding (%s) for file %s\n", server, path)
 		filesToFetch[server] = fileMap
 	}
 
 	for server, fileMap := range filesToFetch {
-		fmt.Printf("Files needed from: %s\n", server)
-		for filename, entry := range fileMap {
-			fmt.Printf("\t%s(%d) - %v\n", filename, entry.Size, entry.Hash)
-		}
-		handler.SendRequestForFiles(server, fileMap)
+		fmt.Printf("requestNeededFiles: Server %s\t\tfilecount %d\n", server, len(fileMap))
 	}
-	fmt.Println("done collecting what we need from each server")
 
+	//todo remove this sleep statement once functionality is verified
+	time.Sleep(30*time.Second)
+
+	for server, fileMap := range filesToFetch {
+		fmt.Printf("requestNeededFiles: Files needed from: %s\n", server)
+		for filename, entry := range fileMap {
+			fmt.Printf("\t%s - %s(%d) - %v\n", server, filename, entry.Size, entry.Hash)
+		}
+		go handler.SendRequestForFiles(server, fileMap)
+	}
+	fmt.Println("requestNeededFiles: done requesting what we need from each server")
 }
 
 // SendRequestForFiles - Request files you need from another Replicat This needs to be called with handler.fsLock engaged
 func (handler *FilesystemTracker) SendRequestForFiles(server string, fileMap map[string]EntryJSON) {
-	fmt.Printf("FileSystemTracker SendRequestForFiles - end - Found %d items\n", len(handler.contents))
+	log.Println("FileSystemTracker SendRequestForFiles - end")
+	//fmt.Printf("FileSystemTracker SendRequestForFiles - end - Found %d items\n", len(handler.contents))
 
 	jsonData, err := json.Marshal(fileMap)
 	if err != nil {
 		panic(err)
 	}
-	fmt.Printf("Files needed from %s: %d    Data: %d\n", server, len(fileMap), len(jsonData))
+	log.Printf("Files needed from %s: %d    Request Length: %d\n", server, len(fileMap), len(jsonData))
 
 	event := Event{
 		Name:          "replicat.FileRequest",
@@ -1247,7 +1318,7 @@ func (handler *FilesystemTracker) SendRequestForFiles(server string, fileMap map
 		RawData:       jsonData,
 	}
 
-	fmt.Printf("About to directly send out request for files from %s: %v\n", server, event)
+	//log.Printf("About to directly send out request for files from %s: %v\n", server, event)
 	sendFileRequestToServer(server, event)
-	fmt.Println("request sent")
+	log.Printf("File request for %s sent\n", server)
 }

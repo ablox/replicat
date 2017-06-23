@@ -156,11 +156,14 @@ const (
 
 func keepConfigCurrent() {
 	for {
-		if time.Since(lastConfigPing) > managerOverdueSeconds*time.Second {
+		serverMapLock.RLock()
+		ago := time.Since(lastConfigPing)
+		serverMapLock.RUnlock()
+		if ago > managerOverdueSeconds*time.Second {
 			log.Printf("Manager Contact Overdue, attempting to contact: %s\n", globalSettings.ManagerAddress)
 			sendConfigToServer()
-		} else {
-			fmt.Println("No Update Required")
+		//} else {
+		//	fmt.Println("No Update Required")
 		}
 		time.Sleep(time.Duration(rand.Intn(10)-5+managerCheckSleepTime) * time.Second)
 	}
@@ -181,7 +184,7 @@ func sendConfigToServer() {
 
 	byteArraysToMarshal := [][]byte{jsonStr, jsonStr2}
 	byteData := bytes.Join(byteArraysToMarshal, []byte{})
-	log.Printf("jasonstr: %s\n", string(byteData))
+	//log.Printf("jasonstr: %s\n", string(byteData))
 	jsonData := bytes.NewBuffer(byteData)
 
 	req, err := http.NewRequest("POST", url, jsonData)
@@ -206,7 +209,6 @@ func sendConfigToServer() {
 	} else {
 		configUpdateChannel <- newServerMap
 	}
-
 }
 
 func uploadHandler(w http.ResponseWriter, r *http.Request) {

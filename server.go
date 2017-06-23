@@ -157,7 +157,7 @@ func sendEvent(serverName string, event *Event, fullPath string, address string,
 	}
 
 	url := protocolString + address + "/event/"
-	log.Printf("target url: %s (%s)\nEvent is: %v\n", url, serverName, event)
+	log.Printf("target url: %s (%s)\nEvent is: %s\n", url, serverName, event.Name)
 
 	jsonStr, _ := json.Marshal(event)
 	req, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonStr))
@@ -180,11 +180,15 @@ func sendEvent(serverName string, event *Event, fullPath string, address string,
 
 	switch event.Name {
 	case "replicat.Rename", "notify.Create", "notify.Write":
-		fmt.Printf("sendEvent - %s, full event: %#v\n", event.Name, event)
-
 		if event.SourcePath == "" {
 			fmt.Printf("sendEvent We have a rename in. destination: %s\n", event.Path)
 			postHelper(event.Path, fullPath, address, credentials)
+		} else if event.Name == "notify.Write" {
+			fmt.Printf("WE ARE HERE")
+			panic("hello")
+		} else {
+
+			fmt.Printf("sendEvent - %s, full event: %#v\n", event.Name, event)
 		}
 	}
 
@@ -284,7 +288,11 @@ func eventHandler(w http.ResponseWriter, r *http.Request) {
 			fmt.Printf("Unknown event found, doing nothing. Event: %v\n", event)
 		}
 
-		events = append([]Event{event}, events...)
+		// todo make this simpler
+		//events = append([]Event{event}, events...)
+		//if len(events) > 100 {
+		//	events = events[:100]
+		//}
 	}
 }
 
@@ -379,7 +387,7 @@ func deletePaths(deletedPaths []string) {
 		if err != nil && !os.IsNotExist(err) {
 			panic(err)
 		}
-		serverMap[globalSettings.Name].storage.IncrementStatistic(TRACKER_FILES_DELETED, 1)
+		serverMap[globalSettings.Name].storage.IncrementStatistic(TRACKER_FILES_DELETED, 1, true)
 
 		fmt.Printf("%s: done removing (err = %v)\n", fullPath, err)
 	}
@@ -394,7 +402,7 @@ func addPaths(newPaths []string) {
 			panic(err)
 		}
 	}
-	serverMap[globalSettings.Name].storage.IncrementStatistic(TRACKER_TOTAL_FOLDERS, len(newPaths))
+	serverMap[globalSettings.Name].storage.IncrementStatistic(TRACKER_TOTAL_FOLDERS, len(newPaths), true)
 }
 
 func folderTreeHandler(w http.ResponseWriter, r *http.Request) {
@@ -442,6 +450,21 @@ func folderTreeHandler(w http.ResponseWriter, r *http.Request) {
 
 func postFile(filename string, fullPath string, address string, credentials string) error {
 	fmt.Printf("postFile: filename: %s, fullPath: %s\n", filename, fullPath)
+
+	// Check to see if this is a file or a directory (somehow directories are getting in here)
+	fileInfo, err := os.Lstat(fullPath)
+	if err != nil {
+		log.Fatalf("PostFile Error: found an error (%s) when I was supposed to be sending a file: %s (%s)\n", err.Error(), filename, fullPath)
+		return err
+	}
+
+	if fileInfo.IsDir() {
+		log.Printf("PostFile Error: found a directory when I was supposed to be sending a file: %s (%s)\n", filename, fullPath)
+		fmt.Printf("Creating path: %s\n", fullPath)
+		err = os.MkdirAll(fullPath, os.ModeDir+os.ModePerm)
+
+		return err
+	}
 	body := &bytes.Buffer{}
 	bodyWriter := multipart.NewWriter(body)
 	fileWriter, err := bodyWriter.CreateFormFile("uploadfile", filename)
@@ -501,7 +524,7 @@ func postFile(filename string, fullPath string, address string, credentials stri
 
 	resp.Body.Close()
 
-	serverMap[globalSettings.Name].storage.IncrementStatistic(TRACKER_FILES_SENT, 1)
+	serverMap[globalSettings.Name].storage.IncrementStatistic(TRACKER_FILES_SENT, 1, true)
 
 	return nil
 }

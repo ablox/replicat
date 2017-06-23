@@ -100,6 +100,47 @@ func waitForTrackerFolderCount(tracker StorageTracker, numberOfFolders string) b
 	return trackerFolderCount == folderCount
 }
 
+//func trackerTestNotifyWrite(t *testing.T) {
+//	tracker := createTracker("monitored")
+//	defer cleanupTracker(tracker)
+//	monitoredFolder := tracker.directory
+//	logger := &LogOnlyChangeHandler{}
+//	var loggerInterface ChangeHandler = logger
+//	tracker.watchDirectory(&loggerInterface)
+//
+//	objectName := "babySloth"
+//
+//	// The bucket should already exist at this point
+//	tracker.printLockable(true)
+//	targetMonitoredPath := filepath.Join(monitoredFolder, objectName)
+//
+//	fmt.Printf("making file: %s\n", targetMonitoredPath)
+//	file, err := os.Create(targetMonitoredPath)
+//	if err != nil {
+//		t.Fatal(err)
+//	}
+//
+//	sampleFileContents := "This is the content of the file\n"
+//	n, err := file.WriteString(sampleFileContents)
+//	if err != nil {
+//		t.Fatal(err)
+//	}
+//	if n != len(sampleFileContents) {
+//		t.Fatalf("Contents of file not correct length n: %d len: %d\n", n, len(sampleFileContents))
+//	}
+//
+//	err = file.Close()
+//	if err != nil {
+//		t.Fatal(err)
+//	}
+//
+//
+//	// update the file and get notified
+//
+//
+//
+//}
+
 func trackerTestEmptyDirectoryMovesInOutAround() {
 	outsideFolder := createExtraFolder("outside")
 	defer cleanupExtraFolder(outsideFolder)

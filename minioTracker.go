@@ -451,7 +451,7 @@ func (tracker *MinioTracker) GetStatistics() (stats map[string]string) {
 	return
 }
 
-func (tracker *MinioTracker) IncrementStatistic(name string, delta int) {
+func (tracker *MinioTracker) IncrementStatistic(name string, delta int, getLocks bool) {
 	return
 }
 
