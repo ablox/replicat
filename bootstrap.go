@@ -21,8 +21,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/goji/httpauth"
+	log "github.com/sirupsen/logrus"
 	"io"
-	"log"
 	"math/rand"
 	"net"
 	"net/http"
@@ -99,18 +99,18 @@ func BootstrapAndServe(address string) {
 
 	lsnr, err := net.Listen("tcp4", address)
 	if err != nil {
-		panic(fmt.Sprintf("Error listening: %v\nAddress: %s\n", err, address))
+		panic(fmt.Sprintf("Error listening: %v\nAddress: %s", err, address))
 	}
 	fmt.Println("Listening on:", lsnr.Addr().String())
 
 	logOnlyHandler := LogOnlyChangeHandler{}
 	var tracker StorageTracker = &FilesystemTracker{}
 
-	fmt.Printf("Looking up settings for node: %s\n", globalSettings.Name)
+	fmt.Printf("Looking up settings for node: %s", globalSettings.Name)
 
 	directory := globalSettings.Directory
 
-	fmt.Printf("GlobalSettings directory retrieved for this node: %s\n", directory)
+	fmt.Printf("GlobalSettings directory retrieved for this node: %s", directory)
 	server := &ReplicatServer{Name: globalSettings.Name, ClusterKey: globalSettings.ClusterKey, Address: lsnr.Addr().String(), storage: tracker, Status: REPLICAT_STATUS_INITIAL_SCAN}
 	serverMap[globalSettings.Name] = server
 	tracker.Initialize(directory, server)
@@ -142,7 +142,7 @@ func BootstrapAndServe(address string) {
 	go configUpdateProcessor(configUpdateChannel)
 
 	if globalSettings.ManagerAddress != "" {
-		fmt.Printf("about to send config to server (%s)\nOur address is: (%s)\n", globalSettings.ManagerAddress, lsnr.Addr())
+		fmt.Printf("about to send config to server (%s)\nOur address is: (%s)", globalSettings.ManagerAddress, lsnr.Addr())
 	}
 
 	// we need something to keep us running.
@@ -160,7 +160,7 @@ func keepConfigCurrent() {
 		ago := time.Since(lastConfigPing)
 		serverMapLock.RUnlock()
 		if ago > managerOverdueSeconds*time.Second {
-			log.Printf("Manager Contact Overdue, attempting to contact: %s\n", globalSettings.ManagerAddress)
+			log.Printf("Manager Contact Overdue, attempting to contact: %s", globalSettings.ManagerAddress)
 			sendConfigToServer()
 			//} else {
 			//	fmt.Println("No Update Required")
@@ -176,7 +176,7 @@ func sendConfigToServer() {
 	}
 
 	url := "https://" + globalSettings.ManagerAddress + "/config/"
-	log.Printf("sendConfigToServer: Manager location: %s\n", url)
+	log.Printf("sendConfigToServer: Manager location: %s", url)
 
 	server := serverMap[globalSettings.Name]
 	jsonStr, _ := json.Marshal(server)
@@ -184,7 +184,7 @@ func sendConfigToServer() {
 
 	byteArraysToMarshal := [][]byte{jsonStr, jsonStr2}
 	byteData := bytes.Join(byteArraysToMarshal, []byte{})
-	//log.Printf("jasonstr: %s\n", string(byteData))
+	//log.Printf("jasonstr: %s", string(byteData))
 	jsonData := bytes.NewBuffer(byteData)
 
 	req, err := http.NewRequest("POST", url, jsonData)
@@ -197,7 +197,7 @@ func sendConfigToServer() {
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
-		log.Printf("Unable to reach server. Data could be lost: %s\n", err)
+		log.Printf("Unable to reach server. Data could be lost: %s", err)
 		return
 	}
 
@@ -205,7 +205,7 @@ func sendConfigToServer() {
 	if err == io.EOF {
 		log.Printf("EOF unexpected Config update failed\n")
 	} else if err != nil {
-		log.Printf("Config update failed due to error: %s\n", err)
+		log.Printf("Config update failed due to error: %s", err)
 	} else {
 		configUpdateChannel <- newServerMap
 	}
@@ -238,13 +238,13 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 
 			bytesWritten, err := io.Copy(f, file)
 			if err != nil {
-				log.Printf("Error copying file: %s, error(%#v)\n", handler.Filename, err)
+				log.Printf("Error copying file: %s, error(%#v)", handler.Filename, err)
 				w.WriteHeader(http.StatusInternalServerError)
 				w.Write([]byte("500 - Error copying file"))
 				f.Close()
 				return
 			}
-			fmt.Printf("Wrote out (%s) bytes (%d)\n", handler.Filename, bytesWritten)
+			fmt.Printf("Wrote out (%s) bytes (%d)", handler.Filename, bytesWritten)
 			f.Close()
 
 			// Get the old entry
@@ -253,7 +253,7 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 				var entry EntryJSON
 				err := json.Unmarshal([]byte(entryString), &entry)
 				if err != nil {
-					log.Fatalf("Error copying file (Entry handling): %s, error(%#v)\n", handler.Filename, err)
+					log.Fatalf("Error copying file (Entry handling): %s, error(%#v)", handler.Filename, err)
 					w.WriteHeader(http.StatusInternalServerError)
 					w.Write([]byte("500 - Error copying file"))
 					return
@@ -261,7 +261,7 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 
 				err = os.Chtimes(fullPath, time.Now(), entry.ModTime)
 				if err != nil {
-					log.Fatalf("Error copying file (Changing times): %s, error(%#v)\n", handler.Filename, err)
+					log.Fatalf("Error copying file (Changing times): %s, error(%#v)", handler.Filename, err)
 					w.WriteHeader(http.StatusInternalServerError)
 					w.Write([]byte("500 - Error copying file"))
 					return
@@ -277,7 +277,7 @@ var configUpdateChannel = make(chan *map[string]*ReplicatServer, 100)
 func configHandler(_ http.ResponseWriter, r *http.Request) {
 	newServerMap, err := extractServerMapFromConfig(r.Body)
 	if err != nil {
-		fmt.Printf("Config update failed due to error: %s\n", err)
+		fmt.Printf("Config update failed due to error: %s", err)
 		return
 	}
 	configUpdateChannel <- newServerMap
@@ -301,15 +301,15 @@ func configUpdateProcessor(c chan *map[string]*ReplicatServer) {
 		for name, serverData := range serverMap {
 			newServerData, exists := (*newServerMap)[name]
 			if !exists {
-				fmt.Printf("No longer found config for: %s deleting\n", name)
+				fmt.Printf("No longer found config for: %s deleting", name)
 				delete(serverMap, name)
 				continue
 			}
 
 			if serverData.Address != newServerData.Address || serverData.Name != newServerData.Name || serverData.ClusterKey != newServerData.ClusterKey || serverData.Status != serverData.Status {
-				fmt.Printf("Server data is changed. Replacing.\nold: %v\nnew: %v\n", &serverData, &newServerData)
+				fmt.Printf("Server data is changed. Replacing.\nold: %v\nnew: %v", &serverData, &newServerData)
 				if serverData.Status != REPLICAT_STATUS_JOINING_CLUSTER && newServerData.Status == REPLICAT_STATUS_JOINING_CLUSTER {
-					fmt.Printf("Decided to send data to: %s\n", serverData.Name)
+					fmt.Printf("Decided to send data to: %s", serverData.Name)
 					sendData = true
 				}
 				serverMap[name] = newServerData
@@ -321,7 +321,7 @@ func configUpdateProcessor(c chan *map[string]*ReplicatServer) {
 		for name, newServerData := range *newServerMap {
 			_, exists := serverMap[name]
 			if !exists {
-				fmt.Printf("New server configuration for %s: %v\n", name, newServerData)
+				fmt.Printf("New server configuration for %s: %v", name, newServerData)
 
 				// If this server map is for ourselves, build a list of folder if needed and notify others
 				if name == globalSettings.Name {
@@ -335,11 +335,11 @@ func configUpdateProcessor(c chan *map[string]*ReplicatServer) {
 						sendFolderTree(tree)
 					}(listOfFileInfo)
 				} else {
-					fmt.Printf("New Node Decided to send data to: %s\n", name)
+					fmt.Printf("New Node Decided to send data to: %s", name)
 					sendData = true
 				}
 
-				fmt.Printf("New server configuration provided. Copying: %s\n", name)
+				fmt.Printf("New server configuration provided. Copying: %s", name)
 				serverMap[name] = newServerData
 			}
 		}

@@ -17,7 +17,7 @@ package main
 
 import (
 	"fmt"
-	"log"
+	log "github.com/sirupsen/logrus"
 	"math/rand"
 	"runtime"
 	"time"
@@ -53,7 +53,7 @@ func generateBucketName(prefix string) (name string) {
 		prefix = "replicat-test"
 	}
 	name = fmt.Sprintf("%s-%05d", prefix, suffix)
-	fmt.Printf("generatedBucketName: %s\n", name)
+	fmt.Printf("generatedBucketName: %s", name)
 	return
 }
 
@@ -88,7 +88,7 @@ func exerciseMinio() {
 		}
 	}
 	if found == false {
-		fmt.Printf("Could not find the directory we should have just created: %s\n", tempFolder)
+		fmt.Printf("Could not find the directory we should have just created: %s", tempFolder)
 	}
 
 	// Time to create file!
@@ -130,7 +130,7 @@ func exerciseMinio() {
 	}
 
 	if found == true {
-		fmt.Printf("We found our folder after it should have been deleted: %s\n", tempFolder)
+		fmt.Printf("We found our folder after it should have been deleted: %s", tempFolder)
 	}
 
 	fmt.Println("YAY - Made it to the end")
@@ -149,7 +149,7 @@ func watchBucketTest(tracker2 *MinioTracker, tempFolder string, allEvents []stri
 		if notificationInfo.Err != nil {
 			log.Fatalln(notificationInfo.Err)
 		}
-		log.Printf("S3 NOTIFICATION: %s\n", notificationInfo)
+		log.Printf("S3 NOTIFICATION: %s", notificationInfo)
 	}
 }
 
@@ -195,7 +195,7 @@ func waitForTrackerFolderCount(tracker StorageTracker, numberOfFolders string) b
 	}
 
 	trackerFolderCount := len(folderList)
-	fmt.Printf("* looking for: %d currently have: %d\n", folderCount, trackerFolderCount)
+	fmt.Printf("* looking for: %d currently have: %d", folderCount, trackerFolderCount)
 	return trackerFolderCount == folderCount
 }
 
@@ -216,15 +216,15 @@ func trackerTestEmptyDirectoryMovesInOutAround() {
 	targetMonitoredPath := filepath.Join(monitoredFolder, folderName)
 	targetOutsidePath := filepath.Join(outsideFolder, folderName)
 
-	fmt.Printf("making folder: %s going to rename it to: %s\n", targetOutsidePath, targetMonitoredPath)
+	fmt.Printf("making folder: %s going to rename it to: %s", targetOutsidePath, targetMonitoredPath)
 	os.Mkdir(targetOutsidePath, os.ModeDir+os.ModePerm)
-	fmt.Printf("About to move file \nfrom: %s\n  to: %s\n", targetOutsidePath, targetMonitoredPath)
+	fmt.Printf("About to move file \nfrom: %s\n  to: %s", targetOutsidePath, targetMonitoredPath)
 	os.Rename(targetOutsidePath, targetMonitoredPath)
 	stats, _ := os.Stat(targetMonitoredPath)
-	fmt.Printf("stats for: %s\n%v\n", targetMonitoredPath, stats)
+	fmt.Printf("stats for: %s\n%v", targetMonitoredPath, stats)
 
 	if !WaitForStorage(tracker, folderName, true, waitForTrackerFolderExists) {
-		panic(fmt.Sprintf("%s not found in contents\ncontents: %v\n", folderName, tracker.contents))
+		panic(fmt.Sprintf("%s not found in contents\ncontents: %v", folderName, tracker.contents))
 	}
 
 	tracker.printLockable(true)
@@ -238,15 +238,15 @@ func trackerTestEmptyDirectoryMovesInOutAround() {
 	folderName = folderName + "b"
 	moveSourcePath := targetMonitoredPath
 	moveDestinationPath := monitoredFolder + "/" + folderName
-	fmt.Printf("About to move file \nfrom: %s\n  to: %s\n", moveSourcePath, moveDestinationPath)
+	fmt.Printf("About to move file \nfrom: %s\n  to: %s", moveSourcePath, moveDestinationPath)
 	os.Rename(moveSourcePath, moveDestinationPath)
 
 	if !WaitForStorage(tracker, originalFolderName, false, waitForTrackerFolderExists) {
-		panic(fmt.Sprintf("Still finding originalFolderName %s after rename timeout \ncontents: %v\n", originalFolderName, tracker.contents))
+		panic(fmt.Sprintf("Still finding originalFolderName %s after rename timeout \ncontents: %v", originalFolderName, tracker.contents))
 	}
 
 	if !WaitForStorage(tracker, folderName, true, waitForTrackerFolderExists) {
-		panic(fmt.Sprintf("%s not found after renamte timout\ncontents: %v\n", folderName, tracker.contents))
+		panic(fmt.Sprintf("%s not found after renamte timout\ncontents: %v", folderName, tracker.contents))
 	}
 	tracker.printLockable(true)
 
@@ -261,12 +261,12 @@ func trackerTestEmptyDirectoryMovesInOutAround() {
 	moveSourcePath = moveDestinationPath
 	moveDestinationPath = targetOutsidePath
 
-	fmt.Printf("About to move file \nfrom: %s\n  to: %s\n", moveSourcePath, moveDestinationPath)
+	fmt.Printf("About to move file \nfrom: %s\n  to: %s", moveSourcePath, moveDestinationPath)
 	os.Rename(moveSourcePath, moveDestinationPath)
 
 	if !WaitForStorage(tracker, folderName, false, waitForTrackerFolderExists) {
-		fmt.Printf("Tracker contents: %v\n", tracker.contents)
-		panic(fmt.Sprintf("%s not cleared from contents\ncontents: %v\n", folderName, tracker.contents))
+		fmt.Printf("Tracker contents: %v", tracker.contents)
+		panic(fmt.Sprintf("%s not cleared from contents\ncontents: %v", folderName, tracker.contents))
 	}
 	tracker.printLockable(true)
 }
@@ -280,22 +280,22 @@ func trackerTestFileChangeTrackerAddFolders() {
 	tmpFolder := tracker.directory
 
 	tracker.watchDirectory(&c)
-	fmt.Printf("TestFileChangeTrackerAddFolders: Done - watchDirectory. Tracker is now watching: %s\n", tracker.directory)
+	fmt.Printf("TestFileChangeTrackerAddFolders: Done - watchDirectory. Tracker is now watching: %s", tracker.directory)
 
 	numberOfSubFolders := 10
 
 	for i := 0; i < numberOfSubFolders; i++ {
 		path := fmt.Sprintf("%s/a%d", tmpFolder, i)
-		fmt.Printf("os.Mkdir: %s\n", path)
+		fmt.Printf("os.Mkdir: %s", path)
 		err := os.Mkdir(path, os.ModeDir+os.ModePerm)
 		if err != nil {
 			panic(err)
 		}
 	}
-	fmt.Printf("done with creating %d different subfolders. \n", numberOfSubFolders)
+	fmt.Printf("done with creating %d different subfolders. ", numberOfSubFolders)
 
 	folderSeeking := strconv.Itoa(numberOfSubFolders)
-	fmt.Printf("***************>>>>>>>>>>> folder seeking: %s num: %d\n", folderSeeking, numberOfSubFolders)
+	fmt.Printf("***************>>>>>>>>>>> folder seeking: %s num: %d", folderSeeking, numberOfSubFolders)
 	if !WaitForStorage(tracker, folderSeeking, true, waitForTrackerFolderCount) {
 		folders, _ := tracker.ListFolders(true)
 		panic(fmt.Sprintf("did not find enough subfolders. Looking for: %d found: %d", numberOfSubFolders, len(folders)))
@@ -306,12 +306,12 @@ func trackerTestFileChangeTrackerAddFolders() {
 
 	folder1 := fmt.Sprintf("%s/a0", tmpFolder)
 	folder2 := fmt.Sprintf("%s/a1", tmpFolder)
-	fmt.Printf("about to delete two folders \n%s\n%s\n", folder1, folder2)
+	fmt.Printf("about to delete two folders \n%s\n%s", folder1, folder2)
 	// Delete two folders
 	fmt.Println(tracker.ListFolders(true))
 	os.Remove(folder1)
 	os.Remove(folder2)
-	fmt.Printf("deleted two folders \n%s\n%s\n", folder1, folder2)
+	fmt.Printf("deleted two folders \n%s\n%s", folder1, folder2)
 
 	expectedCreated := numberOfSubFolders
 	expectedDeleted := 2
@@ -330,7 +330,7 @@ func trackerTestFileChangeTrackerAddFolders() {
 		if created != expectedCreated || deleted != expectedDeleted {
 			if cycleCount > 20 || created > expectedCreated || deleted > expectedDeleted {
 				tracker.printLockable(true)
-				panic(fmt.Sprintf("Expected/Found created: (%d/%d) deleted: (%d/%d)\n", expectedCreated, created, expectedDeleted, deleted))
+				panic(fmt.Sprintf("Expected/Found created: (%d/%d) deleted: (%d/%d)", expectedCreated, created, expectedDeleted, deleted))
 			}
 			time.Sleep(time.Millisecond * 50)
 		} else {
@@ -340,7 +340,7 @@ func trackerTestFileChangeTrackerAddFolders() {
 	}
 
 	if created != expectedCreated || deleted != expectedDeleted {
-		panic(fmt.Sprintf("Expected/Found created: (%d/%d) deleted: (%d/%d) updated: %d\n", expectedCreated, created, expectedDeleted, deleted, updated))
+		panic(fmt.Sprintf("Expected/Found created: (%d/%d) deleted: (%d/%d) updated: %d", expectedCreated, created, expectedDeleted, deleted, updated))
 	}
 
 	tracker.fsLock.Lock()
@@ -350,8 +350,8 @@ func trackerTestFileChangeTrackerAddFolders() {
 	if !exists {
 		fmt.Println("root directory fileinfo is nil")
 	} else {
-		fmt.Printf("Root directory %v\n", rootDirectory)
-		fmt.Printf("Root directory named: %s and has size %d\n", rootDirectory.Name(), rootDirectory.Size())
+		fmt.Printf("Root directory %v", rootDirectory)
+		fmt.Printf("Root directory named: %s and has size %d", rootDirectory.Name(), rootDirectory.Size())
 	}
 }
 
@@ -373,7 +373,7 @@ func trackerTestSmallFileCreationAndUpdate() {
 	fileName := "happy.txt"
 	targetMonitoredPath := filepath.Join(monitoredFolder, fileName)
 
-	fmt.Printf("making file: %s\n", targetMonitoredPath)
+	fmt.Printf("making file: %s", targetMonitoredPath)
 	file, err := os.Create(targetMonitoredPath)
 	if err != nil {
 		panic(err)
@@ -385,7 +385,7 @@ func trackerTestSmallFileCreationAndUpdate() {
 		panic(err)
 	}
 	if n != len(sampleFileContents) {
-		panic(fmt.Sprintf("Contents of file not correct length n: %d len: %d\n", n, len(sampleFileContents)))
+		panic(fmt.Sprintf("Contents of file not correct length n: %d len: %d", n, len(sampleFileContents)))
 	}
 
 	err = file.Close()
@@ -394,14 +394,14 @@ func trackerTestSmallFileCreationAndUpdate() {
 	}
 
 	if !WaitForStorage(tracker, fileName, true, waitForTrackerFolderExists) {
-		panic(fmt.Sprintf("%s not found in contents\ncontents: %v\n", fileName, tracker.contents))
+		panic(fmt.Sprintf("%s not found in contents\ncontents: %v", fileName, tracker.contents))
 	}
 
 	tracker.printLockable(true)
 	tracker.validate()
 
 	// Open the file and make a change to make sure the write event is tracked and sent
-	fmt.Printf("opening file to modify: %s\n", targetMonitoredPath)
+	fmt.Printf("opening file to modify: %s", targetMonitoredPath)
 	file, err = os.OpenFile(targetMonitoredPath, os.O_APPEND|os.O_WRONLY, 0600)
 	if err != nil {
 		panic(err)
@@ -419,7 +419,7 @@ func trackerTestSmallFileCreationAndUpdate() {
 	time.Sleep(50 * time.Millisecond)
 	created, deleted, updated := logger.GetFileStats()
 	if created != 1 || updated != 2 {
-		panic(fmt.Sprintf("Expected created 1 updated 2. Actual Values: created %d updated %d deleted %d\n", created, updated, deleted))
+		panic(fmt.Sprintf("Expected created 1 updated 2. Actual Values: created %d updated %d deleted %d", created, updated, deleted))
 	}
 
 }
@@ -438,7 +438,7 @@ func trackerTestSmallFileInSubfolder() {
 	tracker.printLockable(true)
 
 	fileName := filepath.Join("subfolder", "happy.txt")
-	fmt.Printf("about to create nested folder: %s\n", fileName)
+	fmt.Printf("about to create nested folder: %s", fileName)
 
 	// create the subfolder and the file underneath it.
 	tracker.CreatePath(fileName, false)
@@ -468,7 +468,7 @@ func trackerTestSmallFileMovesInOutAround() {
 	targetMonitoredPath := filepath.Join(monitoredFolder, fileName)
 	targetOutsidePath := filepath.Join(outsideFolder, fileName)
 
-	fmt.Printf("making file: %s\n", targetOutsidePath)
+	fmt.Printf("making file: %s", targetOutsidePath)
 	file, err := os.Create(targetOutsidePath)
 	if err != nil {
 		panic(err)
@@ -480,7 +480,7 @@ func trackerTestSmallFileMovesInOutAround() {
 		panic(err)
 	}
 	if n != len(sampleFileContents) {
-		panic(fmt.Sprintf("Contents of file not correct length n: %d len: %d\n", n, len(sampleFileContents)))
+		panic(fmt.Sprintf("Contents of file not correct length n: %d len: %d", n, len(sampleFileContents)))
 	}
 
 	err = file.Close()
@@ -488,11 +488,11 @@ func trackerTestSmallFileMovesInOutAround() {
 		panic(err)
 	}
 
-	fmt.Printf("making file: %s going to rename it to: %s\n", targetOutsidePath, targetMonitoredPath)
+	fmt.Printf("making file: %s going to rename it to: %s", targetOutsidePath, targetMonitoredPath)
 	os.Rename(targetOutsidePath, targetMonitoredPath)
 
 	stats, _ := os.Stat(targetMonitoredPath)
-	fmt.Printf("stats for: %s\n%v\n", targetMonitoredPath, stats)
+	fmt.Printf("stats for: %s\n%v", targetMonitoredPath, stats)
 
 	fmt.Println("Hit the end of this test.....needs more! Files are currently being treated as directories.....stop stat....\n\n\n\n\n\n\ngaaak")
 }
@@ -524,7 +524,7 @@ func trackerTestDirectoryCreation() {
 		panic("The folder still exists.....oopps")
 	}
 
-	fmt.Printf("TestDirectoryCreation\nbefore: %v\nafter: %v\n", before, after)
+	fmt.Printf("TestDirectoryCreation\nbefore: %v\nafter: %v", before, after)
 }
 
 func trackerTestNestedDirectoryCreation() {
@@ -570,16 +570,16 @@ func trackerTestNestedDirectoryCreation() {
 			break
 		}
 
-		fmt.Printf("We have made another round: Expected/Found created: (%d/%d) deleted: (%d/%d)\n", expectedCreated, created, expectedDeleted, deleted)
+		fmt.Printf("We have made another round: Expected/Found created: (%d/%d) deleted: (%d/%d)", expectedCreated, created, expectedDeleted, deleted)
 		if cycleCount > 20 {
 			tracker.printLockable(true)
-			panic(fmt.Sprintf("Expected/Found created: (%d/%d) deleted: (%d/%d) updated: %d\n", expectedCreated, created, expectedDeleted, deleted, updated))
+			panic(fmt.Sprintf("Expected/Found created: (%d/%d) deleted: (%d/%d) updated: %d", expectedCreated, created, expectedDeleted, deleted, updated))
 		}
 		time.Sleep(time.Millisecond * 50)
 	}
 
 	if logHandler.FoldersCreated != expectedCreated || logHandler.FoldersDeleted != expectedDeleted {
-		panic(fmt.Sprintf("Expected/Found created: (%d/%d) deleted: (%d/%d)\n", expectedCreated, logHandler.FoldersCreated, expectedDeleted, logHandler.FoldersDeleted))
+		panic(fmt.Sprintf("Expected/Found created: (%d/%d) deleted: (%d/%d)", expectedCreated, logHandler.FoldersCreated, expectedDeleted, logHandler.FoldersDeleted))
 	}
 
 	tracker.printLockable(true)
@@ -626,16 +626,16 @@ func trackerTestNestedFastDirectoryCreation() {
 			break
 		}
 
-		fmt.Printf("We have made another round: Expected/Found created: (%d/%d) deleted: (%d/%d)\n", expectedCreated, created, expectedDeleted, deleted)
+		fmt.Printf("We have made another round: Expected/Found created: (%d/%d) deleted: (%d/%d)", expectedCreated, created, expectedDeleted, deleted)
 		if cycleCount > 20 {
 			tracker.printLockable(true)
-			panic(fmt.Sprintf("Expected/Found created: (%d/%d) deleted: (%d/%d)\n", expectedCreated, created, expectedDeleted, deleted))
+			panic(fmt.Sprintf("Expected/Found created: (%d/%d) deleted: (%d/%d)", expectedCreated, created, expectedDeleted, deleted))
 		}
 		time.Sleep(time.Millisecond * 50)
 	}
 
 	if created != expectedCreated || deleted != expectedDeleted {
-		panic(fmt.Sprintf("Expected/Found created: (%d/%d) deleted: (%d/%d) updated: %d\n", expectedCreated, logHandler.FoldersCreated, expectedDeleted, logHandler.FoldersDeleted, updated))
+		panic(fmt.Sprintf("Expected/Found created: (%d/%d) deleted: (%d/%d) updated: %d", expectedCreated, logHandler.FoldersCreated, expectedDeleted, logHandler.FoldersDeleted, updated))
 	}
 
 	tracker.printLockable(true)
@@ -652,10 +652,10 @@ func trackerTestDirectoryStorage() {
 		panic(err)
 	}
 
-	fmt.Printf("empty: %v\nlist: %v\n", empty, folderList)
+	fmt.Printf("empty: %v\nlist: %v", empty, folderList)
 
 	if reflect.DeepEqual(empty, folderList) == false {
-		panic(fmt.Sprintf("expected empty folder, found something: %v\n", folderList))
+		panic(fmt.Sprintf("expected empty folder, found something: %v", folderList))
 	}
 
 	folderTemplate := []string{"A", "B", "C"}
@@ -676,7 +676,7 @@ func trackerTestDirectoryStorage() {
 	sort.Strings(folderTemplate)
 
 	if reflect.DeepEqual(folderTemplate, folderList) == false {
-		panic(fmt.Sprintf("Found: %v\nExpected: %v\n", folderList, folderTemplate))
+		panic(fmt.Sprintf("Found: %v\nExpected: %v", folderList, folderTemplate))
 	}
 
 	err = tracker.DeleteFolder(folderTemplate[0])
@@ -694,7 +694,7 @@ func trackerTestDirectoryStorage() {
 	sort.Strings(folderTemplate)
 
 	if reflect.DeepEqual(folderList, folderTemplate) == false {
-		panic(fmt.Sprintf("Found: %v\nExpected: %v\n", folderList, folderTemplate))
+		panic(fmt.Sprintf("Found: %v\nExpected: %v", folderList, folderTemplate))
 	}
 
 }

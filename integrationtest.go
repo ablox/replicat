@@ -17,8 +17,8 @@ package main
 
 import (
 	"fmt"
+	log "github.com/sirupsen/logrus"
 	"io/ioutil"
-	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -89,12 +89,12 @@ func buildApps() {
 
 func printError(err error) {
 	if err != nil {
-		os.Stderr.WriteString(fmt.Sprintf("==> Error: %s\n", err.Error()))
+		os.Stderr.WriteString(fmt.Sprintf("==> Error: %s", err.Error()))
 	}
 }
 
 func printOutput(outs []byte) {
 	if len(outs) > 0 {
-		fmt.Printf("==> Output: %s\n", string(outs))
+		fmt.Printf("==> Output: %s", string(outs))
 	}
 }

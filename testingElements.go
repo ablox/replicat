@@ -26,37 +26,37 @@ type LogOnlyChangeHandler struct {
 
 // FolderCreated - track a new folder being created
 func (handler *LogOnlyChangeHandler) FolderCreated(name string) error {
-	fmt.Printf("LogOnlyChangeHandler:FolderCreated: %s\n", name)
+	fmt.Printf("LogOnlyChangeHandler:FolderCreated: %s", name)
 	return nil
 }
 
 // FolderDeleted - track a new folder being deleted
 func (handler *LogOnlyChangeHandler) FolderDeleted(name string) error {
-	fmt.Printf("LogOnlyChangeHandler:FolderDeleted: %s\n", name)
+	fmt.Printf("LogOnlyChangeHandler:FolderDeleted: %s", name)
 	return nil
 }
 
 // FolderUpdated - track a folder being updated
 func (handler *LogOnlyChangeHandler) FolderUpdated(name string) error {
-	fmt.Printf("LogOnlyChangeHandler:FolderUpdated: %s\n", name)
+	fmt.Printf("LogOnlyChangeHandler:FolderUpdated: %s", name)
 	return nil
 }
 
 // FileCreated - track a new folder being created
 func (handler *LogOnlyChangeHandler) FileCreated(name string) error {
-	fmt.Printf("LogOnlyChangeHandler:FileCreated: %s\n", name)
+	fmt.Printf("LogOnlyChangeHandler:FileCreated: %s", name)
 	return nil
 }
 
 // FileDeleted - track a new folder being deleted
 func (handler *LogOnlyChangeHandler) FileDeleted(name string) error {
-	fmt.Printf("LogOnlyChangeHandler:FileDeleted: %s\n", name)
+	fmt.Printf("LogOnlyChangeHandler:FileDeleted: %s", name)
 	return nil
 }
 
 // FileUpdated - track a folder being updated
 func (handler *LogOnlyChangeHandler) FileUpdated(name string) error {
-	fmt.Printf("LogOnlyChangeHandler:FileUpdated: %s\n", name)
+	fmt.Printf("LogOnlyChangeHandler:FileUpdated: %s", name)
 	return nil
 }
 
@@ -94,7 +94,7 @@ func (handler *countingChangeHandler) FolderCreated(name string) error {
 
 	handler.FoldersCreated++
 
-	fmt.Printf("countingChangeHandler:FolderCreated: %s (%d)\n", name, handler.FoldersCreated)
+	fmt.Printf("countingChangeHandler:FolderCreated: %s (%d)", name, handler.FoldersCreated)
 	return nil
 }
 
@@ -105,7 +105,7 @@ func (handler *countingChangeHandler) FolderDeleted(name string) error {
 
 	handler.FoldersDeleted++
 
-	fmt.Printf("countingChangeHandler:FolderDeleted: %s (%d)\n", name, handler.FoldersDeleted)
+	fmt.Printf("countingChangeHandler:FolderDeleted: %s (%d)", name, handler.FoldersDeleted)
 	return nil
 }
 
@@ -116,7 +116,7 @@ func (handler *countingChangeHandler) FolderUpdated(name string) error {
 
 	handler.FoldersUpdated++
 
-	fmt.Printf("countingChangeHandler:FolderUpdated: %s (%d)\n", name, handler.FoldersUpdated)
+	fmt.Printf("countingChangeHandler:FolderUpdated: %s (%d)", name, handler.FoldersUpdated)
 	return nil
 }
 
@@ -127,7 +127,7 @@ func (handler *countingChangeHandler) FileCreated(name string) error {
 
 	handler.FilesCreated++
 
-	fmt.Printf("countingChangeHandler:FileCreated: %s (%d)\n", name, handler.FilesCreated)
+	fmt.Printf("countingChangeHandler:FileCreated: %s (%d)", name, handler.FilesCreated)
 	return nil
 }
 
@@ -137,7 +137,7 @@ func (handler *countingChangeHandler) FileDeleted(name string) error {
 
 	handler.FilesDeleted++
 
-	fmt.Printf("countingChangeHandler:FileDeleted: %s (%d)\n", name, handler.FilesDeleted)
+	fmt.Printf("countingChangeHandler:FileDeleted: %s (%d)", name, handler.FilesDeleted)
 	return nil
 }
 
@@ -147,6 +147,6 @@ func (handler *countingChangeHandler) FileUpdated(name string) error {
 
 	handler.FilesUpdated++
 
-	fmt.Printf("countingChangeHandler:FileUpdated: %s (%d)\n", name, handler.FilesUpdated)
+	fmt.Printf("countingChangeHandler:FileUpdated: %s (%d)", name, handler.FilesUpdated)
 	return nil
 }

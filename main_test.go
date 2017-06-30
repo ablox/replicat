@@ -165,13 +165,13 @@ func verifyClonedDirTree(t *testing.T, orig DirTreeMap) {
 	dirState2 := orig.Clone()
 
 	if reflect.DeepEqual(orig, dirState2) == false {
-		t.Fatal(fmt.Sprintf("cloned directory tree did not match original (orig, cloned)\n%v\n%v\n", orig, dirState2))
+		t.Fatal(fmt.Sprintf("cloned directory tree did not match original (orig, cloned)\n%v\n%v", orig, dirState2))
 	}
 }
 
 func assertEqualsTwoDirTreeMap(t *testing.T, first, second DirTreeMap) {
 	if reflect.DeepEqual(first, second) == false {
-		t.Fatal(fmt.Sprintf("two directory tree did not match (first, second)\n%v\n%v\n", first, second))
+		t.Fatal(fmt.Sprintf("two directory tree did not match (first, second)\n%v\n%v", first, second))
 	}
 }
 

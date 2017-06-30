@@ -21,7 +21,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/rjeczalik/notify"
-	"log"
+	log "github.com/sirupsen/logrus"
 	"math/rand"
 	"os"
 	"path/filepath"
@@ -133,7 +133,7 @@ func NewDirectoryFromFileInfo(info *os.FileInfo) *Entry {
 // IncrementStatistic - Increment one of the named statistics on the tracker.
 func (handler *FilesystemTracker) IncrementStatistic(name string, delta int, getLocks bool) {
 	//go func() {
-	//fmt.Printf("FilesystemTracker:IncrementStatistic(name %s, delta %d)\n", name, delta)
+	//fmt.Printf("FilesystemTracker:IncrementStatistic(name %s, delta %d)", name, delta)
 	if getLocks {
 		handler.fsLock.Lock()
 		defer handler.fsLock.Unlock()
@@ -209,10 +209,10 @@ func (handler *FilesystemTracker) printLockable(lock bool) {
 	sort.Strings(folders)
 
 	fmt.Println("~~~~~~~~~~~~~~~~~~~~~~~")
-	fmt.Printf("~~~~%s Tracker report setup(%v)\n", handler.directory, handler.setup)
-	fmt.Printf("~~~~contents: %v\n", handler.contents)
-	fmt.Printf("~~~~folders: %v\n", folders)
-	fmt.Printf("~~~~renames in progress: %v\n", handler.renamesInProgress)
+	fmt.Printf("~~~~%s Tracker report setup(%v)", handler.directory, handler.setup)
+	fmt.Printf("~~~~contents: %v", handler.contents)
+	fmt.Printf("~~~~folders: %v", folders)
+	fmt.Printf("~~~~renames in progress: %v", handler.renamesInProgress)
 	fmt.Println("~~~~~~~~~~~~~~~~~~~~~~~")
 }
 
@@ -220,11 +220,11 @@ func (handler *FilesystemTracker) validate() {
 	handler.fsLock.RLock()
 	defer handler.fsLock.RUnlock()
 	fmt.Println("~~~~~~~~~~~~~~~~~~~~~~~")
-	fmt.Printf("~~~~%s Tracker validation starting on %d folders\n", handler.directory, len(handler.contents))
+	fmt.Printf("~~~~%s Tracker validation starting on %d folders", handler.directory, len(handler.contents))
 
 	for name, dir := range handler.contents {
 		if !dir.setup {
-			panic(fmt.Sprintf("tracker validation failed on directory: %s\n", name))
+			panic(fmt.Sprintf("tracker validation failed on directory: %s", name))
 		}
 	}
 
@@ -249,7 +249,7 @@ func (handler *FilesystemTracker) GetStatistics() (stats map[string]string) {
 	// Build a list of the entire cluster. Make that list into a string for printing out later
 	var cluster string
 	for _, v := range serverMap {
-		cluster += fmt.Sprintf("name: %s\taddress: %s\n", v.Name, v.Address)
+		cluster += fmt.Sprintf("name: %s\taddress: %s", v.Name, v.Address)
 	}
 
 	fmt.Printf("Address: %s\tFiles: %d\tFolders:%d\tFiles Sent: %d\tReceived %d\tDeleted: %d\tCatalogs Sent: %d\tReceived: %d\n%s", address, handler.stats.TotalFiles, handler.stats.TotalFolders, handler.stats.FilesSent, handler.stats.FilesReceived, handler.stats.FilesDeleted, handler.stats.CatalogsSent, handler.stats.CatalogsReceived, cluster)
@@ -270,7 +270,7 @@ func (handler *FilesystemTracker) Initialize(directory string, server *ReplicatS
 		return
 	}
 
-	fmt.Printf("FilesystemTracker:init called with %s\n", directory)
+	fmt.Printf("FilesystemTracker:init called with %s", directory)
 	handler.directory = directory
 
 	// Make the channel buffered to ensure no event is dropped. Notify will drop
@@ -282,7 +282,7 @@ func (handler *FilesystemTracker) Initialize(directory string, server *ReplicatS
 	handler.directory = fullPath
 
 	if fullPath != globalSettings.Directory {
-		fmt.Printf("Updating serving directory to: %s\n", fullPath)
+		fmt.Printf("Updating serving directory to: %s", fullPath)
 		handler.directory = fullPath
 	}
 
@@ -354,7 +354,7 @@ func validatePath(directory string) (fullPath string) {
 			err2 = os.Mkdir(directory, os.ModeDir+os.ModePerm)
 			fullPath, err3 = filepath.EvalSymlinks(directory)
 			if err2 != nil || err3 != nil {
-				panic(fmt.Sprintf("err: %v\nerr2: %v\nerr3: %v\n", err, err2, err3))
+				panic(fmt.Sprintf("err: %v\nerr2: %v\nerr3: %v", err, err2, err3))
 			}
 		} else {
 			panic(err)
@@ -369,30 +369,30 @@ func createPath(pathName string, absolutePathName string) (pathCreated bool, sta
 		stat, err = os.Stat(absolutePathName)
 
 		if err == nil {
-			fmt.Printf("Path existed: %s\n", absolutePathName)
+			fmt.Printf("Path existed: %s", absolutePathName)
 			pathCreated = true
 			return
 		}
 
 		// if there is an error, go to create the path
-		fmt.Printf("Creating path: %s\n", absolutePathName)
+		fmt.Printf("Creating path: %s", absolutePathName)
 		err = os.MkdirAll(absolutePathName, os.ModeDir+os.ModePerm)
 
 		// after attempting to create the path, check the err again
 		if err == nil {
-			fmt.Printf("Path was created or existed: %s\n", absolutePathName)
+			fmt.Printf("Path was created or existed: %s", absolutePathName)
 			pathCreated = true
 			stat, err = os.Stat(absolutePathName)
-			fmt.Printf("os.Stat returned stat: %#v, err: %#v\n", stat, err)
+			fmt.Printf("os.Stat returned stat: %#v, err: %#v", stat, err)
 			return
 		} else if os.IsExist(err) {
-			fmt.Printf("Path already exists: %s\n", absolutePathName)
+			fmt.Printf("Path already exists: %s", absolutePathName)
 			pathCreated = true
 			stat, err = os.Stat(absolutePathName)
 			return
 		}
 
-		fmt.Printf("Error (%v) encountered creating path, going to try again. Attempt: %d\n", err, maxCycles)
+		fmt.Printf("Error (%v) encountered creating path, going to try again. Attempt: %d", err, maxCycles)
 		time.Sleep(20 * time.Millisecond)
 	}
 
@@ -428,10 +428,10 @@ func (handler *FilesystemTracker) sendRequestedPaths(pathEntries map[string]Entr
 	for p, entry := range pathEntries {
 		fullPath := filepath.Join(currentPath, p)
 		//realEntry := handler.contents[p]
-		log.Printf("File info for: %s Provided: %#v\n", p, entry)
-		//log.Printf("File info for: %s\nProvided: %#v\nFile info for: %s\nStorage : %#v\n", p, entry, p, realEntry)
+		log.Printf("File info for: %s Provided: %#v", p, entry)
+		//log.Printf("File info for: %s\nProvided: %#v\nFile info for: %s\nStorage : %#v", p, entry, p, realEntry)
 		if !entry.IsDirectory {
-			log.Printf("Requested file (%s) information: %#v\n", p, entry)
+			log.Printf("Requested file (%s) information: %#v", p, entry)
 
 			requestChan <- sendFileRequest{p, fullPath, serverAddress}
 			//go postHelper(p, fullPath, serverAddress, globalSettings.ManagerCredentials)
@@ -474,19 +474,19 @@ func (handler *FilesystemTracker) createPath(pathName string, isDirectory bool) 
 		relativePathName, file = filepath.Split(pathName)
 	}
 
-	//fmt.Printf("Path name before any adjustments (directory: %v)\npath: %s\nfile: %s\n", isDirectory, relativePathName, file)
+	//fmt.Printf("Path name before any adjustments (directory: %v)\npath: %s\nfile: %s", isDirectory, relativePathName, file)
 	if len(relativePathName) > 0 && relativePathName[len(relativePathName)-1] == filepath.Separator {
 		fmt.Println("Stripping out path ending")
 		relativePathName = relativePathName[:len(relativePathName)-1]
 	}
 
 	absolutePathName := filepath.Join(handler.directory, relativePathName)
-	fmt.Printf("**********\npath was split into \nrelativePathName: %s \nfile: %s \nabsolutePath: %s\n**********\n", relativePathName, file, absolutePathName)
+	fmt.Printf("**********\npath was split into \nrelativePathName: %s \nfile: %s \nabsolutePath: %s\n**********", relativePathName, file, absolutePathName)
 
 	pathCreated, stat, err := createPath(pathName, absolutePathName)
 
 	if err != nil && !os.IsExist(err) {
-		panic(fmt.Sprintf("Error creating folder %s: %v\n", relativePathName, err))
+		panic(fmt.Sprintf("Error creating folder %s: %v", relativePathName, err))
 	}
 
 	if pathCreated {
@@ -495,20 +495,20 @@ func (handler *FilesystemTracker) createPath(pathName string, isDirectory bool) 
 
 	if !isDirectory {
 		completeAbsoluteFilePath := filepath.Join(handler.directory, pathName)
-		fmt.Printf("We are creating a file at: %s\n", completeAbsoluteFilePath)
+		fmt.Printf("We are creating a file at: %s", completeAbsoluteFilePath)
 
 		// We also need to create the file.
 		for maxCycles := 0; maxCycles < 5; maxCycles++ {
 			stat, err = os.Stat(completeAbsoluteFilePath)
-			fmt.Printf("Stat call done for\npath: %s\nerr: %v\nstat: %v\n", completeAbsoluteFilePath, err, stat)
+			fmt.Printf("Stat call done for\npath: %s\nerr: %v\nstat: %v", completeAbsoluteFilePath, err, stat)
 			var newFile *os.File
 
 			// if there is an error, go to create the file
 			fmt.Println("before")
 			if err != nil {
-				fmt.Printf("Creating file: %s\n", completeAbsoluteFilePath)
+				fmt.Printf("Creating file: %s", completeAbsoluteFilePath)
 				newFile, err = os.Create(completeAbsoluteFilePath)
-				fmt.Printf("Attempt to create file finished\n err: %v\n path: %s\n", err, completeAbsoluteFilePath)
+				fmt.Printf("Attempt to create file finished\n err: %v\n path: %s", err, completeAbsoluteFilePath)
 			}
 			fmt.Println("after")
 
@@ -516,16 +516,16 @@ func (handler *FilesystemTracker) createPath(pathName string, isDirectory bool) 
 			if err == nil {
 				newFile.Close()
 				stat, err = os.Stat(completeAbsoluteFilePath)
-				fmt.Printf("file was created or existed: %s\n", completeAbsoluteFilePath)
+				fmt.Printf("file was created or existed: %s", completeAbsoluteFilePath)
 				break
 			}
 
-			fmt.Printf("Error (%v) encountered creating file, going to try again. Attempt: %d\n", err, maxCycles)
+			fmt.Printf("Error (%v) encountered creating file, going to try again. Attempt: %d", err, maxCycles)
 			time.Sleep(20 * time.Millisecond)
 		}
 
 		if err != nil {
-			panic(fmt.Sprintf("Error creating file %s: %v\n", completeAbsoluteFilePath, err))
+			panic(fmt.Sprintf("Error creating file %s: %v", completeAbsoluteFilePath, err))
 		}
 
 		handler.contents[relativePathName] = *NewDirectoryFromFileInfo(&stat)
@@ -536,7 +536,7 @@ func (handler *FilesystemTracker) createPath(pathName string, isDirectory bool) 
 
 // CreatePath tells the storage tracker to create a new path
 func (handler *FilesystemTracker) CreatePath(pathName string, isDirectory bool) (err error) {
-	fmt.Printf("FilesystemTracker:CreatePath called with relativePath: %s isDirectory: %v\n", pathName, isDirectory)
+	fmt.Printf("FilesystemTracker:CreatePath called with relativePath: %s isDirectory: %v", pathName, isDirectory)
 	handler.fsLock.Lock()
 	fmt.Println("FilesystemTracker:/CreatePath")
 	defer handler.fsLock.Unlock()
@@ -564,12 +564,12 @@ func (handler *FilesystemTracker) handleCompleteRename(sourcePath string, destin
 			break
 		}
 
-		fmt.Printf("Error (%v) encountered moving path, going to try again. Attempt: %d\n", err, maxCycles)
+		fmt.Printf("Error (%v) encountered moving path, going to try again. Attempt: %d", err, maxCycles)
 		time.Sleep(20 * time.Millisecond)
 	}
 
 	if err != nil {
-		panic(fmt.Sprintf("Rename failed (%v)!  source: %s dest: %s directory %v\n", err, sourcePath, destinationPath, isDirectory))
+		panic(fmt.Sprintf("Rename failed (%v)!  source: %s dest: %s directory %v", err, sourcePath, destinationPath, isDirectory))
 	}
 
 	return err
@@ -583,7 +583,7 @@ func (handler *FilesystemTracker) Rename(sourcePath string, destinationPath stri
 	fmt.Println("FilesystemTracker:/Rename")
 	defer fmt.Println("FilesystemTracker://Rename")
 
-	fmt.Printf("We have a rename event. source: %s dest: %s directory %v\n", sourcePath, destinationPath, isDirectory)
+	fmt.Printf("We have a rename event. source: %s dest: %s directory %v", sourcePath, destinationPath, isDirectory)
 
 	if !handler.setup {
 		panic("FilesystemTracker:CreatePath called when not yet setup")
@@ -604,7 +604,7 @@ func (handler *FilesystemTracker) Rename(sourcePath string, destinationPath stri
 		delete(handler.contents, sourcePath)
 		// todo - shortcut the events on this one. Should create a bit of a storm.
 		absolutePathForDeletion := filepath.Join(handler.directory, sourcePath)
-		fmt.Printf("About to call os.RemoveAll on: %s\n", absolutePathForDeletion)
+		fmt.Printf("About to call os.RemoveAll on: %s", absolutePathForDeletion)
 		err = os.RemoveAll(absolutePathForDeletion)
 		if err != nil {
 			panic(fmt.Sprintf("%v encountered when attempting to os.RemoveAll(%s)", err, absolutePathForDeletion))
@@ -613,7 +613,7 @@ func (handler *FilesystemTracker) Rename(sourcePath string, destinationPath stri
 		panic("Enexpected case encountered in rename")
 	}
 
-	fmt.Printf("Rename Complete source: %s dest: %s directory %v\n", sourcePath, destinationPath, isDirectory)
+	fmt.Printf("Rename Complete source: %s dest: %s directory %v", sourcePath, destinationPath, isDirectory)
 	return
 }
 
@@ -629,16 +629,16 @@ func (handler *FilesystemTracker) DeleteFolder(name string) error {
 		panic("FilesystemTracker:DeleteFolder called when not yet setup")
 	}
 
-	fmt.Printf("DeleteFolder: '%s'\n", name)
+	fmt.Printf("DeleteFolder: '%s'", name)
 	delete(handler.contents, name)
-	fmt.Printf("%d after delete of: %s\n", len(handler.contents), name)
+	fmt.Printf("%d after delete of: %s", len(handler.contents), name)
 
 	return nil
 }
 
 // ListFolders - This storage handler should return a list of contained folders.
 func (handler *FilesystemTracker) ListFolders(getLocks bool) (folderList []string, err error) {
-	fmt.Printf("FilesystemTracker:ListFolders getLocks: %v\n", getLocks)
+	fmt.Printf("FilesystemTracker:ListFolders getLocks: %v", getLocks)
 	if getLocks {
 		handler.fsLock.Lock()
 		defer handler.fsLock.Unlock()
@@ -690,7 +690,7 @@ func (handler *FilesystemTracker) monitorLoop(c chan notify.EventInfo) {
 	for {
 		ei := <-c
 
-		fmt.Printf("*****We have an event: %v\nwith Sys: %v\npath: %v\nevent: %v\n", ei, ei.Sys(), ei.Path(), ei.Event())
+		fmt.Printf("*****We have an event: %v\nwith Sys: %v\npath: %v\nevent: %v", ei, ei.Sys(), ei.Path(), ei.Event())
 
 		path, fullPath := extractPaths(handler, &ei)
 		// Skip empty paths
@@ -704,7 +704,7 @@ func (handler *FilesystemTracker) monitorLoop(c chan notify.EventInfo) {
 		_, testFile := filepath.Split(ei.Path())
 		_, exists := filesToIgnore[testFile]
 		if exists {
-			fmt.Printf("Ignoring event for file on ignore list: %s - %s\n", ei.Event(), testFile)
+			fmt.Printf("Ignoring event for file on ignore list: %s - %s", ei.Event(), testFile)
 			continue
 		}
 
@@ -732,14 +732,14 @@ func (handler *FilesystemTracker) checkIfDirectory(event Event, path, fullPath s
 	if err == nil {
 		isDirectory = info.IsDir()
 		sysInterface := info.Sys()
-		fmt.Printf("sysInterface: %v\n", sysInterface)
+		fmt.Printf("sysInterface: %v", sysInterface)
 		if sysInterface != nil {
 			foo := sysInterface.(*syscall.Stat_t)
 			iNode = foo.Ino
 		}
 	}
 
-	fmt.Printf("checkIfDirectory: event raw data: %s with path: %s fullPath: %s isDirectory: %v iNode: %v\n", event.Name, path, fullPath, isDirectory, iNode)
+	fmt.Printf("checkIfDirectory: event raw data: %s with path: %s fullPath: %s isDirectory: %v iNode: %v", event.Name, path, fullPath, isDirectory, iNode)
 
 	return isDirectory
 }
@@ -755,7 +755,7 @@ type renameInformation struct {
 }
 
 func getiNodeFromStat(stat os.FileInfo) uint64 {
-	fmt.Printf("getiNodeFromStat called with %#v\n", stat)
+	fmt.Printf("getiNodeFromStat called with %#v", stat)
 	if stat == nil {
 		return 0
 	}
@@ -783,23 +783,23 @@ func (handler *FilesystemTracker) completeRenameIfAbandoned(iNode uint64) {
 
 	inProgress, exists := handler.renamesInProgress[iNode]
 	if !exists {
-		fmt.Printf("Rename for iNode %d appears to have been completed\n", iNode)
+		fmt.Printf("Rename for iNode %d appears to have been completed", iNode)
 		return
 	}
 
 	// We have the inProgress. Clean it up
 	if inProgress.sourceSet {
 		relativePath := inProgress.sourcePath[len(handler.directory)+1:]
-		fmt.Printf("File at: %s (iNode %d) appears to have been moved away. Removing it\n", relativePath, iNode)
+		fmt.Printf("File at: %s (iNode %d) appears to have been moved away. Removing it", relativePath, iNode)
 		delete(handler.contents, relativePath)
 
 		// tell the other nodes that a rename was done.
 		event := Event{Name: "replicat.Rename", Source: globalSettings.Name, SourcePath: relativePath}
 		SendEvent(event, inProgress.sourcePath)
 	} else if inProgress.destinationSet {
-		fmt.Printf("directory: %s src: %s dest: %s\n", handler.directory, inProgress.sourcePath, inProgress.destinationPath)
-		fmt.Printf("inProgress: %v\n", handler.renamesInProgress)
-		fmt.Printf("this inProgress: %v\n", inProgress)
+		fmt.Printf("directory: %s src: %s dest: %s", handler.directory, inProgress.sourcePath, inProgress.destinationPath)
+		fmt.Printf("inProgress: %v", handler.renamesInProgress)
+		fmt.Printf("this inProgress: %v", inProgress)
 
 		//this code failed because of an slice index out of bounds error. It is a reasonable copy with both sides and
 		//yet it was initialized blank. The first event was for the copy and it should have existed. Ahh, it is a file
@@ -828,14 +828,14 @@ func (handler *FilesystemTracker) completeRenameIfAbandoned(iNode uint64) {
 		//	}
 		//}
 	} else {
-		fmt.Printf("FilesystemTracker:completeRenameIfAbandoned In progress item that appears to be not set. iNode %d, inProgress: %#v\n", iNode, inProgress)
+		fmt.Printf("FilesystemTracker:completeRenameIfAbandoned In progress item that appears to be not set. iNode %d, inProgress: %#v", iNode, inProgress)
 	}
 
 	delete(handler.renamesInProgress, iNode)
 }
 
 func (handler *FilesystemTracker) handleNotifyRename(event Event, pathName, fullPath string) (err error) {
-	fmt.Printf("FilesystemTracker:handleNotifyRename: pathname: %s fullPath: %s\n", pathName, fullPath)
+	fmt.Printf("FilesystemTracker:handleNotifyRename: pathname: %s fullPath: %s", pathName, fullPath)
 	// Either the path should exist in the filesystem or it should exist in the stored tree. Find it.
 
 	// check to see if this folder currently exists. If it does, it is the destination
@@ -854,8 +854,8 @@ func (handler *FilesystemTracker) handleNotifyRename(event Event, pathName, full
 	if tmpDestinationSet {
 		iNode = getiNodeFromStat(tmpDestinationStat)
 	} else if tmpSourceSet && tmpSourceDirectory.setup {
-		//fmt.Printf("About to get iNodefromStat. Handler: %#v\n", handler)
-		//fmt.Printf("tmpSourceDirectory: %#v\n", tmpSourceDirectory)
+		//fmt.Printf("About to get iNodefromStat. Handler: %#v", handler)
+		//fmt.Printf("tmpSourceDirectory: %#v", tmpSourceDirectory)
 		iNode = getiNodeFromStat(tmpSourceDirectory)
 	}
 
@@ -865,7 +865,7 @@ func (handler *FilesystemTracker) handleNotifyRename(event Event, pathName, full
 		inProgress.sourceDirectory = &tmpSourceDirectory
 		inProgress.sourcePath = fullPath
 		inProgress.sourceSet = true
-		fmt.Printf("^^^^^^^Source found, deleting pathName '%s' from contents. Current transfer is: %v\n", pathName, inProgress)
+		fmt.Printf("^^^^^^^Source found, deleting pathName '%s' from contents. Current transfer is: %v", pathName, inProgress)
 		delete(handler.contents, pathName)
 	}
 
@@ -875,14 +875,14 @@ func (handler *FilesystemTracker) handleNotifyRename(event Event, pathName, full
 		inProgress.destinationSet = true
 	}
 
-	fmt.Printf("^^^^^^^Current transfer is: %#v\n", inProgress)
+	fmt.Printf("^^^^^^^Current transfer is: %#v", inProgress)
 
 	if inProgress.destinationSet && inProgress.sourceSet {
-		fmt.Printf("directory: %s src: %s dest: %s\n", handler.directory, inProgress.sourcePath, inProgress.destinationPath)
+		fmt.Printf("directory: %s src: %s dest: %s", handler.directory, inProgress.sourcePath, inProgress.destinationPath)
 
 		relativeDestination := inProgress.destinationPath[len(handler.directory)+1:]
 		relativeSource := inProgress.sourcePath[len(handler.directory)+1:]
-		fmt.Printf("moving from source: %s (%s) to destination: %s (%s)\n", inProgress.sourcePath, relativeSource, inProgress.destinationPath, relativeDestination)
+		fmt.Printf("moving from source: %s (%s) to destination: %s (%s)", inProgress.sourcePath, relativeSource, inProgress.destinationPath, relativeDestination)
 
 		handler.contents[relativeDestination] = *NewDirectoryFromFileInfo(&inProgress.destinationStat)
 		delete(handler.contents, relativeSource)
@@ -894,7 +894,7 @@ func (handler *FilesystemTracker) handleNotifyRename(event Event, pathName, full
 		SendEvent(event, relativeDestination)
 
 	} else {
-		fmt.Printf("^^^^^^^We do not have both a source and destination - schedule and save under iNode: %d Current transfer is: %#v\n", iNode, inProgress)
+		fmt.Printf("^^^^^^^We do not have both a source and destination - schedule and save under iNode: %d Current transfer is: %#v", iNode, inProgress)
 		inProgress.iNode = iNode
 		handler.renamesInProgress[iNode] = inProgress
 		go handler.completeRenameIfAbandoned(iNode)
@@ -906,12 +906,12 @@ func (handler *FilesystemTracker) handleNotifyRename(event Event, pathName, full
 func (handler *FilesystemTracker) handleNotifyCreate(event Event, pathName, fullPath string) (err error) {
 	currentValue, exists := handler.contents[pathName]
 
-	log.Printf("processEvent: About to assign from one path to the next. \n\tOriginal: %v \n\tEvent: %v\n", currentValue, event)
+	log.Printf("processEvent: About to assign from one path to the next. \n\tOriginal: %v \n\tEvent: %v", currentValue, event)
 	// make sure there is an entry in the DirTreeMap for this folder. Since an empty list will always be returned, we can use that
 	if !exists {
 		info, err := os.Stat(fullPath)
 		if err != nil {
-			log.Printf("Could not get stats on directory %s\n", fullPath)
+			log.Printf("Could not get stats on directory %s", fullPath)
 			return TRACKER_ERROR_NO_STATS
 		}
 		directory := NewDirectory()
@@ -929,7 +929,7 @@ func (handler *FilesystemTracker) handleNotifyCreate(event Event, pathName, full
 		}
 	}
 
-	log.Printf("notify.Create: Updated value for %s: %v (%t)\n", pathName, updatedValue, exists)
+	log.Printf("notify.Create: Updated value for %s: %v (%t)", pathName, updatedValue, exists)
 
 	// sendEvent to manager
 	go SendEvent(event, fullPath)
@@ -950,12 +950,12 @@ func (handler *FilesystemTracker) handleNotifyRemove(event Event, pathName, full
 
 	go SendEvent(event, "")
 
-	log.Printf("notify.Remove: %s (%t)\n", pathName, exists)
+	log.Printf("notify.Remove: %s (%t)", pathName, exists)
 	return
 }
 
 func (handler *FilesystemTracker) handleNotifyWrite(event Event, pathName, fullPath string) (err error) {
-	log.Printf("File Write detected: %v\n", event)
+	log.Printf("File Write detected: %v", event)
 	if handler.watcher != nil {
 		if event.IsDirectory {
 			(*handler.watcher).FolderUpdated(pathName)
@@ -999,7 +999,7 @@ func (handler *FilesystemTracker) processEvent(event Event, pathName, fullPath s
 	fmt.Println("FilesystemTracker:/processEvent")
 	defer fmt.Println("FilesystemTracker://processEvent")
 
-	log.Printf("handleFilsystemEvent name: %s pathName: %s\n", event.Name, pathName)
+	log.Printf("handleFilsystemEvent name: %s pathName: %s", event.Name, pathName)
 	var err error
 
 	switch event.Name {
@@ -1013,11 +1013,11 @@ func (handler *FilesystemTracker) processEvent(event Event, pathName, fullPath s
 		err = handler.handleNotifyWrite(event, pathName, fullPath)
 	default:
 		// do not send the event if we do not recognize it
-		fmt.Printf("%s: %s not known, skipping (%v)\n", event.Name, pathName, event)
+		fmt.Printf("%s: %s not known, skipping (%v)", event.Name, pathName, event)
 	}
 
 	if err != nil {
-		log.Printf("Error encountered when processing: %v\n", err)
+		log.Printf("Error encountered when processing: %v", err)
 	}
 
 	if lock {
@@ -1028,7 +1028,7 @@ func (handler *FilesystemTracker) processEvent(event Event, pathName, fullPath s
 
 // Scan for existing files and add them to the list of files that we have with create events. this has to be called inside of a lock
 func (handler *FilesystemTracker) scanFolders() error {
-	log.Printf("FileSystemTracker ScanFolders - start. File Root: '%s'\n", handler.directory)
+	log.Printf("FileSystemTracker ScanFolders - start. File Root: '%s'", handler.directory)
 	pendingPaths := make([]string, 0, 100)
 	pendingPaths = append(pendingPaths, handler.directory)
 	handler.contents = make(map[string]Entry)
@@ -1037,11 +1037,11 @@ func (handler *FilesystemTracker) scanFolders() error {
 		currentPath := pendingPaths[0]
 		pendingPaths = pendingPaths[1:]
 
-		log.Printf("scanFolders: scanning path: %s\n", currentPath)
+		log.Printf("scanFolders: scanning path: %s", currentPath)
 		// Read the directories in the path
 		f, err := os.Open(currentPath)
 		if err != nil {
-			log.Printf("Error opening '%s': %s\n", currentPath, err)
+			log.Printf("Error opening '%s': %s", currentPath, err)
 			return err
 		}
 
@@ -1058,10 +1058,10 @@ func (handler *FilesystemTracker) scanFolders() error {
 			} else {
 				//hash, err = fileBlake2bHash(absolutePath)
 				//if err != nil {
-				//	log.Printf("Error getting Blake2 Hash for %s: %s\n", absolutePath, err)
+				//	log.Printf("Error getting Blake2 Hash for %s: %s", absolutePath, err)
 				//	handler.stats.TotalFolders++
 				//	//todo figure out why I had the folder in here.
-				//	fmt.Printf("Entry data for error: %#v\n", entry)
+				//	fmt.Printf("Entry data for error: %#v", entry)
 				//	//panic(err)
 				//} else {
 				//	handler.stats.TotalFiles++
@@ -1072,7 +1072,7 @@ func (handler *FilesystemTracker) scanFolders() error {
 			// add to contents
 			info, err := os.Stat(absolutePath)
 			if err != nil {
-				fmt.Printf("ScanFolders: Could not get stats on directory %s\n", absolutePath)
+				fmt.Printf("ScanFolders: Could not get stats on directory %s", absolutePath)
 				panic(err)
 			}
 
@@ -1081,7 +1081,7 @@ func (handler *FilesystemTracker) scanFolders() error {
 			directory.hash = hash
 			handler.contents[relativePath] = *directory
 
-			//fmt.Printf("Packing up: %s = %#v\n", relativePath, directory)
+			//fmt.Printf("Packing up: %s = %#v", relativePath, directory)
 
 			if entry.IsDir() {
 				newDirectory := filepath.Join(currentPath, entry.Name())
@@ -1116,7 +1116,7 @@ type EntryJSON struct {
 
 // SendCatalog - Send our catalog out for other nodes to compare. This needs to be called with handler.fsLock engaged
 func (handler *FilesystemTracker) SendCatalog() {
-	fmt.Printf("FileSystemTracker ScanFolders - end - Found %d items\n", len(handler.contents))
+	fmt.Printf("FileSystemTracker ScanFolders - end - Found %d items", len(handler.contents))
 
 	handler.IncrementStatistic(TRACKER_CATALOGS_SENT, 1, false)
 
@@ -1126,7 +1126,7 @@ func (handler *FilesystemTracker) SendCatalog() {
 
 	for k, v := range handler.contents {
 		entry := EntryJSON{RelativePath: k, IsDirectory: v.IsDir(), Hash: v.hash, ModTime: v.ModTime(), Size: v.Size()}
-		//fmt.Printf("Packing up: %s=%#v\n", k, entry)
+		//fmt.Printf("Packing up: %s=%#v", k, entry)
 		rawData = append(rawData, entry)
 	}
 
@@ -1134,7 +1134,7 @@ func (handler *FilesystemTracker) SendCatalog() {
 	if err != nil {
 		panic(err)
 	}
-	fmt.Printf("Analyzed all files in the folder and the total size is: %d\n", len(jsonData))
+	fmt.Printf("Analyzed all files in the folder and the total size is: %d", len(jsonData))
 
 	event := Event{
 		Name:          "replicat.Catalog",
@@ -1144,14 +1144,14 @@ func (handler *FilesystemTracker) SendCatalog() {
 		RawData:       jsonData,
 	}
 
-	//fmt.Printf("About to directly send out full catalog event with: %v\n", event)
+	//fmt.Printf("About to directly send out full catalog event with: %v", event)
 	sendCatalogToManagerAndSiblings(event)
 	fmt.Println("catalog sent")
 }
 
 // ProcessCatalog - handle a catalog passed from another replicat node
 func (handler *FilesystemTracker) ProcessCatalog(event Event) {
-	log.Printf("FilesystemTracker ProcessCatalog: from Server: %s\n", event.Source)
+	log.Printf("FilesystemTracker ProcessCatalog: from Server: %s", event.Source)
 
 	handler.stats.CatalogsReceived++
 	remoteServer := event.Source
@@ -1161,8 +1161,8 @@ func (handler *FilesystemTracker) ProcessCatalog(event Event) {
 	if err != nil {
 		panic(err)
 	}
-	//log.Printf("Done unmarshalling event. len %d\n", len(remoteContents))
-	//log.Printf("Data retrieved from: %s\n%#v\n", event.Source, remoteContents)
+	//log.Printf("Done unmarshalling event. len %d", len(remoteContents))
+	//log.Printf("Data retrieved from: %s\n%#v", event.Source, remoteContents)
 
 	// Let's go through the other side's files and see if any of them are more up to date than what we have.
 	for _, remoteEntry := range remoteContents {
@@ -1177,15 +1177,15 @@ func (handler *FilesystemTracker) ProcessCatalog(event Event) {
 		// Request transfer of the file if we do not have a local copy already
 		transfer := !exists
 
-		log.Printf("ProcessCatalog: Considering: %s\texists: %v\tremote: %#v\tlocal:  %#v\n", path, exists, remoteEntry, local)
+		log.Printf("ProcessCatalog: Considering: %s\texists: %v\tremote: %#v\tlocal:  %#v", path, exists, remoteEntry, local)
 
 		if exists && local.IsDir() && remoteEntry.IsDirectory {
-			log.Printf("Skipping directory: %s\n", path)
+			log.Printf("Skipping directory: %s", path)
 			continue
 		}
 		// Make missing directories immediately so we have a place to put the files
 		if !exists && remoteEntry.IsDirectory {
-			log.Printf("ProcessCatalog(%s) %s\nIs a directory, creating now\n", remoteEntry.ServerName, path)
+			log.Printf("ProcessCatalog(%s) %s\nIs a directory, creating now", remoteEntry.ServerName, path)
 			// Make a missing directory
 			handler.fsLock.Lock()
 			handler.createPath(path, true)
@@ -1195,20 +1195,20 @@ func (handler *FilesystemTracker) ProcessCatalog(event Event) {
 		}
 
 		if !transfer {
-			log.Printf("ProcessCatalog(%s) %s\remote: %v\nlocal: %v times remote: %v local: %v\n", remoteEntry.ServerName, path, remoteEntry, local, remoteEntry.ModTime, local.ModTime())
+			log.Printf("ProcessCatalog(%s) %s\remote: %v\nlocal: %v times remote: %v local: %v", remoteEntry.ServerName, path, remoteEntry, local, remoteEntry.ModTime, local.ModTime())
 			if local.hash == nil || local.ModTime().Before(remoteEntry.ModTime) {
 				transfer = true
 			}
 		}
 
 		hashSame := bytes.Equal(remoteEntry.Hash, local.hash)
-		log.Printf("ProcessCatalog: Done considering(%s) transfer is: %t\n", path, transfer)
+		log.Printf("ProcessCatalog: Done considering(%s) transfer is: %t", path, transfer)
 
 		//todo should we do something if the transfer is set to true yet the hash is the same and is set to a valid value?
 
 		// If the hashes differ, we need to do something -- unless the other side is the older one
 		//if !transfer && !hashSame {
-		//	panic(fmt.Sprintf("We have a problem. file: %s\nremoteHash: %s\nlocalHash:  %s\n", path, remoteEntry.Hash, local.hash))
+		//	panic(fmt.Sprintf("We have a problem. file: %s\nremoteHash: %s\nlocalHash:  %s", path, remoteEntry.Hash, local.hash))
 		//}
 
 		if transfer {
@@ -1216,11 +1216,11 @@ func (handler *FilesystemTracker) ProcessCatalog(event Event) {
 			currentEntry, exists := handler.neededFiles[path]
 			handler.fsLock.RUnlock()
 
-			log.Printf("ProcessCatalog: We have decided to request transfer of this file: %s\nCurrent(%t): %#v\nRemote: %#v\n", path, exists, currentEntry, remoteEntry)
+			log.Printf("ProcessCatalog: We have decided to request transfer of this file: %s\nCurrent(%t): %#v\nRemote: %#v", path, exists, currentEntry, remoteEntry)
 
 			// If the current modification time is before the remote modification time, use the remote one
 			useNew := currentEntry.ModTime.Before(remoteEntry.ModTime)
-			//log.Printf("Use New: %v HashSame: %v\n", useNew, hashSame)
+			//log.Printf("Use New: %v HashSame: %v", useNew, hashSame)
 
 			// If the hash and time are the same, randomly decide which server to request the file from. Bias towards the first instance (faster server response time)
 			if !useNew && hashSame {
@@ -1238,7 +1238,7 @@ func (handler *FilesystemTracker) ProcessCatalog(event Event) {
 				//	currentEntry.ServerName = remoteServer
 				//}
 				//
-				//log.Printf("About to save %s \n%#v to neededFiles \n", path, currentEntry)
+				//log.Printf("About to save %s \n%#v to neededFiles ", path, currentEntry)
 				handler.fsLock.Lock()
 				remoteEntry.ServerName = remoteServer
 				handler.neededFiles[path] = remoteEntry
@@ -1264,33 +1264,33 @@ func (handler *FilesystemTracker) ProcessCatalog(event Event) {
 // send out the actual requests for needed files when necessary. Call when inside of a lock!
 func (handler *FilesystemTracker) requestNeededFiles() {
 	// Collect the files needed for each server.
-	//fmt.Printf("start collecting what we need from each server %#v\n", handler.neededFiles)
+	//fmt.Printf("start collecting what we need from each server %#v", handler.neededFiles)
 	filesToFetch := make(map[string]map[string]EntryJSON)
 
 	// flip the list of needed files from [[path]Entry] to server -> [path] -> Entry
 	for path, entry := range handler.neededFiles {
-		fmt.Printf("%s: %s (%#v)\n", entry.ServerName, path, entry)
+		fmt.Printf("%s: %s (%#v)", entry.ServerName, path, entry)
 		server := entry.ServerName
 		fileMap := filesToFetch[server]
 		if fileMap == nil {
 			fileMap = make(map[string]EntryJSON)
 		}
 		fileMap[path] = entry
-		fmt.Printf("requestNeededFiles adding (%s) for file %s\n", server, path)
+		fmt.Printf("requestNeededFiles adding (%s) for file %s", server, path)
 		filesToFetch[server] = fileMap
 	}
 
 	for server, fileMap := range filesToFetch {
-		fmt.Printf("requestNeededFiles: Server %s\t\tfilecount %d\n", server, len(fileMap))
+		fmt.Printf("requestNeededFiles: Server %s\t\tfilecount %d", server, len(fileMap))
 	}
 
 	//todo remove this sleep statement once functionality is verified
 	time.Sleep(30 * time.Second)
 
 	for server, fileMap := range filesToFetch {
-		fmt.Printf("requestNeededFiles: Files needed from: %s\n", server)
+		fmt.Printf("requestNeededFiles: Files needed from: %s", server)
 		for filename, entry := range fileMap {
-			fmt.Printf("\t%s - %s(%d) - %v\n", server, filename, entry.Size, entry.Hash)
+			fmt.Printf("\t%s - %s(%d) - %v", server, filename, entry.Size, entry.Hash)
 		}
 		go handler.SendRequestForFiles(server, fileMap)
 	}
@@ -1300,13 +1300,13 @@ func (handler *FilesystemTracker) requestNeededFiles() {
 // SendRequestForFiles - Request files you need from another Replicat This needs to be called with handler.fsLock engaged
 func (handler *FilesystemTracker) SendRequestForFiles(server string, fileMap map[string]EntryJSON) {
 	log.Println("FileSystemTracker SendRequestForFiles - end")
-	//fmt.Printf("FileSystemTracker SendRequestForFiles - end - Found %d items\n", len(handler.contents))
+	//fmt.Printf("FileSystemTracker SendRequestForFiles - end - Found %d items", len(handler.contents))
 
 	jsonData, err := json.Marshal(fileMap)
 	if err != nil {
 		panic(err)
 	}
-	log.Printf("Files needed from %s: %d    Request Length: %d\n", server, len(fileMap), len(jsonData))
+	log.Printf("Files needed from %s: %d    Request Length: %d", server, len(fileMap), len(jsonData))
 
 	event := Event{
 		Name:          "replicat.FileRequest",
@@ -1316,7 +1316,7 @@ func (handler *FilesystemTracker) SendRequestForFiles(server string, fileMap map
 		RawData:       jsonData,
 	}
 
-	//log.Printf("About to directly send out request for files from %s: %v\n", server, event)
+	//log.Printf("About to directly send out request for files from %s: %v", server, event)
 	sendFileRequestToServer(server, event)
-	log.Printf("File request for %s sent\n", server)
+	log.Printf("File request for %s sent", server)
 }

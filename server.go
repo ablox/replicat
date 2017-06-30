@@ -22,10 +22,10 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	log "github.com/sirupsen/logrus"
 	"golang.org/x/crypto/blake2b"
 	"io"
 	"io/ioutil"
-	"log"
 	"mime/multipart"
 	"net/http"
 	"os"
@@ -95,10 +95,10 @@ func SendEvent(event Event, fullPath string) {
 	ownershipLock.RUnlock()
 
 	if exists {
-		log.Printf("Original ownership: %#v\n", originalEntry)
+		log.Printf("Original ownership: %#v", originalEntry)
 		timeDelta := time.Since(originalEntry.Time)
 		if timeDelta > OWNERSHIP_EXPIRATION_TIMEOUT {
-			log.Printf("Ownership expired. Delta is: %v\n", timeDelta)
+			log.Printf("Ownership expired. Delta is: %v", timeDelta)
 		} else if originalEntry.Source != globalSettings.Name {
 			// At this point, someone owns this item.
 			// If we are not the owner, we are done.
@@ -106,7 +106,7 @@ func SendEvent(event Event, fullPath string) {
 			return
 		}
 	} else {
-		log.Printf("Send event called. No prior ownership: %s\n", fullPath)
+		log.Printf("Send event called. No prior ownership: %s", fullPath)
 	}
 
 	// At this point, it is our change and our event. Store our ownership
@@ -138,7 +138,7 @@ func sendFileRequestToServer(serverName string, event Event) {
 	server := serverMap[serverName]
 	if server == nil {
 		//panic("Server no longer exists when trying to send a file request\n")
-		fmt.Printf("Server cannot be reached, skipping sending file: (%s) %s\n", serverName, event.Path)
+		fmt.Printf("Server cannot be reached, skipping sending file: (%s) %s", serverName, event.Path)
 		return
 	}
 
@@ -157,7 +157,7 @@ func sendEvent(serverName string, event *Event, fullPath string, address string,
 	}
 
 	url := protocolString + address + "/event/"
-	log.Printf("target url: %s (%s)\nEvent is: %s\n", url, serverName, event.Name)
+	log.Printf("target url: %s (%s)\nEvent is: %s", url, serverName, event.Name)
 
 	jsonStr, _ := json.Marshal(event)
 	req, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonStr))
@@ -181,14 +181,14 @@ func sendEvent(serverName string, event *Event, fullPath string, address string,
 	switch event.Name {
 	case "replicat.Rename", "notify.Create", "notify.Write":
 		if event.SourcePath == "" {
-			fmt.Printf("sendEvent We have a rename in. destination: %s\n", event.Path)
+			fmt.Printf("sendEvent We have a rename in. destination: %s", event.Path)
 			postHelper(event.Path, fullPath, address, credentials)
 		} else if event.Name == "notify.Write" {
 			fmt.Printf("WE ARE HERE")
 			panic("hello")
 		} else {
 
-			fmt.Printf("sendEvent - %s, full event: %#v\n", event.Name, event)
+			fmt.Printf("sendEvent - %s, full event: %#v", event.Name, event)
 		}
 	}
 
@@ -201,7 +201,7 @@ func postHelper(path, fullPath, address, credentials string) {
 	}
 	url := protocolString + address + "/upload/"
 
-	fmt.Printf("Sending file to: %s\npath: %s URL: %s\n", address, path, url)
+	fmt.Printf("Sending file to: %s\npath: %s URL: %s", address, path, url)
 	postFile(path, fullPath, url, credentials)
 }
 
@@ -227,7 +227,7 @@ func eventHandler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		log.Println(event.Name + ", path: " + event.Path)
-		log.Printf("Event info: %#v\n", event)
+		log.Printf("Event info: %#v", event)
 
 		// At this point, the other side should have ownership of this path.
 
@@ -239,7 +239,7 @@ func eventHandler(w http.ResponseWriter, r *http.Request) {
 		ownershipLock.Lock()
 		originalEntry, exists := ownership[path]
 		if exists {
-			log.Printf("Original ownership: %#v\n", originalEntry)
+			log.Printf("Original ownership: %#v", originalEntry)
 		} else {
 			log.Println("No original ownership found")
 		}
@@ -256,18 +256,18 @@ func eventHandler(w http.ResponseWriter, r *http.Request) {
 
 		switch event.Name {
 		case "notify.Create":
-			fmt.Printf("notify.Create: %s\n", pathName)
+			fmt.Printf("notify.Create: %s", pathName)
 			fmt.Println("eventHandler->CreatePath")
 			server.storage.CreatePath(relativePath, event.IsDirectory)
 			fmt.Println("eventHandler->/CreatePath")
 		case "notify.Remove":
-			fmt.Printf("notify.Remove: %s\n", pathName)
+			fmt.Printf("notify.Remove: %s", pathName)
 			err = os.Remove(pathName)
 			if err != nil && !os.IsNotExist(err) {
-				panic(fmt.Sprintf("Error deleting folder %s: %v\n", pathName, err))
+				panic(fmt.Sprintf("Error deleting folder %s: %v", pathName, err))
 			}
 		case "notify.Rename":
-			fmt.Printf("notify.Rename: %s\n", pathName)
+			fmt.Printf("notify.Rename: %s", pathName)
 			fmt.Println("eventHandler->CreatePath")
 			server.storage.CreatePath(relativePath, event.IsDirectory)
 			fmt.Println("eventHandler->/CreatePath")
@@ -276,16 +276,16 @@ func eventHandler(w http.ResponseWriter, r *http.Request) {
 			server.storage.Rename(event.SourcePath, event.Path, event.IsDirectory)
 			fmt.Println("eventHandler->/Rename")
 		case "replicat.Catalog":
-			fmt.Printf("eventHandler->Catalog\n%#v\n", event)
+			fmt.Printf("eventHandler->Catalog\n%#v", event)
 			server.storage.ProcessCatalog(event)
 			fmt.Println("eventHandler->/Catalog")
 		case "replicat.FileRequest":
-			fmt.Printf("Received request to send files from: %s\n", event.Source)
+			fmt.Printf("Received request to send files from: %s", event.Source)
 			fileMap := make(map[string]EntryJSON)
 			json.Unmarshal(event.RawData, &fileMap)
 			go server.storage.sendRequestedPaths(fileMap, event.Source)
 		default:
-			fmt.Printf("Unknown event found, doing nothing. Event: %v\n", event)
+			fmt.Printf("Unknown event found, doing nothing. Event: %v", event)
 		}
 
 		// todo make this simpler
@@ -306,7 +306,7 @@ func sendFolderTree(initialTree DirTreeMap) {
 		if key == "" {
 			continue
 		}
-		fmt.Printf("key is: '%s', length is: %d\n", key, prefixLength)
+		fmt.Printf("key is: '%s', length is: %d", key, prefixLength)
 		key = key[prefixLength:]
 		tree[key] = value
 	}
@@ -336,7 +336,7 @@ func sendFolderTreeHelper(server *ReplicatServer, authHash string, jsonData []by
 	client := &http.Client{}
 
 	url := "http://" + server.Address + "/tree/"
-	fmt.Printf("Posting folder tree to node: %s at URL: %s\n", server.Name, url)
+	fmt.Printf("Posting folder tree to node: %s at URL: %s", server.Name, url)
 
 	req, err := http.NewRequest("POST", url, buffer)
 	req.Header.Set("Content-Type", "application/json")
@@ -344,7 +344,7 @@ func sendFolderTreeHelper(server *ReplicatServer, authHash string, jsonData []by
 
 	resp, err := client.Do(req)
 	if err != nil {
-		fmt.Printf("we encountered an error!\n%s\n", err)
+		fmt.Printf("we encountered an error!\n%s", err)
 		return
 	}
 
@@ -358,7 +358,7 @@ func getListOfFolders(w http.ResponseWriter) {
 		log.Fatal(err)
 	}
 	json.NewEncoder(w).Encode(listOfFileInfo)
-	fmt.Printf("Sending tree of size %d back to client\n", len(listOfFileInfo))
+	fmt.Printf("Sending tree of size %d back to client", len(listOfFileInfo))
 }
 
 func deletePaths(deletedPaths []string) {
@@ -368,19 +368,19 @@ func deletePaths(deletedPaths []string) {
 
 	fmt.Println("Paths were deleted on the other side. Delete them here")
 
-	fmt.Printf("Paths to delete\nBefore sort:\n%v\n", deletedPaths)
+	fmt.Printf("Paths to delete\nBefore sort:\n%v", deletedPaths)
 	// Reverse sort the paths so the most specific is first. This allows us to get away without a recursive delete
 	sort.Sort(sort.Reverse(sort.StringSlice(deletedPaths)))
-	fmt.Printf("Paths to delete after sort\nAfter sort:\n%v\n", deletedPaths)
+	fmt.Printf("Paths to delete after sort\nAfter sort:\n%v", deletedPaths)
 	for _, relativePath := range deletedPaths {
 		if relativePath == "" || relativePath == "/" {
-			fmt.Printf("We had a request to delete the base path. Skipping: %s\n", relativePath)
+			fmt.Printf("We had a request to delete the base path. Skipping: %s", relativePath)
 			continue
 		}
 		fullPath := globalSettings.Directory + relativePath
-		fmt.Printf("Full path is: %s\n", fullPath)
+		fmt.Printf("Full path is: %s", fullPath)
 
-		fmt.Printf("%s: about to remove\n", fullPath)
+		fmt.Printf("%s: about to remove", fullPath)
 
 		// stop on any error except for not exist. We are trying to delete it anyway (or rather, it should have been deleted already)
 		err := os.Remove(fullPath)
@@ -389,14 +389,14 @@ func deletePaths(deletedPaths []string) {
 		}
 		serverMap[globalSettings.Name].storage.IncrementStatistic(TRACKER_FILES_DELETED, 1, true)
 
-		fmt.Printf("%s: done removing (err = %v)\n", fullPath, err)
+		fmt.Printf("%s: done removing (err = %v)", fullPath, err)
 	}
 }
 
 func addPaths(newPaths []string) {
 	fmt.Println("Paths were added on the other side. Create them here")
 	for _, newPathName := range newPaths {
-		fmt.Printf("pathname is: %s\n", newPathName)
+		fmt.Printf("pathname is: %s", newPathName)
 		err := os.Mkdir(newPathName, os.ModeDir+os.ModePerm)
 		if err != nil && !os.IsExist(err) {
 			panic(err)
@@ -425,7 +425,7 @@ func folderTreeHandler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// todo get the node name in here
-		fmt.Printf("Received a tree map from: %s\n%s\n", r.RemoteAddr, remoteTree)
+		fmt.Printf("Received a tree map from: %s\n%s", r.RemoteAddr, remoteTree)
 
 		// let's compare to the current one we have.
 		_, _, newPaths, deletedPaths, _ := checkForChanges(remoteTree, nil)
@@ -433,14 +433,14 @@ func folderTreeHandler(w http.ResponseWriter, r *http.Request) {
 		// update the paths to be consistent. Remember, everything is backwards since this is comparing the other side to us instead of two successive states
 		// deletion will show up as a new path.
 
-		fmt.Printf("about to check for deletions: %s\n", newPaths)
+		fmt.Printf("about to check for deletions: %s", newPaths)
 		// delete folders that were deleted. We delete first, then add to make sure that the old ones will not be in the way
 		if len(newPaths) > 0 {
 			deletePaths(newPaths)
 		}
 
 		// add folders that were created
-		fmt.Printf("about to check for new folders: %s\n", deletedPaths)
+		fmt.Printf("about to check for new folders: %s", deletedPaths)
 		// add folders that were added.
 		if len(deletedPaths) > 0 {
 			addPaths(deletedPaths)
@@ -449,18 +449,18 @@ func folderTreeHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func postFile(filename string, fullPath string, address string, credentials string) error {
-	fmt.Printf("postFile: filename: %s, fullPath: %s\n", filename, fullPath)
+	fmt.Printf("postFile: filename: %s, fullPath: %s", filename, fullPath)
 
 	// Check to see if this is a file or a directory (somehow directories are getting in here)
 	fileInfo, err := os.Lstat(fullPath)
 	if err != nil {
-		log.Fatalf("PostFile Error: found an error (%s) when I was supposed to be sending a file: %s (%s)\n", err.Error(), filename, fullPath)
+		log.Fatalf("PostFile Error: found an error (%s) when I was supposed to be sending a file: %s (%s)", err.Error(), filename, fullPath)
 		return err
 	}
 
 	if fileInfo.IsDir() {
-		log.Printf("PostFile Error: found a directory when I was supposed to be sending a file: %s (%s)\n", filename, fullPath)
-		fmt.Printf("Creating path: %s\n", fullPath)
+		log.Printf("PostFile Error: found a directory when I was supposed to be sending a file: %s (%s)", filename, fullPath)
+		fmt.Printf("Creating path: %s", fullPath)
 		err = os.MkdirAll(fullPath, os.ModeDir+os.ModePerm)
 
 		return err
@@ -482,7 +482,7 @@ func postFile(filename string, fullPath string, address string, credentials stri
 	// Copy the file to the request
 	_, err = io.CopyBuffer(fileWriter, file, nil)
 	if err != nil {
-		fmt.Printf("error copying file: %s (%s)\n", filename, err)
+		fmt.Printf("error copying file: %s (%s)", filename, err)
 		//panic("again?")
 		return err
 	}
@@ -495,7 +495,7 @@ func postFile(filename string, fullPath string, address string, credentials stri
 
 	myHash, err := fileMd5Hash(fullPath)
 	if err != nil {
-		fmt.Printf("failed to calculate MD5 Hash for %s\n", fullPath)
+		fmt.Printf("failed to calculate MD5 Hash for %s", fullPath)
 		return err
 	}
 
@@ -518,7 +518,7 @@ func postFile(filename string, fullPath string, address string, credentials stri
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
-		log.Printf("PostFile - Error sending a file (%s) to another node(%s) error(%s)\n", filename, address, err)
+		log.Printf("PostFile - Error sending a file (%s) to another node(%s) error(%s)", filename, address, err)
 		return err
 	}
 
@@ -567,7 +567,7 @@ func fileBlake2bHash(filePath string) ([]byte, error) {
 
 	hashResult = hash.Sum(nil)
 
-	fmt.Printf("%v - %s\n", hex.EncodeToString(hashResult), filePath)
+	fmt.Printf("%v - %s", hex.EncodeToString(hashResult), filePath)
 
 	return hashResult, nil
 }

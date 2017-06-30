@@ -18,7 +18,7 @@ package main
 import (
 	"fmt"
 	"github.com/minio/minio-go"
-	"log"
+	log "github.com/sirupsen/logrus"
 	"os"
 	"path/filepath"
 	"testing"
@@ -33,7 +33,7 @@ func TestMinioSmallObjectCreationAndDeletion(t *testing.T) {
 	tracker := createMinioTracker("", "")
 	defer cleanupMinioTracker(tracker)
 
-	fmt.Printf("Minio initialized with bucket: %s\n", tracker.bucketName)
+	fmt.Printf("Minio initialized with bucket: %s", tracker.bucketName)
 
 	objectName := "babySloth"
 
@@ -41,7 +41,7 @@ func TestMinioSmallObjectCreationAndDeletion(t *testing.T) {
 	tracker.printLockable(true)
 	targetMonitoredPath := filepath.Join(outsideFolder, objectName)
 
-	fmt.Printf("making file: %s\n", targetMonitoredPath)
+	fmt.Printf("making file: %s", targetMonitoredPath)
 	file, err := os.Create(targetMonitoredPath)
 	if err != nil {
 		t.Fatal(err)
@@ -53,7 +53,7 @@ func TestMinioSmallObjectCreationAndDeletion(t *testing.T) {
 		t.Fatal(err)
 	}
 	if n != len(sampleFileContents) {
-		t.Fatalf("Contents of file not correct length n: %d len: %d\n", n, len(sampleFileContents))
+		t.Fatalf("Contents of file not correct length n: %d len: %d", n, len(sampleFileContents))
 	}
 
 	err = file.Close()
@@ -79,16 +79,16 @@ func TestMinioSmallObjectCreationAndDeletion(t *testing.T) {
 	}
 
 	for _, x := range objectsList {
-		log.Printf("Object name: %s\n", x)
+		log.Printf("Object name: %s", x)
 	}
 
 	if len(objectsList) != 1 {
 		tempTracker.printLockable(true)
-		t.Fatalf("Wrong number of objects found. Expected 1 found %d\n", len(objectsList))
+		t.Fatalf("Wrong number of objects found. Expected 1 found %d", len(objectsList))
 	}
 
 	if objectsList[0] != objectName {
-		t.Fatalf("Wrong object name found. Expected %s found %s\n", objectName, objectsList[0])
+		t.Fatalf("Wrong object name found. Expected %s found %s", objectName, objectsList[0])
 	}
 
 	tracker.DeleteObject(tracker.bucketName, objectName)
@@ -116,7 +116,7 @@ func TestMinioSmallObjectCreationAndDeletion(t *testing.T) {
 
 	result := WaitForStorage(tracker, objectName, true, waitForTrackerFolderExists)
 	if result == false {
-		t.Fatalf("Object %s was not created. Aborting.\n", path)
+		t.Fatalf("Object %s was not created. Aborting.", path)
 	}
 
 }
@@ -130,7 +130,7 @@ func TestTrackerCatchingExternalWrite(t *testing.T) {
 	tracker := createMinioTracker("", "")
 	defer cleanupMinioTracker(tracker)
 
-	fmt.Printf("Minio initialized with bucket: %s\n", tracker.bucketName)
+	fmt.Printf("Minio initialized with bucket: %s", tracker.bucketName)
 
 	objectName := "babySloth"
 
@@ -139,12 +139,12 @@ func TestTrackerCatchingExternalWrite(t *testing.T) {
 	initialOutput, err := tracker.ListFolders(true)
 
 	if len(initialOutput) != 0 {
-		t.Fatalf("Wrong number of contents. Expected: 0, found: %d contents: %s\n", len(initialOutput), initialOutput)
+		t.Fatalf("Wrong number of contents. Expected: 0, found: %d contents: %s", len(initialOutput), initialOutput)
 	}
 
 	targetMonitoredPath := filepath.Join(outsideFolder, objectName)
 
-	fmt.Printf("making file: %s\n", targetMonitoredPath)
+	fmt.Printf("making file: %s", targetMonitoredPath)
 	file, err := os.Create(targetMonitoredPath)
 	if err != nil {
 		t.Fatal(err)
@@ -156,7 +156,7 @@ func TestTrackerCatchingExternalWrite(t *testing.T) {
 		t.Fatal(err)
 	}
 	if n != len(sampleFileContents) {
-		t.Fatalf("Contents of file not correct length n: %d len: %d\n", n, len(sampleFileContents))
+		t.Fatalf("Contents of file not correct length n: %d len: %d", n, len(sampleFileContents))
 	}
 
 	err = file.Close()
@@ -178,7 +178,7 @@ func TestTrackerCatchingExternalWrite(t *testing.T) {
 	result := WaitForStorage(tracker, objectName, true, waitForTrackerFolderExists)
 	if result == false {
 		folders, _ := tracker.ListFolders(true)
-		t.Fatalf("Failed to find item: %s, actual contents: %#v\n", objectName, folders)
+		t.Fatalf("Failed to find item: %s, actual contents: %#v", objectName, folders)
 	}
 
 	//todo remove the object and make sure the tracker does not have it anymore.
@@ -190,7 +190,7 @@ func TestTrackerCatchingExternalWrite(t *testing.T) {
 	result = WaitForStorage(tracker, objectName, false, waitForTrackerFolderExists)
 	if result == false {
 		folders, _ := tracker.ListFolders(true)
-		t.Fatalf("Failed to delete item: %s, actual contents: %#v\n", objectName, folders)
+		t.Fatalf("Failed to delete item: %s, actual contents: %#v", objectName, folders)
 	}
 }
 

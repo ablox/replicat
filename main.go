@@ -17,14 +17,15 @@ package main
 
 import (
 	"fmt"
-	"log"
+	log "github.com/sirupsen/logrus"
 	"math/rand"
 	"time"
 )
 
 func main() {
 	// Set the flags on the logger to get better accuracy
-	log.SetFlags(log.LstdFlags | log.Lmicroseconds | log.Lshortfile)
+	log.SetFormatter(&log.TextFormatter{})
+	//log.SetFlags(log.LstdFlags | log.Lmicroseconds | log.Lshortfile)
 
 	fmt.Println("replicat initializing....")
 	rand.Seed(int64(time.Now().Nanosecond()))
@@ -33,7 +34,7 @@ func main() {
 
 	globalSettings := GetGlobalSettings()
 	BootstrapAndServe(globalSettings.Address)
-	fmt.Printf("replicat %s online....\n", globalSettings.Name)
+	fmt.Printf("replicat %s online....", globalSettings.Name)
 	defer fmt.Println("End of line")
 
 	// keep this process running until it is shut down

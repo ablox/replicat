@@ -17,6 +17,7 @@ package main
 
 import (
 	"fmt"
+	log "github.com/sirupsen/logrus"
 	"io/ioutil"
 	"math/rand"
 	"os"
@@ -65,7 +66,7 @@ func waitForTrackerFolderExists(tracker StorageTracker, folder string) bool {
 	tracker.rlock()
 	defer tracker.runlock()
 
-	fmt.Printf("waitForTrackerFolderExists: folder %s\n", folder)
+	log.Printf("waitForTrackerFolderExists: folder %s\n", folder)
 	tracker.printLockable(false)
 
 	folders, err := tracker.ListFolders(false)
