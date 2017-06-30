@@ -15,7 +15,7 @@ Start Replicat with my custom key
 
 3. James:  replicat --clusterKey aa88aa88aa88 --directory /tmp/foo
 
-// Instances are using tmp folder for testing. Switch to a permanant folder for production or long term use.
+// Instances are using tmp folder for testing. Switch to a permanent folder for production or long term use.
 
 go get golang.org/x/crypto/blake2b
 #making sure changes can still send
@@ -41,6 +41,13 @@ docker run -ti -p 8102:8102 9ca776207015 /bin/bash
 ./replicat --m=192.168.1.156:8100 --a=0.0.0.0:8102
 
 fc48c7fff890
+
+
+# Fixing Routing Table Mac - Error socket connection refused
+sudo ifconfig en0 down
+sudo route flush
+sudo ifconfig en0 up
+
 
 
 
