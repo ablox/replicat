@@ -162,8 +162,8 @@ func keepConfigCurrent() {
 		if ago > managerOverdueSeconds*time.Second {
 			log.Printf("Manager Contact Overdue, attempting to contact: %s\n", globalSettings.ManagerAddress)
 			sendConfigToServer()
-		//} else {
-		//	fmt.Println("No Update Required")
+			//} else {
+			//	fmt.Println("No Update Required")
 		}
 		time.Sleep(time.Duration(rand.Intn(10)-5+managerCheckSleepTime) * time.Second)
 	}

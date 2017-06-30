@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"github.com/rjeczalik/notify"
 	"log"
+	"math/rand"
 	"os"
 	"path/filepath"
 	"sort"
@@ -29,7 +30,6 @@ import (
 	"sync"
 	"syscall"
 	"time"
-	"math/rand"
 )
 
 // ChangeHandler - Listener for tracking changes that happen to a storage system
@@ -133,39 +133,39 @@ func NewDirectoryFromFileInfo(info *os.FileInfo) *Entry {
 // IncrementStatistic - Increment one of the named statistics on the tracker.
 func (handler *FilesystemTracker) IncrementStatistic(name string, delta int, getLocks bool) {
 	//go func() {
-		//fmt.Printf("FilesystemTracker:IncrementStatistic(name %s, delta %d)\n", name, delta)
-		if getLocks {
-			handler.fsLock.Lock()
-			defer handler.fsLock.Unlock()
-		}
-		//handler.fsLock.Lock()
-		//fmt.Println("FilesystemTracker:/IncrementStatistic")
-		//defer handler.fsLock.Unlock()
-		//defer fmt.Println("FilesystemTracker://IncrementStatistic")
+	//fmt.Printf("FilesystemTracker:IncrementStatistic(name %s, delta %d)\n", name, delta)
+	if getLocks {
+		handler.fsLock.Lock()
+		defer handler.fsLock.Unlock()
+	}
+	//handler.fsLock.Lock()
+	//fmt.Println("FilesystemTracker:/IncrementStatistic")
+	//defer handler.fsLock.Unlock()
+	//defer fmt.Println("FilesystemTracker://IncrementStatistic")
 
-		switch name {
-		case TRACKER_TOTAL_FILES:
-			handler.stats.TotalFiles += delta
-			break
-		case TRACKER_TOTAL_FOLDERS:
-			handler.stats.TotalFolders += delta
-			break
-		case TRACKER_FILES_SENT:
-			handler.stats.FilesSent += delta
-			break
-		case TRACKER_FILES_RECEIVED:
-			handler.stats.FilesReceived += delta
-			break
-		case TRACKER_FILES_DELETED:
-			handler.stats.FilesDeleted += delta
-			break
-		case TRACKER_CATALOGS_SENT:
-			handler.stats.CatalogsSent += delta
-			break
-		case TRACKER_CATALOGS_RECEIVED:
-			handler.stats.CatalogsReceived += delta
-			break
-		}
+	switch name {
+	case TRACKER_TOTAL_FILES:
+		handler.stats.TotalFiles += delta
+		break
+	case TRACKER_TOTAL_FOLDERS:
+		handler.stats.TotalFolders += delta
+		break
+	case TRACKER_FILES_SENT:
+		handler.stats.FilesSent += delta
+		break
+	case TRACKER_FILES_RECEIVED:
+		handler.stats.FilesReceived += delta
+		break
+	case TRACKER_FILES_DELETED:
+		handler.stats.FilesDeleted += delta
+		break
+	case TRACKER_CATALOGS_SENT:
+		handler.stats.CatalogsSent += delta
+		break
+	case TRACKER_CATALOGS_RECEIVED:
+		handler.stats.CatalogsReceived += delta
+		break
+	}
 	//}()
 }
 
@@ -401,12 +401,12 @@ func createPath(pathName string, absolutePathName string) (pathCreated bool, sta
 }
 
 type sendFileRequest struct {
-	path string
-	fullPath string
+	path          string
+	fullPath      string
 	serverAddress string
 }
 
-func sendPathProxy(requests <- chan sendFileRequest) {
+func sendPathProxy(requests <-chan sendFileRequest) {
 	for oneRequest := range requests {
 		postHelper(oneRequest.path, oneRequest.fullPath, oneRequest.serverAddress, globalSettings.ManagerCredentials)
 	}
@@ -440,7 +440,6 @@ func (handler *FilesystemTracker) sendRequestedPaths(pathEntries map[string]Entr
 
 	close(requestChan)
 }
-
 
 func (handler *FilesystemTracker) getEntryJSON(relativePath string) (EntryJSON, error) {
 	handler.fsLock.RLock()
@@ -965,14 +964,13 @@ func (handler *FilesystemTracker) handleNotifyWrite(event Event, pathName, fullP
 		}
 	}
 
-
 	//RelativePath string
 	//IsDirectory  bool
 	//Hash         []byte
 	//ModTime      time.Time
 	//Size         int64
 	//ServerName   string
-//}
+	//}
 
 	//pathEntries := make(map[string]EntryJSON)
 	//pathEntries[pathName] = EntryJSON{pathName, false, nil, event.ModTime, 0, }
@@ -1226,7 +1224,7 @@ func (handler *FilesystemTracker) ProcessCatalog(event Event) {
 
 			// If the hash and time are the same, randomly decide which server to request the file from. Bias towards the first instance (faster server response time)
 			if !useNew && hashSame {
-				useNew = rand.Intn(10) < 5		// send about 60% of the traffic
+				useNew = rand.Intn(10) < 5 // send about 60% of the traffic
 			}
 
 			// If we are going to use the new file, update the information
@@ -1245,8 +1243,8 @@ func (handler *FilesystemTracker) ProcessCatalog(event Event) {
 				remoteEntry.ServerName = remoteServer
 				handler.neededFiles[path] = remoteEntry
 				handler.fsLock.Unlock()
-			//} else {
-			//	log.Println("decided to use current")
+				//} else {
+				//	log.Println("decided to use current")
 			}
 		}
 	}
@@ -1287,7 +1285,7 @@ func (handler *FilesystemTracker) requestNeededFiles() {
 	}
 
 	//todo remove this sleep statement once functionality is verified
-	time.Sleep(30*time.Second)
+	time.Sleep(30 * time.Second)
 
 	for server, fileMap := range filesToFetch {
 		fmt.Printf("requestNeededFiles: Files needed from: %s\n", server)
