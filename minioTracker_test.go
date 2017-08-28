@@ -24,6 +24,9 @@ import (
 	"testing"
 )
 
+// Command line sample for creating a new server in a run command
+//MINIO_ACCESS_KEY=jacob_access, MINIO_SECRET_KEY=jacob_secret,  ./minio server /tmp/NodeA/
+
 func TestMinioSmallObjectCreationAndDeletion(t *testing.T) {
 	defer causeFailOnPanic(t)
 
@@ -97,7 +100,7 @@ func TestMinioSmallObjectCreationAndDeletion(t *testing.T) {
 	tracker.printLockable(true)
 
 	// Initialize minio client object.
-	minioSDK, err := minio.New(minioAddress, minioAccessKey, minioSecretKey, true)
+	minioSDK, err := minio.New(minioAddress, minioPlayAccessKey, minioPlaySecretKey, true)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -165,7 +168,7 @@ func TestTrackerCatchingExternalWrite(t *testing.T) {
 	}
 
 	// Initialize minio client object.
-	minioSDK, err := minio.New(minioAddress, minioAccessKey, minioSecretKey, true)
+	minioSDK, err := minio.New(minioAddress, minioPlayAccessKey, minioPlaySecretKey, true)
 	if err != nil {
 		t.Fatal(err)
 	}

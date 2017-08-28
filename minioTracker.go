@@ -54,9 +54,9 @@ var _ StorageTracker = (*MinioTracker)(nil)
 
 const (
 	//minioLocation  = "https://play.minio.io:9000"
-	minioAddress   = "play.minio.io:9000"
-	minioAccessKey = "Q3AM3UQ867SPQQA43P2F"
-	minioSecretKey = "zuf+tfteSlswRu7BJ86wekitnifILbZam1KYY3TG"
+	minioAddress       = "play.minio.io:9000"
+	minioPlayAccessKey = "Q3AM3UQ867SPQQA43P2F"
+	minioPlaySecretKey = "zuf+tfteSlswRu7BJ86wekitnifILbZam1KYY3TG"
 )
 
 //func (handler *MinioTracker) Initialize(directory string, server *ReplicatServer) {
@@ -184,7 +184,7 @@ func (tracker *MinioTracker) Initialize(bucketName string, server *ReplicatServe
 	}
 
 	// Initialize minio client object.
-	tracker.minioSDK, err = minio.New(minioAddress, minioAccessKey, minioSecretKey, true)
+	tracker.minioSDK, err = minio.New(minioAddress, minioPlayAccessKey, minioPlaySecretKey, true)
 	if err != nil {
 		log.Println(err)
 		return
