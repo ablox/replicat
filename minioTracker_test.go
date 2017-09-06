@@ -22,12 +22,176 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"os/exec"
+	"time"
+	"bufio"
+	"io"
+	//"strings"
+	"strings"
 )
 
-// Command line sample for creating a new server in a run command
-//MINIO_ACCESS_KEY=jacob_access, MINIO_SECRET_KEY=jacob_secret,  ./minio server /tmp/NodeA/
+type minioInfo struct {
+	command 	  *exec.Cmd
+	monitoredPath 	  string
+	bucketName    string
+	minioURL	  string
+	key 		  string
+	secret		  string
+	address  	  string
+	status 		  chan string
+}
+
+
+
+
+//stdout, err := cmd.StdoutPipe()
+//if err != nil {
+//return 0, err
+//}
+//
+//// start the command after having set up the pipe
+//if err := cmd.Start(); err != nil {
+//return 0, err
+//}
+//
+//// read command's stdout line by line
+//in := bufio.NewScanner(stdout)
+//
+//for in.Scan() {
+//log.Printf(in.Text()) // write each line to your log, or anything you need
+//}
+//if err := in.Err(); err != nil {
+//log.Printf("error: %s", err)
+//}
+
+func relayOutput(minio minioInfo, stdout io.ReadCloser) {
+	//log.Println("relay: 1")
+	scanner := bufio.NewScanner(stdout)
+	//log.Println("relay: 2")
+	started := false
+	minioStartupComplete := "Drive Capacity:"
+
+	for scanner.Scan() {
+		//log.Println("relay: 3")
+		log.Printf("MINIO - %s", scanner.Text()) // write each line to your log, or anything you need
+		//log.Println("relay: 4")
+
+		if !started && len(scanner.Text()) > len(minioStartupComplete) && strings.Compare(scanner.Text()[:len(minioStartupComplete)], minioStartupComplete) == 0 {
+			fmt.Printf("We found it!!!! minio is ready: %s\n", scanner.Text())
+			started = true
+			go updateStatus(minio, "started")
+		}
+	}
+	//log.Println("relay: 5")
+
+	if err := scanner.Err(); err != nil {
+		log.Printf("error: %s", err)
+	}
+	//log.Println("relay: 6")
+
+}
+
+func updateStatus(minio minioInfo, status string) {
+	minio.status <- status
+}
+
+func startMinioServer(t *testing.T, host, port string) (minio minioInfo) {
+	log.Printf("StartMinioServer called with host: %s and port: %s", host, port)
+
+	log.Println("start: 1")
+
+	//messages := make(chan string)
+	//log.Println("start: 2")
+	//messages <- "yolo"
+	//log.Println("start: 3")
+	//log.Printf("received message %s", <- messages)
+	//log.Println("start: 4")
+
+
+	minio = minioInfo{}
+	minio.status = make(chan string)
+
+	bin, err := exec.LookPath("minio")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	minio.monitoredPath = "replicat_prefix"
+	createExtraFolder(minio.monitoredPath)
+
+	os.Setenv("MINIO_ACCESS_KEY", minio.monitoredPath)
+	os.Setenv("MINIO_SECRET_KEY", minio.monitoredPath)
+	env := os.Environ()
+
+	log.Printf("Creating new path: %s", minio.monitoredPath)
+
+	minio.address = fmt.Sprintf("%s:%s", host, port)
+
+	args := []string{
+		"minio",
+		"server",
+		"--address",
+		minio.address,
+		minio.monitoredPath,
+	}
+
+	cmd := exec.Command(bin)
+	cmd.Env = env
+	cmd.Args = args
+
+	go updateStatus(minio, "starting")
+	//log.Println("Status update before")
+	//minio.status <- "starting"
+	//log.Println("Status update after")
+
+	stdout, err := cmd.StdoutPipe()
+	go relayOutput(minio, stdout)
+
+	minio.command = cmd
+
+	log.Printf("About to start minio at: %s\n", bin)
+	if err := cmd.Start(); err != nil {
+		log.Fatal(err)
+	}
+
+	// Wait until minio is started up
+	doneStarting := false
+	for ; !doneStarting; {
+		select {
+		case status := <-minio.status:
+			log.Printf("minio status updated to %s", status)
+			if strings.Compare(status, "started") == 0 {
+				log.Printf("minio has started %s", status)
+				doneStarting = true
+				break
+			}
+		case <- time.After(time.Second * 10):
+			t.Fatalf("minio did not finish starting %s", minio.status)
+		}
+	}
+
+	//log.Println("Minio Started!!!!!\n. Waiting for you to be done playing")
+	//time.Sleep(time.Second * 10)
+	log.Println("you are taking too long, I am bored. Bye")
+	cmd.Process.Kill()
+	log.Println("process down")
+
+	go updateStatus(minio, "stopped")
+
+	return minio
+}
+
+func stopMinioServer(t *testing.T, info minioInfo) {
+
+
+}
 
 func TestMinioSmallObjectCreationAndDeletion(t *testing.T) {
+	minioSmallServer := startMinioServer(t, "localhost", "8888")
+
+	t.Fail()
+	t.Fatalf("down the rabbit hole we go\n%#v\n", minioSmallServer)
+
 	defer causeFailOnPanic(t)
 
 	outsideFolder := createExtraFolder("outside")
