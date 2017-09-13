@@ -16,33 +16,30 @@
 package main
 
 import (
+	"bufio"
 	"fmt"
 	"github.com/minio/minio-go"
 	log "github.com/sirupsen/logrus"
+	"io"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"testing"
-	"os/exec"
 	"time"
-	"bufio"
-	"io"
 	//"strings"
 	"strings"
 )
 
 type minioInfo struct {
-	command 	  *exec.Cmd
-	monitoredPath 	  string
+	command       *exec.Cmd
+	monitoredPath string
 	bucketName    string
-	minioURL	  string
-	key 		  string
-	secret		  string
-	address  	  string
-	status 		  chan string
+	minioURL      string
+	key           string
+	secret        string
+	address       string
+	status        chan string
 }
-
-
-
 
 //stdout, err := cmd.StdoutPipe()
 //if err != nil {
@@ -107,7 +104,6 @@ func startMinioServer(t *testing.T, host, port string) (minio minioInfo) {
 	//log.Printf("received message %s", <- messages)
 	//log.Println("start: 4")
 
-
 	minio = minioInfo{}
 	minio.status = make(chan string)
 
@@ -156,7 +152,7 @@ func startMinioServer(t *testing.T, host, port string) (minio minioInfo) {
 
 	// Wait until minio is started up
 	doneStarting := false
-	for ; !doneStarting; {
+	for !doneStarting {
 		select {
 		case status := <-minio.status:
 			log.Printf("minio status updated to %s", status)
@@ -165,7 +161,7 @@ func startMinioServer(t *testing.T, host, port string) (minio minioInfo) {
 				doneStarting = true
 				break
 			}
-		case <- time.After(time.Second * 10):
+		case <-time.After(time.Second * 10):
 			t.Fatalf("minio did not finish starting %s", minio.status)
 		}
 	}
@@ -182,7 +178,6 @@ func startMinioServer(t *testing.T, host, port string) (minio minioInfo) {
 }
 
 func stopMinioServer(t *testing.T, info minioInfo) {
-
 
 }
 
