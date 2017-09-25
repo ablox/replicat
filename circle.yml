@@ -1,4 +1,6 @@
 test:
+  pre:
+    - go version
   override:
     # './...' is a relative pattern which means all subdirectories
     - go test -v --race ./...
@@ -7,5 +9,3 @@ machine:
   environment:
     # CIRCLECI - flag to let me know what system we are running on.
     CIRCLECI: "true"
-  pre:
-    - go version
