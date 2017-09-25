@@ -7,3 +7,5 @@ machine:
   environment:
     # CIRCLECI - flag to let me know what system we are running on.
     CIRCLECI: "true"
+  pre:
+    - go version
