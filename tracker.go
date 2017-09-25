@@ -65,6 +65,7 @@ type StorageTracker interface {
 
 // Make sure we can adhere to the StorageTracker interface
 var _ StorageTracker = (*FilesystemTracker)(nil)
+var _ StorageTracker = (*MinioTracker)(nil)
 
 // FilesystemTracker - Track a filesystem and keep it in sync
 type FilesystemTracker struct {

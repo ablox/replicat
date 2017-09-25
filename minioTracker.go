@@ -142,6 +142,12 @@ type MinioEntry struct {
 	ModTime   string `json:"modTime"`
 }
 
+var MINOIO_TRACKER_NOT_IMPLEMENTED error = errors.New("Replicat: Minio tracker has not implemented this function")
+
+func (tracker *MinioTracker) CreatePath(pathName string, isDirectory bool) (err error) {
+	return MINOIO_TRACKER_NOT_IMPLEMENTED
+}
+
 func (tracker *MinioTracker) watchBucket() {
 
 	for notificationInfo := range tracker.minioSDK.ListenBucketNotification(tracker.bucketName, "", "", allEvents, tracker.doneCh) {
@@ -311,24 +317,24 @@ func (tracker *MinioTracker) CreateObject(bucketName, objectName, sourceFile, co
 	return
 }
 
-func (tracker *MinioTracker) CreatePath(pathName string, isDirectory bool) (err error) {
-	err = tracker.verifyInitialized()
-	if err != nil {
-		panic(err)
-	}
-
-	if isDirectory == false {
-		panic("Not implemented yet")
-	}
-
-	err = tracker.minioSDK.MakeBucket(pathName, "")
-	if err != nil {
-		log.Println(err)
-		return
-	}
-
-	return
-}
+//func (tracker *MinioTracker) CreatePath(pathName string, isDirectory bool) (err error) {
+//	err = tracker.verifyInitialized()
+//	if err != nil {
+//		panic(err)
+//	}
+//
+//	if isDirectory == false {
+//		panic("Not implemented yet")
+//	}
+//
+//	err = tracker.minioSDK.MakeBucket(pathName, "")
+//	if err != nil {
+//		log.Println(err)
+//		return
+//	}
+//
+//	return
+//}
 
 func (tracker *MinioTracker) Rename(sourcePath string, destinationPath string, isDirectory bool) (err error) {
 

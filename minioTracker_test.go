@@ -28,6 +28,7 @@ import (
 	"time"
 	//"strings"
 	"strings"
+	"math/rand"
 )
 
 type minioInfo struct {
@@ -41,25 +42,7 @@ type minioInfo struct {
 	status        chan string
 }
 
-//stdout, err := cmd.StdoutPipe()
-//if err != nil {
-//return 0, err
-//}
-//
-//// start the command after having set up the pipe
-//if err := cmd.Start(); err != nil {
-//return 0, err
-//}
-//
-//// read command's stdout line by line
-//in := bufio.NewScanner(stdout)
-//
-//for in.Scan() {
-//log.Printf(in.Text()) // write each line to your log, or anything you need
-//}
-//if err := in.Err(); err != nil {
-//log.Printf("error: %s", err)
-//}
+
 
 func relayOutput(minio minioInfo, stdout io.ReadCloser) {
 	//log.Println("relay: 1")
@@ -92,36 +75,35 @@ func updateStatus(minio minioInfo, status string) {
 	minio.status <- status
 }
 
-func startMinioServer(t *testing.T, host, port string) (minio minioInfo) {
-	log.Printf("StartMinioServer called with host: %s and port: %s", host, port)
-
-	log.Println("start: 1")
-
-	//messages := make(chan string)
-	//log.Println("start: 2")
-	//messages <- "yolo"
-	//log.Println("start: 3")
-	//log.Printf("received message %s", <- messages)
-	//log.Println("start: 4")
-
+/* get the minio server ready to be launched. This allows for the creation of the folders and allows for
+file manipulation. if lanchNow is true, it will launch immediately
+ */
+func setupMinioServer(t *testing.T, host, port string, path string, launchNow bool) (minio minioInfo) {
+	log.Printf("setupMinioServer called with host: %s and port: %s", host, port)
 	minio = minioInfo{}
 	minio.status = make(chan string)
+
+	minio.monitoredPath = path
+	if path == "" {
+		minio.monitoredPath = fmt.Sprintf("replicat_prefix%d", rand.Intn(10000))
+	}
+
+	createExtraFolder(minio.monitoredPath)
+
+	log.Printf("Creating new path: %s", minio.monitoredPath)
+
+	minio.address = fmt.Sprintf("%s:%s", host, port)
+
+	return minio
+}
+
+func launchMinio(t *testing.T, minio minioInfo) {
+	log.Printf("launchMinio called with host: %s and port: %s", minio.address)
 
 	bin, err := exec.LookPath("minio")
 	if err != nil {
 		t.Fatal(err)
 	}
-
-	minio.monitoredPath = "replicat_prefix"
-	createExtraFolder(minio.monitoredPath)
-
-	os.Setenv("MINIO_ACCESS_KEY", minio.monitoredPath)
-	os.Setenv("MINIO_SECRET_KEY", minio.monitoredPath)
-	env := os.Environ()
-
-	log.Printf("Creating new path: %s", minio.monitoredPath)
-
-	minio.address = fmt.Sprintf("%s:%s", host, port)
 
 	args := []string{
 		"minio",
@@ -131,14 +113,15 @@ func startMinioServer(t *testing.T, host, port string) (minio minioInfo) {
 		minio.monitoredPath,
 	}
 
+	os.Setenv("MINIO_ACCESS_KEY", minio.monitoredPath)
+	os.Setenv("MINIO_SECRET_KEY", minio.monitoredPath)
+	env := os.Environ()
+
 	cmd := exec.Command(bin)
 	cmd.Env = env
 	cmd.Args = args
 
 	go updateStatus(minio, "starting")
-	//log.Println("Status update before")
-	//minio.status <- "starting"
-	//log.Println("Status update after")
 
 	stdout, err := cmd.StdoutPipe()
 	go relayOutput(minio, stdout)
@@ -174,15 +157,52 @@ func startMinioServer(t *testing.T, host, port string) (minio minioInfo) {
 
 	go updateStatus(minio, "stopped")
 
-	return minio
 }
+
+
+func TestInitialStartupScan( t *testing.T) {
+	startTest("TestInitialStartupScan")
+	defer endTest("TestInitialStartupScan")
+
+	minio := setupMinioServer(t, "localhost", "8888", "", false)
+
+	// create a new file in the monitored folder.
+	fileName := "happy.txt"
+	targetMonitoredPath := filepath.Join(minio.monitoredPath, fileName)
+
+	fmt.Printf("making file: %s\n", targetMonitoredPath)
+	file, err := os.Create(targetMonitoredPath)
+	if err != nil {
+		panic(err)
+	}
+
+	sampleFileContents := "This is the content of the file\n"
+	n, err := file.WriteString(sampleFileContents)
+	if err != nil {
+		panic(err)
+	}
+	if n != len(sampleFileContents) {
+		panic(fmt.Sprintf("Contents of file not correct length n: %d len: %d\n", n, len(sampleFileContents)))
+	}
+
+	err = file.Close()
+	if err != nil {
+		panic(err)
+	}
+
+	if !WaitForStorage(minio, fileName, true, waitForTrackerFolderExists) {
+		panic(fmt.Sprintf("%s not found in contents\ncontents: %v\n", fileName, minio.contents))
+	}
+
+}
+
 
 func stopMinioServer(t *testing.T, info minioInfo) {
 
 }
 
 func TestMinioSmallObjectCreationAndDeletion(t *testing.T) {
-	minioSmallServer := startMinioServer(t, "localhost", "8888")
+	minioSmallServer := setupMinioServer(t, "localhost", "8888", "", true)
 
 	t.Fail()
 	t.Fatalf("down the rabbit hole we go\n%#v\n", minioSmallServer)
