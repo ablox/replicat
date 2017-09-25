@@ -27,8 +27,8 @@ import (
 	"testing"
 	"time"
 	//"strings"
-	"strings"
 	"math/rand"
+	"strings"
 )
 
 type minioInfo struct {
@@ -41,8 +41,6 @@ type minioInfo struct {
 	address       string
 	status        chan string
 }
-
-
 
 func relayOutput(minio minioInfo, stdout io.ReadCloser) {
 	//log.Println("relay: 1")
@@ -77,7 +75,7 @@ func updateStatus(minio minioInfo, status string) {
 
 /* get the minio server ready to be launched. This allows for the creation of the folders and allows for
 file manipulation. if lanchNow is true, it will launch immediately
- */
+*/
 func setupMinioServer(t *testing.T, host, port string, path string, launchNow bool) (minio minioInfo) {
 	log.Printf("setupMinioServer called with host: %s and port: %s", host, port)
 	minio = minioInfo{}
@@ -159,8 +157,7 @@ func launchMinio(t *testing.T, minio minioInfo) {
 
 }
 
-
-func TestInitialStartupScan( t *testing.T) {
+func TestInitialStartupScan(t *testing.T) {
 	startTest("TestInitialStartupScan")
 	defer endTest("TestInitialStartupScan")
 
@@ -195,7 +192,6 @@ func TestInitialStartupScan( t *testing.T) {
 	}
 
 }
-
 
 func stopMinioServer(t *testing.T, info minioInfo) {
 
